@@ -145,3 +145,15 @@ describe("レビューの指摘: 検査が空の report", () => {
     expect(git("log", "-1", "--format=%s").trim()).toBe("T99 RED");
   });
 });
+
+describe("レビューの指摘: 時間の上限", () => {
+  it("止まらないテストを打ち切って FAILED を返す", async () => {
+    await start({ CAGE_TEST: JSON.stringify(["-e", "while (true) {}"]), CAGE_TIMEOUT_MS: "500" });
+    expect((await call("run_tests")).content[0].text).toMatch(/FAILED/);
+  });
+
+  it("起動できない検査でも原因が見える", async () => {
+    await start({ CAGE_CHECKS: JSON.stringify([{ name: "C1", argv: ["no-such-command"] }]) });
+    expect((await call("report", { task: "T99" })).content[0].text).toMatch(/no-such-command/);
+  });
+});
