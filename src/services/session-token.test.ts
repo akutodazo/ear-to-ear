@@ -177,3 +177,10 @@ describe("中身の型（攻撃役の指摘）", () => {
     expect(await verifySessionToken(await signed(body), hmac, NOW)).toBeNull();
   });
 });
+
+describe("返す中身（攻撃役の指摘）", () => {
+  it("署名済みの中身に余分なキーがあっても、返すのは device・role・exp だけ", async () => {
+    const token = await signed({ ...MEMBER, lat: 41.8, lng: 144.5 });
+    expect(await verifySessionToken(token, hmac, NOW)).toStrictEqual(MEMBER);
+  });
+});
