@@ -29,6 +29,13 @@
 | 無人の Claude から組み込みの道具を全部外し、自作の MCP の4つの道具だけを渡して動かした。実機検証は正常系が成功、直接たたく攻撃 8 種類はすべて拒否。抜け穴（テスト経由の実行）も見つけた | [#14 のコメント](https://github.com/akutodazo/ear-to-ear/issues/14) |
 | テストを凍結する前に、仕様を知らない Claude に「ズルで全件通せ」と頼んだ。22 件を全部通す手抜きが書け、テストを足して 47 件にした | [#17 のコメント](https://github.com/akutodazo/ear-to-ear/issues/17)、[#24](https://github.com/akutodazo/ear-to-ear/pull/24) |
 
+### 観点2: Claude Code を中心に据えて何が可能になったか
+| 実績 | 証拠 |
+|---|---|
+| 仕様の約束事を最初に固定し、キックオフから約2時間で main に `npm run check` が通る状態にした | 下の「記録」の 11-02 の1行目、[#1](https://github.com/akutodazo/ear-to-ear/pull/1) |
+| T03 は RED で全件失敗を確かめてから GREEN を4段階で実装した（テスト 54 件、20 コミット） | [#6](https://github.com/akutodazo/ear-to-ear/pull/6) |
+| 認証の部品は、書いた会話を見ていない別のセッションがレビューし、期限の上限の抜けを見つけた。攻撃役の2回では見つからなかった | [#24](https://github.com/akutodazo/ear-to-ear/pull/24)、`docs/reviews/pr-24-session-token.md` |
+
 ## PR からの写し方
 PR の本文「この PR での Claude の使い方」を正本にする。2人が同じ表を書くと衝突するので、作業の PR ではこのファイルを変えない。
 
