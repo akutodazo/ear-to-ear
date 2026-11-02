@@ -24,7 +24,7 @@ const CHILD_ENV = Object.fromEntries(
 );
 
 const git = (...args) => execFileSync("git", args, { cwd: ROOT, encoding: "utf8" });
-const tracked = () => new Set(git("ls-files").split("\n").filter(Boolean));
+const tracked = () => new Set(git("ls-files", "-z").split("\0").filter(Boolean));
 
 function runChild(file, args) {
   try {
@@ -50,7 +50,7 @@ const tools = {
     run: ({ path, content }) => {
       if (!checkWrite(path, ALLOW)) throw new Error(`拒否: 許可リスト外 ${path}`);
       const p = cleanPath(path);
-      if (/\.(ts|tsx|js|mjs)$/.test(p)) {
+      if (/\.[cm]?[jt]sx?$/.test(p)) {
         const problems = checkPurity(content);
         if (problems.length > 0) throw new Error(`拒否: 純粋関数の検査 ${problems.join(", ")}`);
       }
