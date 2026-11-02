@@ -23,6 +23,24 @@ async function rpc(method: string, params: unknown): Promise<Result> {
 }
 const call = (name: string, args: unknown = {}) => rpc("tools/call", { name, arguments: args });
 
+async function start(extra: Record<string, string> = {}) {
+  child?.kill();
+  child = spawn("node", [SERVER], {
+    env: {
+      ...process.env,
+      CAGE_ROOT: root,
+      CAGE_ALLOW: "src/add.mjs",
+      CAGE_LOG: `${root}.log`,
+      CAGE_TEST: JSON.stringify(["-e", 'console.log("ran", process.env.CAGE_PROBE ?? "no-env")']),
+      CAGE_CHECKS: JSON.stringify([{ name: "C1", argv: ["node", "-e", 'console.log("C1 ok")'] }]),
+      CAGE_PROBE: SECRET,
+      ...extra,
+    },
+  });
+  lines = createInterface({ input: child.stdout })[Symbol.asyncIterator]();
+  await rpc("initialize", { protocolVersion: "2025-06-18" });
+}
+
 beforeEach(async () => {
   root = mkdtempSync(join(tmpdir(), "cage-"));
   mkdirSync(join(root, "src"));
@@ -35,19 +53,7 @@ beforeEach(async () => {
   git("commit", "-q", "-m", "T99 RED");
   writeFileSync(join(root, ".git/info/exclude"), ".dev.vars\n");
   writeFileSync(join(root, ".dev.vars"), `X=${SECRET}\n`);
-  child = spawn("node", [SERVER], {
-    env: {
-      ...process.env,
-      CAGE_ROOT: root,
-      CAGE_ALLOW: "src/add.mjs,docs/run/REPORT.md",
-      CAGE_LOG: `${root}.log`,
-      CAGE_TEST: JSON.stringify(["-e", 'console.log("ran", process.env.CAGE_PROBE ?? "no-env")']),
-      CAGE_CHECKS: JSON.stringify([{ name: "C1", argv: ["node", "-e", 'console.log("C1 ok")'] }]),
-      CAGE_PROBE: SECRET,
-    },
-  });
-  lines = createInterface({ input: child.stdout })[Symbol.asyncIterator]();
-  await rpc("initialize", { protocolVersion: "2025-06-18" });
+  await start();
 });
 
 afterEach(() => {
@@ -113,9 +119,9 @@ describe("run_tests の抜け穴", () => {
   });
 
   it("コード以外のファイルは純粋関数の検査をしない", async () => {
-    const r = await call("write_file", { path: "docs/run/REPORT.md", content: "process と書ける" });
+    const r = await call("write_file", { path: "docs/run/QUESTIONS.md", content: "process と書ける" });
     expect(r.isError).toBeFalsy();
-    expect(existsSync(join(root, "docs/run/REPORT.md"))).toBe(true);
+    expect(existsSync(join(root, "docs/run/QUESTIONS.md"))).toBe(true);
   });
 });
 
