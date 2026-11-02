@@ -36,3 +36,13 @@ describe("書ける場所", () => {
     expect(cleanPath("a\\b\\..\\c.ts")).toBe("a/c.ts");
   });
 });
+
+describe("コミットのメッセージ", () => {
+  it("Txx GREEN: で始まる1行は通る", () => {
+    expect(checkCommitMessage("T02 GREEN: 実装")).toBe(true);
+  });
+
+  it.each(["push origin", "t02 green: x", "T02 GREEN:", "T02 GREEN: a\nb", ""])("%j は通らない", (m) => {
+    expect(checkCommitMessage(m)).toBe(false);
+  });
+});
