@@ -135,3 +135,15 @@ describe("JPEG 以外", () => {
     expect(() => inspectJpeg(Uint8Array.from(bytes))).toThrow(InvalidJpegError);
   });
 });
+
+describe("長さの欄が不正", () => {
+  it.each([
+    ["0", [0xff, 0xe1, 0x00, 0x00]],
+    ["1", [0xff, 0xe1, 0x00, 0x01]],
+    ["残りより長い", [0xff, 0xe1, 0xff, 0xff, 0x00]],
+  ])("長さが %s なら例外", (_name, broken) => {
+    expect(() => inspectJpeg(jpeg(broken, SOF0, SCAN))).toThrow(
+      InvalidJpegError,
+    );
+  });
+});
