@@ -88,3 +88,17 @@ describe("来年の委員役・人の役", () => {
     expect(listFiles(join(out, "work"))).toEqual(["QUESTIONS.md"]);
   });
 });
+
+describe("レビュー役", () => {
+  it("リポジトリの複製と、PR の番号だけの文面が渡る", () => {
+    expect(run("reviewer", "--pr", "33").status).toBe(0);
+    expect(listFiles(join(out, "work"))).toContain("AGENTS.md");
+    const prompt = readFileSync(join(out, "PROMPT.txt"), "utf8");
+    expect(prompt).toMatch(/#33/);
+    expect(prompt).toMatch(/AGENTS\.md と docs\/spec\.md を読んでから/);
+  });
+
+  it("PR の番号でない値は受け付けない", () => {
+    expect(run("reviewer", "--pr", `33 ${HISTORY}`).status).not.toBe(0);
+  });
+});
