@@ -1,0 +1,36 @@
+# dependencies
+/node_modules
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# ---- 秘密・実データは絶対に入れない（docs/spec.md 安全） ----
+# 開発用の合言葉・SESSION_SECRET・API キー
+.dev.vars
+.dev.vars.*
+.env*
+# 手元だけの合成写真・非公開データの置き場
+/private/
+# 個人の設定（本人の無人運転の禁止ルールなど）
+*.local.*
+.claude/settings.local.json
+# wrangler の手元の D1・R2
+.wrangler/

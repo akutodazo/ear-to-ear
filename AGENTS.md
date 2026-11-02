@@ -1,0 +1,65 @@
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
+
+# ear-to-ear — 共通ルール（Claude Code・Codex の両方が読む）
+
+**何を作るか**: 小麦収穫委員会の写真共有。委員が合言葉を入れて写真を送るだけで、圃場番号の候補と撮影日が付いて全員に共有される。番号が決まらなくても「未確定」として先に共有し、管理者が確定・訂正する。判断（収穫可能／収穫済）とその理由（農協の判定を含む）も同じ地図に残り、Claude が引用（Citations）で根拠付きの引き継ぎメモを作る。中心は「**写真を見つける**」と「**判断を根拠付きでたどれる**」。仕様は `docs/spec.md`、決定は `docs/decisions.md`、公開範囲は `docs/privacy.md`。
+
+**期間**: Built with Claude: Japan 2026。2026-11-02 12:00 〜 **11-08 20:00 JST 提出**（11/8 の昼までに一度提出）。11/7 の夕方以降は新しい段に手を付けない。
+
+## 1. 絶対に守ること（違反は失格・事故）
+1. **既存のコードを持ち込まない**。本人の既存プロジェクト（field_share、my-waypoint-site など）は読んで考え方を参考にするのは可。ファイルのコピー・関数の貼り付け・見ながらの打ち直しは不可。他人・組織のコード（Drone Shot など）も入れない
+2. **実在の農家のデータを入れない**: 実写真・実在の圃場の座標・委員会シート・番号対応表・個人名。データはすべて架空（圃場番号は `A-01` 形式、12圃場程度、座標は決めた範囲に機械的に並べる）。Claude API にも実データを送らない
+3. **秘密を入れない・会話に貼らない**: 合言葉・`SESSION_SECRET`・API キー・LINE のトークン・`.dev.vars`。環境変数 `ANTHROPIC_API_KEY` は置かない
+4. **撮影位置は端末の外に出さない**: 座標も、候補の畑までの距離もサーバーに送らない・保存しない。送るのは候補の番号（近い順、最大3）だけ。公開側の画像に APP1〜APP15 を残さない
+5. **画像ファイルをコミットしない**。メタデータ付きの写真が要るテストはテストの中でバイト列を組み立てる。合成写真の出力先は `/private/fixtures/`（.gitignore 済み）
+6. 決定（`docs/decisions.md` の K1〜K17）を変えるときは理由を書いて本人の承認を取る。迷ったら推測で進めず、人に聞く
+
+## 2. 担当のフォルダ（同じファイルを2人が書かない）
+| 担当 | 範囲 |
+|---|---|
+| 先輩（サーバー側） | `worker/`、`migrations/`、サーバー側の Service（`jpeg-segments`・`upload-meta`・`session-token`） |
+| 本人（ブラウザ側） | `src/app/`、`src/components/`、`src/hooks/`、`src/lib/`、ブラウザ側の Service（`photo-meta`・`candidates`・`photo-groups`・`status-reason`） |
+| 共有（変えるときは両方が承認） | `src/types/`、`src/config.ts`、`AGENTS.md`、`package.json` |
+| 後で決める | `usage-limit`・`handover-*`・`line-signature`（L0 が終わった時点で手が空いている方） |
+
+## 3. 進め方
+- **合格条件を先に書く → テスト → 実装**。RED（テスト）と GREEN（実装）は別のコミット
+- 例外を期待するテストに引数なしの `toThrow()` を使わない（`toThrow(InvalidJpegError)` や `toThrow(/JPEG ではない/)` のように何を期待するか書く）
+- **1つの PR に1つの関心事**。PR の本文: 影響範囲／使ったライブラリ／同時に更新した文書／弱点候補3〜5個／検証ログ（RED・GREEN・lint・test・build）
+- **レビューは書いた側と違う側**: 本人の PR は先輩、先輩の PR は本人。`main` に直接 push しない
+- PR の前に `npm run check`（安全検査 → lint → 型 → テスト → build）を通し、差分を目で見る（画像・CSV・文書が増えていないか）
+- Claude が書いた変更は PR の前に Codex の点検を通し、結果を `docs/reviews/` に置く
+
+## 4. 層の決まり（docs/spec.md 技術とフォルダ）
+| 層 | 置き場所 | 決まり |
+|---|---|---|
+| 型 | `src/types/` | — |
+| Service | `src/services/` | **純粋関数**。ブラウザ API・React・fetch に依存しない。テストの主戦場 |
+| Repository | `src/repositories/interfaces/`、`implementations/` | 契約は Promise。fetch は引数で注入 |
+| Presenter | `src/hooks/use-*.ts` | Repository の実体を知るのはここだけ |
+| UI 部品 | `src/components/` | props だけで受け取る |
+| page | `src/app/` | 配線だけ。静的書き出し（`output: 'export'`）なので動的ルートは `generateStaticParams` が要る |
+| ブラウザ専用 | `src/lib/` | 縮小・再エンコード、SHA-256 |
+| Worker | `worker/` | ハンドラは薄く、判定は Service。CPU 10ms に収まる処理だけ |
+| 設定 | `src/config.ts` | 定数はここに1回だけ |
+
+- 命名は kebab-case、interface は `i-`、フックは `use-`。`any`・`@ts-ignore`・`eslint-disable` 禁止
+- Next.js は版で作法が変わる。**書く前に `node_modules/next/dist/docs/` の該当ガイドを読む**
+- 言葉を盛らない。推定は推定と書く。水分・収穫の可否を Claude に言わせない
+
+## 5. 無人運転のとき（`/goal` で動いているとき。本人のパケットだけ）
+決まりの全文は本人の手元のハーネス設計（v0.4）。リポジトリ側で守ること:
+- 扱うのは `/goal` で名指しされた **1パケット**だけ（`docs/run/TASKS.md`）。無人で行うのは **実装（GREEN）だけ**。テストは人が書く
+- 変えてよいのは TASKS の「変えてよいファイル」と `docs/run/REPORT.md`・`docs/run/QUESTIONS.md` だけ。**凍結ファイル**（`*.test.ts`、`tests/**`、`src/types/**`、`src/config.ts`、`vitest.config.*`、`package.json`、`package-lock.json`、`tsconfig*.json`、`eslint.config.*`、`.gitignore`、`.claude/**`、`AGENTS.md`、`CLAUDE.md`、`scripts/**`、`docs/run/TASKS.md`）は変えない
+- テストが誤りに見えても直さない。仕様外の判断・対象外の変更・権限で止められた・検査が不合格のときは `QUESTIONS.md` に「何が起きたか・選択肢・推奨」を書いて止まる。直して検査を回し直さない
+- push・PR・`gh`・`wrangler`・`npm install`・Secret・デプロイをしない。ブランチを切り替えない。`git reset --hard`・`git stash`・`git checkout -- .`・ファイル削除で変更を消さない
+- GREEN をコミットした後、検査 C1〜C5 を**1回ずつ、他のコマンドとつなげずに**実行し、出力をそのまま会話と `REPORT.md` に貼って「Txx REPORT」でコミットする。「完了」ではなく「検査済み・人の確認待ち」と書く
+- **QUESTIONS に書くのは `git status --porcelain --untracked-files=all` の出力のファイル名の列だけ**。差分の中身・ファイルの中身は貼らない。対象外・秘密の疑いのある変更は add・コミット・元に戻し・削除をしない

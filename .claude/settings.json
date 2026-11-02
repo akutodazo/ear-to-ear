@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.dev.vars)",
+      "Read(./.env*)",
+      "Read(./private/**)",
+      "Bash(npx wrangler deploy*)",
+      "PowerShell(npx wrangler deploy*)",
+      "Bash(npx wrangler secret*)",
+      "PowerShell(npx wrangler secret*)",
+      "Bash(git push * main*)",
+      "PowerShell(git push * main*)"
+    ]
+  }
+}
