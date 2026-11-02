@@ -47,3 +47,36 @@ describe("形", () => {
     ]);
   });
 });
+
+/** base64url の1文字を別の文字に変える */
+function flip(s: string, index: number): string {
+  const c = s[index] === "A" ? "B" : "A";
+  return s.slice(0, index) + c + s.slice(index + 1);
+}
+
+describe("改ざん", () => {
+  it("署名の1文字目を変えると null", async () => {
+    const [payload, signature] = (await issueSessionToken(MEMBER, hmac)).split(".");
+    expect(await verifySessionToken(`${payload}.${flip(signature, 0)}`, hmac, NOW)).toBeNull();
+  });
+
+  it("中身の1文字目を変えると null", async () => {
+    const [payload, signature] = (await issueSessionToken(MEMBER, hmac)).split(".");
+    expect(await verifySessionToken(`${flip(payload, 0)}.${signature}`, hmac, NOW)).toBeNull();
+  });
+
+  it("署名の末尾の余りのビットだけ変えても null（文字列として比べる）", async () => {
+    const [payload, signature] = (await issueSessionToken(MEMBER, hmac)).split(".");
+    const last = signature.length - 1;
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    // 32 バイトの base64url は 43 文字で、最後の文字の下位 2 ビットは使われない
+    const sibling = alphabet[alphabet.indexOf(signature[last]) ^ 1];
+    const forged = `${payload}.${signature.slice(0, last)}${sibling}`;
+    expect(await verifySessionToken(forged, hmac, NOW)).toBeNull();
+  });
+
+  it("署名を短くすると null", async () => {
+    const token = await issueSessionToken(MEMBER, hmac);
+    expect(await verifySessionToken(token.slice(0, -1), hmac, NOW)).toBeNull();
+  });
+});
