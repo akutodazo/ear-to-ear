@@ -210,3 +210,16 @@ describe("base64url の形（攻撃役の指摘）", () => {
     expect(await verifySessionToken(`${payload}.${forged}`, hmac, NOW)).toBeNull();
   });
 });
+
+describe("HMAC に渡す値（攻撃役の指摘）", () => {
+  it("確かめるときに HMAC へ渡すのは Cookie の前半そのもの", async () => {
+    const token = await issueSessionToken(MEMBER, hmac);
+    const seen: string[] = [];
+    const spy: Hmac = async (data) => {
+      seen.push(data);
+      return hmac(data);
+    };
+    await verifySessionToken(token, spy, NOW);
+    expect(seen).toEqual([token.split(".")[0]]);
+  });
+});
