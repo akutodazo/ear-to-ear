@@ -159,3 +159,20 @@ describe("途中で切れた JPEG", () => {
     expect(() => inspectJpeg(jpeg(...parts))).toThrow(InvalidJpegError);
   });
 });
+
+describe("見出しの並びが不正", () => {
+  it("マーカーの位置に 0xFF 以外があれば例外", () => {
+    expect(() => inspectJpeg(jpeg([0x00], SOF0, SCAN))).toThrow(
+      InvalidJpegError,
+    );
+  });
+
+  it("SOF が無ければ例外", () => {
+    expect(() => inspectJpeg(jpeg(APP0, SCAN))).toThrow(InvalidJpegError);
+  });
+
+  it("SOF の中身が短ければ例外", () => {
+    const short = segment(0xc0, [8, 0x00, 0x01]);
+    expect(() => inspectJpeg(jpeg(short, SCAN))).toThrow(InvalidJpegError);
+  });
+});
