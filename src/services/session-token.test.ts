@@ -242,3 +242,36 @@ describe("期限の上限（レビューの指摘 1）", () => {
     expect(await verifySessionToken(token, hmac, NOW)).toBeNull();
   });
 });
+
+describe("効いていなかった確認（レビューの指摘 2）", () => {
+  it("正しい Cookie の末尾に .x を足すと null", async () => {
+    const token = await issueSessionToken(MEMBER, hmac);
+    expect(await verifySessionToken(`${token}.x`, hmac, NOW)).toBeNull();
+  });
+
+  // 補う = の数が合う長さの前半を使う。そうしないと atob や JSON の別の仕組みで落ち、文字の検査を確かめられない
+  it.each([
+    ["a", "\n"],
+    ["abcd", "\n"],
+    ["abc", "  "],
+  ])("端末 ID が %s の前半に余計な文字が混ざると、署名が正しくても null", async (device, junk) => {
+    const [payload] = (await issueSessionToken({ ...MEMBER, device }, hmac)).split(".");
+    const forged = `${payload.slice(0, 4)}${junk}${payload.slice(4)}`;
+    expect(await verifySessionToken(await signedRaw(forged), hmac, NOW)).toBeNull();
+  });
+
+  it("今の時刻が NaN なら null", async () => {
+    const token = await issueSessionToken(MEMBER, hmac);
+    expect(await verifySessionToken(token, hmac, Number.NaN)).toBeNull();
+  });
+
+  it("中身が不正な UTF-8 なら、署名が正しくても null", async () => {
+    const json = Buffer.from(JSON.stringify({ ...MEMBER, device: "dev-\u0001" }));
+    const bytes = Buffer.concat([
+      Buffer.from('{"device":"dev-'),
+      Buffer.from([0xff]),
+      Buffer.from(`","role":"member","exp":${NOW + 60}}`),
+    ]);
+    expect(await verifySessionToken(await signedRaw(bytes.toString("base64url")), hmac, NOW)).toBeNull();
+  });
+});
