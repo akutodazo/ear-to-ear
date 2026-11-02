@@ -80,3 +80,10 @@ describe("複数の APP", () => {
     );
   });
 });
+
+describe("SOF の後ろ", () => {
+  it("SOF の後ろの APP1 も検出する（SOF で止まらない）", () => {
+    const app1 = segment(0xe1, [0x00]);
+    expect(inspectJpeg(jpeg(SOF0, app1, SCAN)).appSegments).toEqual([1]);
+  });
+});
