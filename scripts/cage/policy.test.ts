@@ -115,3 +115,15 @@ describe("いまの Service", () => {
     expect(checkPurity(readFileSync(path, "utf8"))).toEqual([]);
   });
 });
+
+describe("レビューの指摘: 許可リストの外へ抜ける import", () => {
+  it.each([
+    'import s from "./../../.dev.vars?raw";',
+    'import s from "./.dev.vars";',
+    'import s from "./x?raw";',
+    'import s from "@/services/../../scripts/x";',
+    'import fs = require("node:fs");',
+  ])("%s は通らない", (code) => {
+    expect(checkPurity(code).length).toBeGreaterThan(0);
+  });
+});
