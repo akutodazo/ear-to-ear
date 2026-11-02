@@ -6,11 +6,12 @@ import { createInterface } from "node:readline";
 import { checkCommitMessage, checkPurity, checkWrite, cleanPath } from "./policy.mjs";
 
 const ROOT = process.env.CAGE_ROOT;
+const REPORT = "docs/run/REPORT.md";
 const ALLOW = new Set(process.env.CAGE_ALLOW.split(","));
 const LOG = process.env.CAGE_LOG;
 const TEST_ARGS = JSON.parse(process.env.CAGE_TEST ?? '["node_modules/vitest/vitest.mjs","run"]');
 const CHECKS = JSON.parse(process.env.CAGE_CHECKS ?? "[]");
-const REPORT = "docs/run/REPORT.md";
+const TIMEOUT_MS = Number(process.env.CAGE_TIMEOUT_MS ?? 120_000);
 
 // テストは Claude が書いたコードを実行するので、檻の環境変数も秘密も渡さない
 const CHILD_ENV = Object.fromEntries(
@@ -24,9 +25,9 @@ const tracked = () => new Set(git("ls-files").split("\n").filter(Boolean));
 
 function runChild(file, args) {
   try {
-    return execFileSync(file, args, { cwd: ROOT, env: CHILD_ENV, encoding: "utf8", stdio: "pipe" });
+    return execFileSync(file, args, { cwd: ROOT, env: CHILD_ENV, encoding: "utf8", stdio: "pipe", timeout: TIMEOUT_MS });
   } catch (e) {
-    return `FAILED\n${e.stdout}\n${e.stderr}`;
+    return `FAILED\n${e.message}\n${e.stdout}\n${e.stderr}`;
   }
 }
 
