@@ -29,3 +29,21 @@ describe("作って確かめる", () => {
     expect(await verifySessionToken(token, hmac, NOW)).toEqual(claims);
   });
 });
+
+describe("形", () => {
+  it("base64url(JSON).base64url(HMAC) で、= を含まない", async () => {
+    const payload = Buffer.from(JSON.stringify(MEMBER)).toString("base64url");
+    const signature = createHmac("sha256", KEY).update(payload).digest("base64url");
+    expect(await issueSessionToken(MEMBER, hmac)).toBe(`${payload}.${signature}`);
+  });
+
+  it("JSON に入るのは device・role・exp だけ", async () => {
+    const extra = { ...MEMBER, lat: 41.8 } as SessionClaims;
+    const [payload] = (await issueSessionToken(extra, hmac)).split(".");
+    expect(Object.keys(JSON.parse(Buffer.from(payload, "base64url").toString()))).toEqual([
+      "device",
+      "role",
+      "exp",
+    ]);
+  });
+});
