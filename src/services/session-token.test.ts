@@ -6,6 +6,7 @@ import {
   type Hmac,
   type SessionClaims,
 } from "./session-token";
+import { SESSION_DAYS } from "../config";
 
 // 鍵は文字列にせず固定のバイト列で作る（合言葉らしい文字列をリポジトリに入れない）
 const KEY = Buffer.alloc(32, 0x01);
@@ -222,5 +223,22 @@ describe("HMAC に渡す値（攻撃役の指摘）", () => {
     };
     await verifySessionToken(token, spy, NOW);
     expect(seen).toEqual([token.split(".")[0]]);
+  });
+});
+
+describe("期限の上限（レビューの指摘 1）", () => {
+  const MAX_SEC = SESSION_DAYS * 24 * 60 * 60;
+
+  it("ちょうど上限の期限は通る", async () => {
+    const claims = { ...MEMBER, exp: NOW + MAX_SEC };
+    expect(await verifySessionToken(await issueSessionToken(claims, hmac), hmac, NOW)).toEqual(claims);
+  });
+
+  it.each([
+    ["上限より 1 秒長い", NOW + MAX_SEC + 1],
+    ["ミリ秒で渡した", NOW * 1000],
+  ])("期限が%sと null", async (_name, exp) => {
+    const token = await issueSessionToken({ ...ADMIN, exp }, hmac);
+    expect(await verifySessionToken(token, hmac, NOW)).toBeNull();
   });
 });
