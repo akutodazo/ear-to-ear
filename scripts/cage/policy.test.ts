@@ -155,3 +155,13 @@ describe("レビューの指摘: 正しいコードを拒否しない", () => {
     expect(checkPurity(code)).toEqual([]);
   });
 });
+
+describe("CI の指摘: OS でパスの判定が変わらない", () => {
+  it.each([
+    ["src\\..\\AGENTS.md", "AGENTS.md"],
+    ["src\\services\\..\\services\\add.ts", "src/services/add.ts"],
+    ["./a//b/./c.ts", "a/b/c.ts"],
+  ])("%s は %s", (input, expected) => {
+    expect(cleanPath(input)).toBe(expected);
+  });
+});
