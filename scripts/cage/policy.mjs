@@ -1,6 +1,6 @@
 // 檻の判定（#14）。fs・git に触らない純粋関数だけを置く。
 // 誤操作の経路を消すためのもの。悪意のあるコードを防ぐ保証ではない（docs/dev/cage.md の既知の抜け）。
-import { normalize } from "node:path";
+import { posix } from "node:path";
 import ts from "typescript";
 
 // AGENTS.md §4 の「Service は純粋関数」を書き込みの条件にする
@@ -35,7 +35,8 @@ const BANNED_NAMES = new Set([
 const BANNED_MEMBERS = new Set(["constructor", "__proto__", "prototype"]);
 
 export function cleanPath(path) {
-  return normalize(String(path)).replaceAll("\\", "/");
+  // 先に区切りをそろえる。Linux の normalize は \ を区切りと見ない
+  return posix.normalize(String(path).replaceAll("\\", "/"));
 }
 
 export function checkWrite(path, allow) {
