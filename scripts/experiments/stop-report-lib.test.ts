@@ -36,3 +36,14 @@ describe("中身を貼らない", () => {
     expect(checkReport(`${GOOD}\n--- a/x\n+++ b/x\n@@ -1 +1 @@`).join()).toMatch(/差分/);
   });
 });
+
+describe("対象外の変更", () => {
+  it("ファイル名の列があれば合格", () => {
+    const text = `${GOOD}\n?? notes/draft.txt\n M src/other.mjs`;
+    expect(checkReport(text, { files: ["notes/draft.txt", "src/other.mjs"] })).toEqual([]);
+  });
+
+  it("ファイル名が欠けたら不合格", () => {
+    expect(checkReport(GOOD, { files: ["notes/draft.txt"] }).join()).toMatch(/notes\/draft\.txt/);
+  });
+});
