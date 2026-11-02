@@ -36,6 +36,13 @@
 | T03 は RED で全件失敗を確かめてから GREEN を4段階で実装した（テスト 54 件、20 コミット） | [#6](https://github.com/akutodazo/ear-to-ear/pull/6) |
 | 認証の部品は、書いた会話を見ていない別のセッションがレビューし、期限の上限の抜けを見つけた。攻撃役の2回では見つからなかった | [#24](https://github.com/akutodazo/ear-to-ear/pull/24)、`docs/reviews/pr-24-session-token.md` |
 
+### 観点3: モデルと機能の使い分け
+| 実績 | 目的 | 証拠 |
+|---|---|---|
+| Fable は発想、Opus は設計・テスト・レビュー、Sonnet は攻撃役、と役で分けた | 発想を広げる用途と、決まりを読み違えない用途を分ける。攻撃役は1回 $0.07（API 換算）で回せる | 上の「役割の分け方」、[#24](https://github.com/akutodazo/ear-to-ear/pull/24) |
+| レビューのモデルは下げない。詰まったときだけ Fable に相談する | 確かめる人の手間を増やさない | [#9](https://github.com/akutodazo/ear-to-ear/pull/9) |
+| 秘密は `.claude/settings.json` の deny で守り、サブエージェントは調査の1回だけ使った | 機能を増やさず、目的のある所だけ使う | `.claude/settings.json`、下の「記録」 |
+
 ## PR からの写し方
 PR の本文「この PR での Claude の使い方」を正本にする。2人が同じ表を書くと衝突するので、作業の PR ではこのファイルを変えない。
 
