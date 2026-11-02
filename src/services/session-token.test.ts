@@ -158,3 +158,22 @@ describe("署名の全位置（攻撃役の指摘）", () => {
     expect(await verifySessionToken(`${payload}.${change(signature)}`, hmac, NOW)).toBeNull();
   });
 });
+
+describe("中身の型（攻撃役の指摘）", () => {
+  it.each([
+    ["端末 ID が数", { device: 123, role: "member", exp: NOW + 60 }],
+    ["端末 ID が null", { device: null, role: "member", exp: NOW + 60 }],
+    ["端末 ID が配列", { device: ["dev-0001"], role: "member", exp: NOW + 60 }],
+    ["端末 ID がオブジェクト", { device: { id: 1 }, role: "member", exp: NOW + 60 }],
+    ["役割が無い", { device: "dev-0001", exp: NOW + 60 }],
+    ["役割が null", { device: "dev-0001", role: null, exp: NOW + 60 }],
+    ["役割が大文字", { device: "dev-0001", role: "Admin", exp: NOW + 60 }],
+    ["期限が null", { device: "dev-0001", role: "member", exp: null }],
+    ["期限が小数", { device: "dev-0001", role: "member", exp: NOW + 60.5 }],
+    ["JSON が null", null],
+    ["JSON が数", 42],
+    ["JSON が文字列", "dev-0001"],
+  ])("署名が正しくても%sなら null", async (_name, body) => {
+    expect(await verifySessionToken(await signed(body), hmac, NOW)).toBeNull();
+  });
+});
