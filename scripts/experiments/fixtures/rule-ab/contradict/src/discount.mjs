@@ -1,3 +1,3 @@
-export function discount(_price) {
+export function discount() {
   throw new Error("not implemented");
 }
