@@ -16,11 +16,18 @@ export interface SessionClaims {
   exp: number;
 }
 
-export async function issueSessionToken(
-  _claims: SessionClaims,
-  _hmac: Hmac,
-): Promise<string> {
-  throw new Error("not implemented");
+function encodeBase64url(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
+}
+
+export async function issueSessionToken(claims: SessionClaims, hmac: Hmac): Promise<string> {
+  // 余分な項目を入れない。キーの順も固定する
+  const { device, role, exp } = claims;
+  const json = JSON.stringify({ device, role, exp });
+  const payload = encodeBase64url(new TextEncoder().encode(json));
+  return `${payload}.${encodeBase64url(await hmac(payload))}`;
 }
 
 /** 正しければ中身を返す。改ざん・期限切れ・形の崩れは null */
