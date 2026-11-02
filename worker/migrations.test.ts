@@ -274,3 +274,26 @@ describe("動きを変える仕組み（穴を突く実装の指摘）", () => {
     expect(rows).toEqual([]);
   });
 });
+
+function createSql(table: string): string {
+  const row = db.prepare("SELECT sql FROM sqlite_master WHERE name = ?").get(table) as { sql: string };
+  return row.sql.replace(/\s+/g, " ");
+}
+
+describe("CHECK の許す値（穴を突く実装の指摘）", () => {
+  it.each([
+    ["uploaded_photos", "CHECK (state IN ('unconfirmed','confirmed'))"],
+    ["uploaded_photos", "CHECK (taken_at_source IN ('xmp','exif','none'))"],
+    ["field_status_events", "CHECK (status IN ('ready','done'))"],
+  ])("%s に %s がある", (table, check) => {
+    expect(createSql(table)).toContain(check);
+  });
+
+  it("写真の表の CHECK は 2 つだけ", () => {
+    expect(createSql("uploaded_photos").match(/CHECK/g)).toHaveLength(2);
+  });
+
+  it("判断の表の CHECK は 1 つだけ", () => {
+    expect(createSql("field_status_events").match(/CHECK/g)).toHaveLength(1);
+  });
+});
