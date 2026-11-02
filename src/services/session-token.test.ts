@@ -140,3 +140,21 @@ describe("形の崩れ", () => {
     expect(await verifySessionToken(await signed(body), hmac, NOW)).toBeNull();
   });
 });
+
+describe("署名の全位置（攻撃役の指摘）", () => {
+  it("署名のどの位置の 1 文字を変えても null", async () => {
+    const [payload, signature] = (await issueSessionToken(MEMBER, hmac)).split(".");
+    for (let i = 0; i < signature.length; i++) {
+      const forged = `${payload}.${flip(signature, i)}`;
+      expect(await verifySessionToken(forged, hmac, NOW), `位置 ${i}`).toBeNull();
+    }
+  });
+
+  it.each([
+    ["長すぎる", (s: string) => `${s}A`],
+    ["空", () => ""],
+  ])("署名が%sと null", async (_name, change) => {
+    const [payload, signature] = (await issueSessionToken(MEMBER, hmac)).split(".");
+    expect(await verifySessionToken(`${payload}.${change(signature)}`, hmac, NOW)).toBeNull();
+  });
+});
