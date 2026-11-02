@@ -72,3 +72,19 @@ describe("攻撃役", () => {
     expect(existsSync(join(out, "work"))).toBe(false);
   });
 });
+
+describe("来年の委員役・人の役", () => {
+  it("来年の委員役にはメモだけが渡る", () => {
+    const memo = join(base, "memo.md");
+    writeFileSync(memo, "A-01 は刈れる\n");
+    expect(run("committee", "--memo", memo).status).toBe(0);
+    expect(listFiles(join(out, "work"))).toEqual(["memo.md"]);
+  });
+
+  it("人の役には QUESTIONS だけが渡る", () => {
+    const q = join(base, "QUESTIONS.md");
+    writeFileSync(q, "止まった\n");
+    expect(run("human", "--questions", q).status).toBe(0);
+    expect(listFiles(join(out, "work"))).toEqual(["QUESTIONS.md"]);
+  });
+});
