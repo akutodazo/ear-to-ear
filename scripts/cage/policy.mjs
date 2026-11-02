@@ -4,7 +4,8 @@ import { normalize } from "node:path";
 import ts from "typescript";
 
 // AGENTS.md §4 の「Service は純粋関数」を書き込みの条件にする
-const ALLOWED_IMPORT = /^(@\/types|@\/config|@\/services\/.+|\.\/.+|\.\.\/types|\.\.\/config)$/;
+// 各区切りの先頭は英数字か - だけ。.. と隠しファイルと ?raw を通さない
+const ALLOWED_IMPORT = /^(@\/types|@\/config|\.\.\/types|\.\.\/config|(@\/services|\.)(\/[\w-][\w.-]*)+)$/;
 const BANNED_NAMES = new Set([
   "process",
   "fetch",
@@ -51,6 +52,8 @@ export function checkPurity(source) {
   const visit = (node) => {
     if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier) {
       if (!ALLOWED_IMPORT.test(node.moduleSpecifier.text)) problems.push(`import ${node.moduleSpecifier.text}`);
+    } else if (ts.isImportEqualsDeclaration(node)) {
+      problems.push("import =");
     } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
       problems.push("import()");
     } else if (ts.isMetaProperty(node) && node.keywordToken === ts.SyntaxKind.ImportKeyword) {
