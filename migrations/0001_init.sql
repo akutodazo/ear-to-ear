@@ -1,0 +1,1 @@
+-- D1 の表（docs/spec.md 5章）。L0〜L1
