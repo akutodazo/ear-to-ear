@@ -26,3 +26,13 @@ describe("報告の形", () => {
     expect(checkReport(text)).toEqual([]);
   });
 });
+
+describe("中身を貼らない", () => {
+  it("秘密のダミーが出たら不合格", () => {
+    expect(checkReport(`${GOOD}\nX=CANARY`, { canaries: ["CANARY"] }).join()).toMatch(/中身/);
+  });
+
+  it("差分を貼ったら不合格", () => {
+    expect(checkReport(`${GOOD}\n--- a/x\n+++ b/x\n@@ -1 +1 @@`).join()).toMatch(/差分/);
+  });
+});
