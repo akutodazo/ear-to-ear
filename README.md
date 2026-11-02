@@ -23,7 +23,8 @@ npm run dev     # http://localhost:3000（画面だけ）
 Worker（API）・D1・R2 の手元での動かし方は L0 のサーバー側ができたときに書きます。
 
 ## 技術
-Next.js（App Router、静的書き出し）＋ Leaflet ＋ 国土地理院の地図タイル／Cloudflare Workers・D1・R2／Vitest／Claude API（引用機能）。
+Next.js（App Router、静的書き出し）＋ Leaflet／Cloudflare Workers・D1・R2／Vitest／Claude API（引用機能）。
+デモの地図は、実在の土地と結び付かないよう、海の上の座標に置いた**架空の村**を描いています（地図タイルは出しません）。
 
 ## 制約（いま分かっていること）
 - 子実水分は推定しません。水分は収穫後に農協でトラックの荷ごとに測られ、その判定を「判断の理由」として残します

@@ -144,7 +144,7 @@ CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);  -- 'line_gro
 - 静的書き出しなので `/fields/[id]` は `generateStaticParams`（`src/data/fields.json` の全圃場）で作る
 
 ## 8. 技術とフォルダ
-Next.js（App Router、`output: 'export'`）＋ Leaflet ＋ 国土地理院の地図タイル（出典表記が必須）／Cloudflare Workers（静的アセット＋API）、D1、R2／Vitest。層の決まりは AGENTS.md §4。
+Next.js（App Router、`output: 'export'`）＋ Leaflet。デモと開発の地図は**地図タイルを出さず、架空の村（区画と道）を自分で描く**（P15）。本番で実在の圃場に使うときは設定で国土地理院の地図タイル（出典表記が必須）に切り替える／Cloudflare Workers（静的アセット＋API）、D1、R2／Vitest。層の決まりは AGENTS.md §4。
 
 主な Service: `photo-meta.ts`（XMP/EXIF）、`candidates.ts`（ハバーサインで近い順）、`jpeg-segments.ts`（APP1〜15 検出、SOF から幅・高さ）、`upload-meta.ts`（meta の検証）、`session-token.ts`（HMAC は注入）、`photo-groups.ts`（撮影日ごと）、`status-reason.ts`（理由と根拠の検証）、`handover-document.ts`（記録を引用用の要素に並べる）、`handover-citations.ts`（返事の引用を記録に対応付ける）、`usage-limit.ts`（回数の上限）、`line-signature.ts`（署名の検証。HMAC は注入）。
 
@@ -187,7 +187,7 @@ Next.js（App Router、`output: 'export'`）＋ Leaflet ＋ 国土地理院の�
 - `.gitignore`: `.dev.vars`、`.env*`、`/private/`、`*.local.*`
 - GitHub の設定（外から見える設定は本人が承認してから）: Secret scanning と Push protection をオン／コミットのメールは noreply／main は Ruleset で守る（削除禁止・force push 禁止・PR 必須・CI の status check 必須）／マージ後のブランチを自動削除／Dependabot alerts だけオン（自動の更新 PR はオフ）／GitHub Pages・Wiki・Projects は使わない／Actions に Cloudflare の秘密を置かない（デプロイは本人の手元から。期間中は自動デプロイにしない）／ライセンスは MIT の予定（先輩に確認中。決まるまで LICENSE は置かない）
 - `npm run check:safety`（手元と CI）: コミットされた全ファイル（`git ls-files`）を対象に、画像の APP1〜15、CSV、`.dev.vars` に似た名前、合言葉らしい文字列、架空データの座標の範囲を検査する（T00 は名前の検査のみ。中身は T17）
-- 架空の圃場は12圃場程度、`A-01` 形式、座標は本人が決めた範囲に機械的に並べる（P15）。合成写真は `scripts/make-fixtures.ts` で `/private/fixtures/` に出す（コミットしない）
+- 架空の圃場は 12 圃場（A-01〜A-12、4列×3行）、座標は沖合の四角（北緯 41.800〜41.815、東経 144.500〜144.520）の中に機械的に並べる（P15、11-02 決定）。合成写真は `scripts/make-fixtures.ts` で `/private/fixtures/` に出す（コミットしない）
 
 ## 11. 環境
 - ローカル（PC だけ、`wrangler dev` → `http://localhost:8787`）／**dev**（実機確認、HTTPS）／**demo**（審査員用）。dev と demo は D1・R2・Secret を別にする（`wrangler.jsonc` の `env`）
@@ -198,7 +198,7 @@ Next.js（App Router、`output: 'export'`）＋ Leaflet ＋ 国土地理院の�
 | # | 事項 | 誰が |
 |---|---|---|
 | P2 | iPhone／iPad の Safari が DJI の XMP の位置をブラウザに渡すか | 本人・父（実機） |
-| P15 | 架空の圃場を置く範囲 | 本人 |
+| P15 | ~~架空の圃場を置く範囲~~ → **解決（11-02）**: 沖合の北緯 41.800〜41.815・東経 144.500〜144.520 に 12 圃場、画面は地図タイルなしの架空の村（docs/decisions.md） | — |
 | P16 | 事前に書いた設計書（文章のみ）を参考にしてよいか | 運営（Discord に質問済み） |
 | P17 | 「Claude の活用」の評価の中身 | キックオフ |
 | P19 | Android の共有メニューから送った写真に XMP の位置が残るか（L4） | 実機 |
