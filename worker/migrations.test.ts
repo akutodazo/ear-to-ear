@@ -297,3 +297,36 @@ describe("CHECK の許す値（穴を突く実装の指摘）", () => {
     expect(createSql("field_status_events").match(/CHECK/g)).toHaveLength(1);
   });
 });
+
+describe("一意の範囲（穴を突く実装の指摘）", () => {
+  it("別の端末からでも同じ content_hash は拒否", () => {
+    insertPhoto();
+    expect(() => insertPhoto({ id: "photo-2", uploader_device: "dev-0002" })).toThrow(
+      /UNIQUE constraint failed: uploaded_photos.content_hash/,
+    );
+  });
+
+  it("主キーのほかの一意の索引は content_hash の 1 列だけ", () => {
+    const list = db.prepare("PRAGMA index_list(uploaded_photos)").all() as unknown as {
+      name: string;
+      unique: number;
+      origin: string;
+    }[];
+    const unique = list.filter((i) => i.unique === 1 && i.origin !== "pk");
+    expect(unique.map((i) => indexColumns(i.name))).toEqual([["content_hash"]]);
+  });
+});
+
+describe("外部キーの形（穴を突く実装の指摘）", () => {
+  it("photo_assignments の外部キーは photo_id → uploaded_photos.id だけで、遅延しない", () => {
+    const list = db.prepare("PRAGMA foreign_key_list(photo_assignments)").all() as unknown as {
+      table: string;
+      from: string;
+      to: string;
+    }[];
+    expect(list.map(({ table, from, to }) => ({ table, from, to }))).toEqual([
+      { table: "uploaded_photos", from: "photo_id", to: "id" },
+    ]);
+    expect(createSql("photo_assignments")).not.toMatch(/DEFERRABLE/);
+  });
+});
