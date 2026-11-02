@@ -19,12 +19,15 @@ interface Column {
 }
 
 function columns(table: string): Column[] {
-  return db.prepare(`PRAGMA table_info(${table})`).all() as unknown as Column[];
+  // table_xinfo は生成列も返す。table_info だと隠れる
+  return db.prepare(`PRAGMA table_xinfo(${table})`).all() as unknown as Column[];
 }
 
 function tables(): string[] {
+  // NOT LIKE 'sqlite_%' は _ が任意の 1 文字に当たり、sqlitex_… の表が検査をすり抜ける（穴を突く実装の指摘）。
+  // AUTOINCREMENT が作る sqlite_sequence だけを名前で除く
   const rows = db
-    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name <> 'sqlite_sequence'")
     .all() as unknown as { name: string }[];
   return rows.map((r) => r.name).sort();
 }
