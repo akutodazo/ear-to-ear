@@ -176,3 +176,14 @@ describe("見出しの並びが不正", () => {
     expect(() => inspectJpeg(jpeg(short, SCAN))).toThrow(InvalidJpegError);
   });
 });
+
+describe("幅・高さが 0", () => {
+  it.each([
+    ["幅", 0, 480],
+    ["高さ", 640, 0],
+  ])("%s が 0 なら例外", (_name, width, height) => {
+    expect(() => inspectJpeg(jpeg(sof(0xc0, width, height), SCAN))).toThrow(
+      InvalidJpegError,
+    );
+  });
+});
