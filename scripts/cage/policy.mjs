@@ -50,13 +50,37 @@ export function checkCommitMessage(message) {
 function isOnlyAName(node) {
   const p = node.parent;
   if (ts.isPropertyAccessExpression(p)) return p.name === node;
-  if (ts.isPropertyAssignment(p)) return p.name === node;
-  return false;
+  if (ts.isBindingElement(p)) return p.propertyName === node;
+  return (
+    (ts.isPropertyAssignment(p) ||
+      ts.isPropertySignature(p) ||
+      ts.isPropertyDeclaration(p) ||
+      ts.isMethodSignature(p) ||
+      ts.isMethodDeclaration(p)) &&
+    p.name === node
+  );
+}
+
+// 引数や変数として自分で宣言した名前は、グローバルを指さない
+function declaredNames(file) {
+  const names = new Set();
+  const visit = (node) => {
+    if (
+      (ts.isParameter(node) || ts.isVariableDeclaration(node) || ts.isBindingElement(node)) &&
+      ts.isIdentifier(node.name)
+    ) {
+      names.add(node.name.text);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  return names;
 }
 
 export function checkPurity(source) {
   const file = ts.createSourceFile("x.ts", source, ts.ScriptTarget.Latest, true);
   const problems = [];
+  const declared = declaredNames(file);
   const visit = (node) => {
     if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier) {
       if (!ALLOWED_IMPORT.test(node.moduleSpecifier.text)) problems.push(`import ${node.moduleSpecifier.text}`);
@@ -67,7 +91,7 @@ export function checkPurity(source) {
     } else if (ts.isMetaProperty(node) && node.keywordToken === ts.SyntaxKind.ImportKeyword) {
       problems.push("import.meta");
     } else if (ts.isIdentifier(node)) {
-      if (BANNED_NAMES.has(node.text) && !isOnlyAName(node)) problems.push(node.text);
+      if (BANNED_NAMES.has(node.text) && !declared.has(node.text) && !isOnlyAName(node)) problems.push(node.text);
       if (BANNED_MEMBERS.has(node.text)) problems.push(node.text);
     } else if (ts.isStringLiteralLike(node) && BANNED_MEMBERS.has(node.text)) {
       problems.push(node.text);
