@@ -330,3 +330,17 @@ describe("外部キーの形（穴を突く実装の指摘）", () => {
     expect(createSql("photo_assignments")).not.toMatch(/DEFERRABLE/);
   });
 });
+
+/** コメントと空白の違いを無視して比べる */
+function normalizeSql(sql: string): string {
+  return sql.replace(/--.*$/gm, "").replace(/\s+/g, " ").trim();
+}
+
+describe("spec との一致（穴を突く実装の指摘）", () => {
+  // COLLATE・部分索引・TEMP の表のように、個別のテストでは追い切れない足し算をまとめて止める
+  it("0001_init.sql は docs/spec.md の SQL と同じ", () => {
+    const spec = readFileSync(new URL("../docs/spec.md", import.meta.url), "utf8");
+    const block = spec.split("-- 0001_init.sql")[1].split("-- 0002_handover.sql")[0];
+    expect(normalizeSql(SQL)).toBe(normalizeSql(block.slice(block.indexOf("\n"))));
+  });
+});
