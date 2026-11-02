@@ -142,3 +142,16 @@ describe("レビューの指摘: 文字列のキーとブラウザ API", () => {
     expect(checkPurity(code).length).toBeGreaterThan(0);
   });
 });
+
+describe("レビューの指摘: 正しいコードを拒否しない", () => {
+  it.each([
+    "function f(document: string) { return document; }",
+    "function g(fetch: () => void) { fetch(); }",
+    "const process = 1; export const y = process + 1;",
+    "interface X { document: string; fetch(): void }",
+    "class A { process() {} fetch = 1; }",
+    "const { process: p } = { process: 1 };",
+  ])("%s は通る", (code) => {
+    expect(checkPurity(code)).toEqual([]);
+  });
+});
