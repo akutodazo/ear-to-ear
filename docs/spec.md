@@ -94,7 +94,7 @@ CREATE TABLE usage_counters (                 -- Claude の呼び出し回数・
   key TEXT PRIMARY KEY NOT NULL,              -- 例 'claude:2026-11-05'、'line:2026-11'、'login:<IPのハッシュ>:<10分の枠>'
   count INTEGER NOT NULL, expires_at TEXT NOT NULL
 );
--- 0002_handover.sql（L6）
+-- 0002_handover.sql（L6・L8）
 CREATE TABLE handover_notes (
   field_id TEXT NOT NULL, season TEXT NOT NULL,
   body TEXT NOT NULL,                         -- JSON（HandoverNote の records と blocks）
