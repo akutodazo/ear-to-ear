@@ -76,6 +76,7 @@ const tools = {
     schema: { task: { type: "string" } },
     run: ({ task }) => {
       if (!/^T\d+$/.test(task)) throw new Error("拒否: task は Txx の形");
+      if (CHECKS.length === 0) throw new Error("拒否: 検査が0件（CAGE_CHECKS）");
       const body = CHECKS.map((c) => `## ${c.name}\n\`\`\`\n${runChild(c.argv[0], c.argv.slice(1))}\n\`\`\`\n`).join("\n");
       mkdirSync(join(ROOT, dirname(REPORT)), { recursive: true });
       writeFileSync(join(ROOT, REPORT), `# ${task} REPORT（検査済み・人の確認待ち）\n\n${body}`);
