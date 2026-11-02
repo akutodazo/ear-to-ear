@@ -46,3 +46,28 @@ describe("コミットのメッセージ", () => {
     expect(checkCommitMessage(m)).toBe(false);
   });
 });
+
+describe("純粋関数の検査: import", () => {
+  it.each([
+    'import type { Field } from "@/types";',
+    'import { MAX_CANDIDATES } from "@/config";',
+    'import { x } from "@/services/other";',
+    'import { x } from "./other";',
+    'import { x } from "../config";',
+    'import { x } from "../types";',
+  ])("%s は通る", (code) => {
+    expect(checkPurity(code)).toEqual([]);
+  });
+
+  it.each([
+    'import { readFileSync } from "node:fs";',
+    'import { execSync } from "child_process";',
+    'import x from "leaflet";',
+    'import "../../scripts/x";',
+    'export { x } from "node:fs";',
+    'const m = await import("./other");',
+    'const m = require("./other");',
+  ])("%s は通らない", (code) => {
+    expect(checkPurity(code).length).toBeGreaterThan(0);
+  });
+});
