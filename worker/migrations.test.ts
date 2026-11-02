@@ -165,3 +165,38 @@ describe("二重登録（K7）", () => {
     );
   });
 });
+
+function insertAssignment(photoId: string): void {
+  db.prepare(
+    "INSERT INTO photo_assignments (photo_id, from_field_id, to_field_id, actor_device, at) VALUES (?, NULL, 'A-01', 'dev-0002', ?)",
+  ).run(photoId, NOW);
+}
+
+describe("番号の履歴", () => {
+  it("写真への履歴が入る", () => {
+    insertPhoto();
+    insertAssignment("photo-1");
+    expect(db.prepare("SELECT from_field_id, to_field_id FROM photo_assignments").get()).toEqual({
+      from_field_id: null,
+      to_field_id: "A-01",
+    });
+  });
+
+  it("無い写真への履歴は拒否", () => {
+    expect(() => insertAssignment("no-such-photo")).toThrow(/FOREIGN KEY constraint failed/);
+  });
+
+  it("履歴のある写真は消せない", () => {
+    insertPhoto();
+    insertAssignment("photo-1");
+    expect(() => db.exec("DELETE FROM uploaded_photos")).toThrow(/FOREIGN KEY constraint failed/);
+  });
+
+  it("履歴の id は消しても再利用しない（AUTOINCREMENT）", () => {
+    insertPhoto();
+    insertAssignment("photo-1");
+    db.exec("DELETE FROM photo_assignments");
+    insertAssignment("photo-1");
+    expect(db.prepare("SELECT id FROM photo_assignments").get()).toEqual({ id: 2 });
+  });
+});
