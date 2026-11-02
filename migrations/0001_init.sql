@@ -14,3 +14,9 @@ CREATE TABLE uploaded_photos (
 );
 CREATE INDEX idx_photos_field ON uploaded_photos(field_id, taken_at);
 CREATE INDEX idx_photos_uploaded ON uploaded_photos(uploaded_at);
+CREATE TABLE photo_assignments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  photo_id TEXT NOT NULL REFERENCES uploaded_photos(id),
+  from_field_id TEXT, to_field_id TEXT NOT NULL,
+  actor_device TEXT NOT NULL, at TEXT NOT NULL
+);
