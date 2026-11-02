@@ -47,3 +47,9 @@ describe("メタデータの無い JPEG", () => {
     });
   });
 });
+
+describe("APP0", () => {
+  it("JFIF の APP0 は数えない", () => {
+    expect(inspectJpeg(jpeg(APP0, SOF0, SCAN)).appSegments).toEqual([]);
+  });
+});
