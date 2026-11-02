@@ -19,6 +19,9 @@ export interface JpegInfo {
   appSegments: number[];
 }
 
-export function inspectJpeg(_bytes: Uint8Array): JpegInfo {
+export function inspectJpeg(bytes: Uint8Array): JpegInfo {
+  if (bytes[0] !== 0xff || bytes[1] !== 0xd8) {
+    throw new InvalidJpegError("JPEG ではない（SOI が無い）");
+  }
   throw new Error("not implemented");
 }
