@@ -69,3 +69,14 @@ describe("APP2〜15", () => {
     expect(inspectJpeg(jpeg(app, SOF0, SCAN)).appSegments).toEqual([n]);
   });
 });
+
+describe("複数の APP", () => {
+  it("出てきた順に全部返す", () => {
+    const app2 = segment(0xe2, [0x00]);
+    const app1 = segment(0xe1, [0x00]);
+    const app13 = segment(0xed, [0x00]);
+    expect(inspectJpeg(jpeg(app2, app1, app13, SOF0, SCAN)).appSegments).toEqual(
+      [2, 1, 13],
+    );
+  });
+});
