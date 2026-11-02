@@ -61,7 +61,7 @@
 ```sql
 -- 0001_init.sql（L0〜L1）
 CREATE TABLE uploaded_photos (
-  id TEXT PRIMARY KEY,
+  id TEXT PRIMARY KEY NOT NULL,              -- SQLite の TEXT の主キーは NOT NULL を書かないと NULL が入る
   field_id TEXT,
   state TEXT NOT NULL CHECK (state IN ('unconfirmed','confirmed')),
   candidate_field_ids TEXT NOT NULL,          -- JSON 配列（番号だけ。距離は持たない）
@@ -90,18 +90,18 @@ CREATE TABLE field_status_events (
   ref_photo_ids TEXT NOT NULL DEFAULT '[]',
   actor_device TEXT NOT NULL, at TEXT NOT NULL, revoked_at TEXT
 );
--- 0002_handover.sql（L6・L8 の上限）
+CREATE TABLE usage_counters (                 -- Claude の呼び出し回数・LINE の送信数・合言葉の失敗回数
+  key TEXT PRIMARY KEY NOT NULL,              -- 例 'claude:2026-11-05'、'line:2026-11'、'login:<IPのハッシュ>:<10分の枠>'
+  count INTEGER NOT NULL, expires_at TEXT NOT NULL
+);
+-- 0002_handover.sql（L6）
 CREATE TABLE handover_notes (
   field_id TEXT NOT NULL, season TEXT NOT NULL,
   body TEXT NOT NULL,                         -- JSON（HandoverNote の records と blocks）
   model TEXT NOT NULL, created_at TEXT NOT NULL,
   PRIMARY KEY (field_id, season)
 );
-CREATE TABLE usage_counters (                 -- Claude の呼び出し回数・LINE の送信数・合言葉の失敗回数
-  key TEXT PRIMARY KEY,                       -- 例 'claude:2026-11-05'、'line:2026-11'、'login:<IPのハッシュ>:<10分の枠>'
-  count INTEGER NOT NULL, expires_at TEXT NOT NULL
-);
-CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);  -- 'line_group_id' など
+CREATE TABLE settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);  -- 'line_group_id' など
 ```
 
 **R2**: 新しいバケット（バインディング `PHOTOS`）、キー `uploads/<id>.jpg`。非公開のまま、Worker の `GET /api/photo-files/:id` で配信。
