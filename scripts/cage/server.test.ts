@@ -96,3 +96,25 @@ describe("拒否", () => {
     expect(git("status", "--porcelain").trim()).toBe("");
   });
 });
+
+describe("run_tests の抜け穴", () => {
+  it("実装に秘密を読むコードを書こうとすると、書く前に拒否する", async () => {
+    const hole = 'import { readFileSync } from "node:fs";\nexport const add = () => readFileSync(".dev.vars", "utf8");\n';
+    const r = await call("write_file", { path: "src/add.mjs", content: hole });
+    expect(r.isError).toBe(true);
+    expect(r.content[0].text).toMatch(/node:fs/);
+    expect(readFileSync(join(root, "src/add.mjs"), "utf8")).not.toMatch(/readFileSync/);
+  });
+
+  it("テストの実行に檻の環境変数を渡さない", async () => {
+    const r = await call("run_tests");
+    expect(r.content[0].text).toMatch(/no-env/);
+    expect(r.content[0].text).not.toMatch(SECRET);
+  });
+
+  it("コード以外のファイルは純粋関数の検査をしない", async () => {
+    const r = await call("write_file", { path: "docs/run/REPORT.md", content: "process と書ける" });
+    expect(r.isError).toBeFalsy();
+    expect(existsSync(join(root, "docs/run/REPORT.md"))).toBe(true);
+  });
+});
