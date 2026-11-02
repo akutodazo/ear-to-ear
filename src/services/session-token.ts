@@ -68,9 +68,25 @@ export async function verifySessionToken(
 
   const json = decodeBase64url(payload);
   if (json === null) return null;
+  let body: unknown;
   try {
-    return JSON.parse(json) as SessionClaims;
+    body = JSON.parse(json);
   } catch {
     return null;
   }
+  return toClaims(body, nowSec);
+}
+
+const ROLES: readonly Role[] = ["member", "admin"];
+
+/** 署名が正しくても中身を確かめる。返すのは device・role・exp だけ */
+function toClaims(body: unknown, nowSec: number): SessionClaims | null {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) return null;
+  const { device, role, exp } = body as Record<string, unknown>;
+  if (typeof device !== "string" || device === "") return null;
+  const knownRole = ROLES.find((r) => r === role);
+  if (knownRole === undefined) return null;
+  if (typeof exp !== "number" || !Number.isInteger(exp)) return null;
+  if (!(nowSec < exp)) return null;
+  return { device, role: knownRole, exp };
 }
