@@ -72,3 +72,14 @@ describe("列", () => {
     expect(actual).toEqual(nullable);
   });
 });
+
+describe("持ってはいけない列", () => {
+  it.each([
+    ["撮影位置（K6）", /(^|_)(lat|lng|lon|latitude|longitude|gps|distance|dist|coord|coords|location)(_|$)/],
+    ["水分（K16）", /(^|_)(moisture|water)(_|$)/],
+  ])("%s の列が無い", (_name, pattern) => {
+    const names = tables().flatMap((t) => columns(t).map((c) => c.name));
+    expect(names.length).toBeGreaterThan(0);
+    expect(names.filter((n) => pattern.test(n))).toEqual([]);
+  });
+});
