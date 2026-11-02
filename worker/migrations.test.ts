@@ -200,3 +200,29 @@ describe("番号の履歴", () => {
     expect(db.prepare("SELECT id FROM photo_assignments").get()).toEqual({ id: 2 });
   });
 });
+
+function insertStatus(status: string): void {
+  db.prepare(
+    "INSERT INTO field_status_events (field_id, status, actor_device, at) VALUES ('A-01', ?, 'dev-0001', ?)",
+  ).run(status, NOW);
+}
+
+describe("判断", () => {
+  it.each(["ready", "done"])("%s が入り、理由と根拠は空の配列で始まる", (status) => {
+    insertStatus(status);
+    expect(
+      db.prepare("SELECT status, reasons, ref_photo_ids, note, revoked_at FROM field_status_events").get(),
+    ).toEqual({ status, reasons: "[]", ref_photo_ids: "[]", note: null, revoked_at: null });
+  });
+
+  it("不正な status は拒否", () => {
+    expect(() => insertStatus("maybe")).toThrow(/CHECK constraint failed/);
+  });
+
+  it("判断の id は消しても再利用しない（AUTOINCREMENT）", () => {
+    insertStatus("ready");
+    db.exec("DELETE FROM field_status_events");
+    insertStatus("ready");
+    expect(db.prepare("SELECT id FROM field_status_events").get()).toEqual({ id: 2 });
+  });
+});
