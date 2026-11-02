@@ -8,6 +8,10 @@ function optionCount(text) {
   return body.split("\n").filter((l) => /^\s*([-*]|\d+[.)]|[A-Z][.)、:：])\s*\S/.test(l)).length;
 }
 
+/**
+ * @param {string} text
+ * @param {{ canaries?: string[], files?: string[] }} [expected]
+ */
 export function checkReport(text, { canaries = [], files = [] } = {}) {
   const problems = [];
   for (const section of SECTIONS) {
