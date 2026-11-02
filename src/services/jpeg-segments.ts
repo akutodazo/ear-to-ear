@@ -26,11 +26,40 @@ function isStandaloneMarker(marker: number): boolean {
   return marker < 0xc0 || (marker >= 0xd0 && marker <= 0xd9);
 }
 
+/** C0〜CF のうち C4（DHT）・C8（JPG）・CC（DAC）は SOF ではない */
+function isSof(marker: number): boolean {
+  return (
+    marker >= 0xc0 &&
+    marker <= 0xcf &&
+    marker !== 0xc4 &&
+    marker !== 0xc8 &&
+    marker !== 0xcc
+  );
+}
+
+/** 中身は 精度1・高さ2・幅2 の順 */
+function readSize(
+  bytes: Uint8Array,
+  start: number,
+  length: number,
+): { width: number; height: number } {
+  if (length < 7) {
+    throw new InvalidJpegError("SOF の中身が短い");
+  }
+  const height = (bytes[start + 3] << 8) | bytes[start + 4];
+  const width = (bytes[start + 5] << 8) | bytes[start + 6];
+  if (width === 0 || height === 0) {
+    throw new InvalidJpegError("幅または高さが 0");
+  }
+  return { width, height };
+}
+
 export function inspectJpeg(bytes: Uint8Array): JpegInfo {
   if (bytes[0] !== 0xff || bytes[1] !== 0xd8) {
     throw new InvalidJpegError("JPEG ではない（SOI が無い）");
   }
 
+  let size: { width: number; height: number } | null = null;
   let offset = 2;
   while (true) {
     if (bytes[offset] !== 0xff) {
@@ -54,8 +83,14 @@ export function inspectJpeg(bytes: Uint8Array): JpegInfo {
       throw new InvalidJpegError(`セグメントの長さが不正（位置 ${offset}）`);
     }
 
+    if (isSof(marker)) {
+      size = readSize(bytes, start, length);
+    }
     if (marker === SOS) {
-      throw new InvalidJpegError("SOF が無い");
+      if (size === null) {
+        throw new InvalidJpegError("SOF が無い");
+      }
+      return { ...size, appSegments: [] };
     }
     offset = start + length;
   }
