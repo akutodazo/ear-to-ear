@@ -39,3 +39,36 @@ describe("表", () => {
     ]);
   });
 });
+
+describe("列", () => {
+  it.each([
+    [
+      "uploaded_photos",
+      [
+        "id", "field_id", "state", "candidate_field_ids", "taken_at", "taken_at_source",
+        "content_hash", "r2_key", "width", "height", "bytes", "uploader_device",
+        "uploaded_at", "updated_at",
+      ],
+    ],
+    ["photo_assignments", ["id", "photo_id", "from_field_id", "to_field_id", "actor_device", "at"]],
+    [
+      "field_status_events",
+      ["id", "field_id", "status", "reasons", "note", "ref_photo_ids", "actor_device", "at", "revoked_at"],
+    ],
+    ["usage_counters", ["key", "count", "expires_at"]],
+  ])("%s の列が仕様どおり", (table, expected) => {
+    expect(columns(table).map((c) => c.name)).toEqual(expected);
+  });
+
+  it.each([
+    ["uploaded_photos", ["field_id", "taken_at"]],
+    ["photo_assignments", ["from_field_id"]],
+    ["field_status_events", ["note", "revoked_at"]],
+    ["usage_counters", []],
+  ])("%s で NULL を許すのは決まった列だけ", (table, nullable) => {
+    const actual = columns(table)
+      .filter((c) => c.notnull === 0 && c.pk === 0)
+      .map((c) => c.name);
+    expect(actual).toEqual(nullable);
+  });
+});
