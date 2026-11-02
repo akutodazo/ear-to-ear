@@ -31,7 +31,7 @@ export async function issueSessionToken(claims: SessionClaims, hmac: Hmac): Prom
   return `${payload}.${encodeBase64url(await hmac(payload))}`;
 }
 
-/** 余白や = を含まない base64url だけを通す（Node の読み取りは不正な文字を読み飛ばすため） */
+/** 余白や = を含まない base64url だけを通す（atob は空白を読み飛ばし、前半は署名の対象そのものなので形を揃える） */
 const BASE64URL = /^[A-Za-z0-9_-]+$/;
 
 /** 長さが同じなら、どこで違っても最後まで比べる（違う位置から署名を推測させない） */
