@@ -21,6 +21,14 @@ const BANNED_NAMES = new Set([
   "Reflect",
   "WebSocket",
   "XMLHttpRequest",
+  "Worker",
+  "importScripts",
+  "localStorage",
+  "sessionStorage",
+  "indexedDB",
+  "navigator",
+  "location",
+  "crypto",
   "Deno",
   "Bun",
 ]);
@@ -61,8 +69,8 @@ export function checkPurity(source) {
     } else if (ts.isIdentifier(node)) {
       if (BANNED_NAMES.has(node.text) && !isOnlyAName(node)) problems.push(node.text);
       if (BANNED_MEMBERS.has(node.text)) problems.push(node.text);
-    } else if (ts.isElementAccessExpression(node) && ts.isStringLiteralLike(node.argumentExpression)) {
-      if (BANNED_MEMBERS.has(node.argumentExpression.text)) problems.push(node.argumentExpression.text);
+    } else if (ts.isStringLiteralLike(node) && BANNED_MEMBERS.has(node.text)) {
+      problems.push(node.text);
     }
     ts.forEachChild(node, visit);
   };
