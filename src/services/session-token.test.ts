@@ -95,3 +95,18 @@ describe("別の鍵", () => {
     expect(await verifySessionToken(token, hmac, NOW)).toBeNull();
   });
 });
+
+describe("期限", () => {
+  it("期限の 1 秒前は通る", async () => {
+    const token = await issueSessionToken(MEMBER, hmac);
+    expect(await verifySessionToken(token, hmac, MEMBER.exp - 1)).toEqual(MEMBER);
+  });
+
+  it.each([
+    ["ちょうど", 0],
+    ["後", 1],
+  ])("期限%sは null", async (_name, after) => {
+    const token = await issueSessionToken(MEMBER, hmac);
+    expect(await verifySessionToken(token, hmac, MEMBER.exp + after)).toBeNull();
+  });
+});
