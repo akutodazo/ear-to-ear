@@ -29,3 +29,7 @@ CREATE TABLE field_status_events (
   ref_photo_ids TEXT NOT NULL DEFAULT '[]',
   actor_device TEXT NOT NULL, at TEXT NOT NULL, revoked_at TEXT
 );
+CREATE TABLE usage_counters (                 -- Claude の呼び出し回数・LINE の送信数・合言葉の失敗回数
+  key TEXT PRIMARY KEY NOT NULL,              -- 例 'claude:2026-11-05'、'line:2026-11'、'login:<IPのハッシュ>:<10分の枠>'
+  count INTEGER NOT NULL, expires_at TEXT NOT NULL
+);
