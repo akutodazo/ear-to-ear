@@ -106,3 +106,11 @@ describe("SOF の種類", () => {
     expect({ width, height }).toEqual({ width: 640, height: 480 });
   });
 });
+
+describe("SOF に似たマーカー", () => {
+  it.each([0xc4, 0xc8, 0xcc])("マーカー %i を SOF と間違えない", (marker) => {
+    const lookalike = sof(marker, 9, 9);
+    const { width, height } = inspectJpeg(jpeg(lookalike, SOF0, SCAN));
+    expect({ width, height }).toEqual({ width: WIDTH, height: HEIGHT });
+  });
+});
