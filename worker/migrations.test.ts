@@ -344,3 +344,15 @@ describe("spec との一致（穴を突く実装の指摘）", () => {
     expect(normalizeSql(SQL)).toBe(normalizeSql(block.slice(block.indexOf("\n"))));
   });
 });
+
+describe("主キーの NULL（穴を突く実装の指摘）", () => {
+  it("uploaded_photos.id に NULL は入らない", () => {
+    expect(() => insertPhoto({ id: null })).toThrow(/NOT NULL constraint failed: uploaded_photos.id/);
+  });
+
+  it("usage_counters.key に NULL は入らない", () => {
+    expect(() =>
+      db.prepare("INSERT INTO usage_counters (key, count, expires_at) VALUES (NULL, 1, ?)").run(NOW),
+    ).toThrow(/NOT NULL constraint failed: usage_counters.key/);
+  });
+});
