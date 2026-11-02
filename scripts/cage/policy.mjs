@@ -1,6 +1,29 @@
 // 檻の判定（#14）。fs・git に触らない純粋関数だけを置く。
 // 誤操作の経路を消すためのもの。悪意のあるコードを防ぐ保証ではない（docs/dev/cage.md の既知の抜け）。
 import { normalize } from "node:path";
+import ts from "typescript";
+
+// AGENTS.md §4 の「Service は純粋関数」を書き込みの条件にする
+const ALLOWED_IMPORT = /^(@\/types|@\/config|@\/services\/.+|\.\/.+|\.\.\/types|\.\.\/config)$/;
+const BANNED_NAMES = new Set([
+  "process",
+  "fetch",
+  "eval",
+  "Function",
+  "require",
+  "globalThis",
+  "global",
+  "window",
+  "self",
+  "document",
+  "module",
+  "Reflect",
+  "WebSocket",
+  "XMLHttpRequest",
+  "Deno",
+  "Bun",
+]);
+const BANNED_MEMBERS = new Set(["constructor", "__proto__", "prototype"]);
 
 export function cleanPath(path) {
   return normalize(String(path)).replaceAll("\\", "/");
@@ -14,6 +37,32 @@ export function checkCommitMessage(message) {
   return /^T\d+ GREEN: \S[^\n]*$/.test(message);
 }
 
-export function checkPurity() {
-  throw new Error("not implemented");
+// { process: 1 } や a.process は外に触らないので通す
+function isOnlyAName(node) {
+  const p = node.parent;
+  if (ts.isPropertyAccessExpression(p)) return p.name === node;
+  if (ts.isPropertyAssignment(p)) return p.name === node;
+  return false;
+}
+
+export function checkPurity(source) {
+  const file = ts.createSourceFile("x.ts", source, ts.ScriptTarget.Latest, true);
+  const problems = [];
+  const visit = (node) => {
+    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier) {
+      if (!ALLOWED_IMPORT.test(node.moduleSpecifier.text)) problems.push(`import ${node.moduleSpecifier.text}`);
+    } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+      problems.push("import()");
+    } else if (ts.isMetaProperty(node) && node.keywordToken === ts.SyntaxKind.ImportKeyword) {
+      problems.push("import.meta");
+    } else if (ts.isIdentifier(node)) {
+      if (BANNED_NAMES.has(node.text) && !isOnlyAName(node)) problems.push(node.text);
+      if (BANNED_MEMBERS.has(node.text)) problems.push(node.text);
+    } else if (ts.isElementAccessExpression(node) && ts.isStringLiteralLike(node.argumentExpression)) {
+      if (BANNED_MEMBERS.has(node.argumentExpression.text)) problems.push(node.argumentExpression.text);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  return problems;
 }
