@@ -64,3 +64,11 @@ describe("対象外の編集", () => {
     expect(r.stdout).toBe("");
   });
 });
+
+describe("壊れた入力でも編集を妨げない", () => {
+  it.each(["", "{", "null", "{}", '{"tool_input":{}}', '{"tool_input":{"file_path":3}}'])("%s", (stdin) => {
+    const r = run(stdin);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toBe("");
+  });
+});
