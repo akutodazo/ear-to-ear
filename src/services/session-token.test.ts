@@ -80,3 +80,18 @@ describe("改ざん", () => {
     expect(await verifySessionToken(token.slice(0, -1), hmac, NOW)).toBeNull();
   });
 });
+
+describe("役割の書き換え", () => {
+  it("member を admin に書き換えて元の署名のままなら null", async () => {
+    const [, signature] = (await issueSessionToken(MEMBER, hmac)).split(".");
+    const forged = Buffer.from(JSON.stringify({ ...MEMBER, role: "admin" })).toString("base64url");
+    expect(await verifySessionToken(`${forged}.${signature}`, hmac, NOW)).toBeNull();
+  });
+});
+
+describe("別の鍵", () => {
+  it("別の鍵で作った Cookie は null", async () => {
+    const token = await issueSessionToken(MEMBER, hmacWith(OTHER_KEY));
+    expect(await verifySessionToken(token, hmac, NOW)).toBeNull();
+  });
+});
