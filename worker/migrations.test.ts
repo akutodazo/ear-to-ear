@@ -136,3 +136,32 @@ describe("uploaded_photos の値", () => {
     expect(() => insertPhoto(overrides)).toThrow(/CHECK constraint failed/);
   });
 });
+
+describe("二重登録（K7）", () => {
+  it("同じ content_hash は拒否", () => {
+    insertPhoto();
+    expect(() => insertPhoto({ id: "photo-2" })).toThrow(
+      /UNIQUE constraint failed: uploaded_photos.content_hash/,
+    );
+  });
+
+  it("番号が違っても同じ content_hash は拒否（圃場に依存させない）", () => {
+    insertPhoto({ field_id: "A-01", state: "confirmed" });
+    expect(() => insertPhoto({ id: "photo-2", field_id: "A-02", state: "confirmed" })).toThrow(
+      /UNIQUE constraint failed: uploaded_photos.content_hash/,
+    );
+  });
+
+  it("content_hash が違えば入る", () => {
+    insertPhoto();
+    insertPhoto({ id: "photo-2", content_hash: "b".repeat(64) });
+    expect(countPhotos()).toEqual({ n: 2 });
+  });
+
+  it("同じ id は拒否", () => {
+    insertPhoto();
+    expect(() => insertPhoto({ content_hash: "b".repeat(64) })).toThrow(
+      /UNIQUE constraint failed: uploaded_photos.id/,
+    );
+  });
+});
