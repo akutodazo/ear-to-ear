@@ -195,6 +195,9 @@ describe("base64url の形（攻撃役の指摘）", () => {
     ["= が付く", (p: string) => `${p}=`],
     ["+ が混ざる", (p: string) => `${p.slice(0, -1)}+`],
     ["/ が混ざる", (p: string) => `${p.slice(0, -1)}/`],
+    ["! が混ざる", (p: string) => `${p.slice(0, -1)}!`],
+    ["空白が混ざる", (p: string) => `${p.slice(0, 4)} ${p.slice(4)}`],
+    ["改行が混ざる", (p: string) => `${p.slice(0, 4)}\n${p.slice(4)}`],
   ])("前半に%sと、署名が正しくても null", async (_name, change) => {
     const [payload] = (await issueSessionToken(MEMBER, hmac)).split(".");
     expect(await verifySessionToken(await signedRaw(change(payload)), hmac, NOW)).toBeNull();
