@@ -124,3 +124,14 @@ describe("詰め物の 0xFF", () => {
     expect({ width, appSegments }).toEqual({ width: WIDTH, appSegments: [1] });
   });
 });
+
+describe("JPEG 以外", () => {
+  it.each([
+    ["空", []],
+    ["1バイトだけ", [0xff]],
+    ["PNG", [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]],
+    ["文字列", [0x6e, 0x6f, 0x74, 0x20, 0x6a, 0x70, 0x65, 0x67]],
+  ])("%s は例外", (_name, bytes) => {
+    expect(() => inspectJpeg(Uint8Array.from(bytes))).toThrow(InvalidJpegError);
+  });
+});
