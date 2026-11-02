@@ -40,3 +40,27 @@ describe("対象の編集", () => {
     expect(JSON.parse(r.stdout).hookSpecificOutput.additionalContext).toMatch(/K6/);
   });
 });
+
+describe("問いだけで止めない", () => {
+  it("編集の許可・拒否を決めない", () => {
+    const r = edit(resolve(ROOT, "src/lib/resize.ts"));
+    expect(r.status).toBe(0);
+    expect(JSON.parse(r.stdout).hookSpecificOutput.permissionDecision).toBeUndefined();
+  });
+});
+
+describe("対象外の編集", () => {
+  it.each([
+    "docs/spec.md",
+    "README.md",
+    "scripts/check-safety.mjs",
+    "src/types/index.ts",
+    "src/config.ts",
+    "src/lib-old/x.ts",
+    "../other/src/lib/x.ts",
+  ])("%s では何も出さない", (path) => {
+    const r = edit(resolve(ROOT, path));
+    expect(r.status).toBe(0);
+    expect(r.stdout).toBe("");
+  });
+});
