@@ -20,6 +20,8 @@ export interface JpegInfo {
 }
 
 const SOS = 0xda;
+const APP0 = 0xe0;
+const APP15 = 0xef;
 
 /** 長さの欄を持たないマーカー。SOS より前に出てくるのは壊れた JPEG */
 function isStandaloneMarker(marker: number): boolean {
@@ -60,6 +62,7 @@ export function inspectJpeg(bytes: Uint8Array): JpegInfo {
   }
 
   let size: { width: number; height: number } | null = null;
+  const appSegments: number[] = [];
   let offset = 2;
   while (true) {
     if (bytes[offset] !== 0xff) {
@@ -83,6 +86,9 @@ export function inspectJpeg(bytes: Uint8Array): JpegInfo {
       throw new InvalidJpegError(`セグメントの長さが不正（位置 ${offset}）`);
     }
 
+    if (marker > APP0 && marker <= APP15) {
+      appSegments.push(marker - APP0);
+    }
     if (isSof(marker)) {
       size = readSize(bytes, start, length);
     }
@@ -90,7 +96,7 @@ export function inspectJpeg(bytes: Uint8Array): JpegInfo {
       if (size === null) {
         throw new InvalidJpegError("SOF が無い");
       }
-      return { ...size, appSegments: [] };
+      return { ...size, appSegments };
     }
     offset = start + length;
   }
