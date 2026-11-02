@@ -31,6 +31,7 @@ gh pr list --repo akutodazo/ear-to-ear --state merged --limit 30 --json number,t
 ## PR から写した記録
 | 日付 | PR | 何を | モデル | 機能 | なぜ | 人が決めた・直したこと | 何ができたか |
 |---|---|---|---|---|---|---|---|
+| 11-02 | [#6](https://github.com/akutodazo/ear-to-ear/pull/6) | T03 `jpeg-segments`（APP1〜15 の検出と幅・高さ） | Claude Opus | Claude Code の対話 | 無人運転に回さない先輩の担当で、合格条件を人が読みながら決める | Issue を毎回立てる、コミットを観点ごとに分ける、点検なしで PR にする | テスト 54 件。RED が全件失敗を確かめてから、GREEN を4段階で実装。20 コミット |
 
 ## 記録
 | 日付 | 何を | 使ったもの | 選んだ理由 | それで何ができたか |
