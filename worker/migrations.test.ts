@@ -254,3 +254,14 @@ describe("索引", () => {
     expect(indexColumns(name)).toEqual(expected);
   });
 });
+
+describe("主キー（穴を突く実装の指摘）", () => {
+  it.each([
+    ["uploaded_photos", "id"],
+    ["photo_assignments", "id"],
+    ["field_status_events", "id"],
+    ["usage_counters", "key"],
+  ])("%s の主キーは %s", (table, column) => {
+    expect(columns(table).filter((c) => c.pk > 0).map((c) => c.name)).toEqual([column]);
+  });
+});
