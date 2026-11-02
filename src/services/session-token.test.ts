@@ -110,3 +110,33 @@ describe("期限", () => {
     expect(await verifySessionToken(token, hmac, MEMBER.exp + after)).toBeNull();
   });
 });
+
+/** 中身を好きな JSON にして、正しい鍵で署名する（署名が正しくても中身で弾けるか） */
+async function signed(body: unknown): Promise<string> {
+  const payload = Buffer.from(typeof body === "string" ? body : JSON.stringify(body)).toString(
+    "base64url",
+  );
+  const signature = Buffer.from(await hmac(payload)).toString("base64url");
+  return `${payload}.${signature}`;
+}
+
+describe("形の崩れ", () => {
+  it.each([
+    ["空", ""],
+    ["点なし", "abc"],
+    ["3 つに分かれる", "a.b.c"],
+  ])("%s は null", async (_name, token) => {
+    expect(await verifySessionToken(token, hmac, NOW)).toBeNull();
+  });
+
+  it.each([
+    ["JSON でない", "not json"],
+    ["役割が不正", { device: "dev-0001", role: "owner", exp: NOW + 60 }],
+    ["期限が数でない", { device: "dev-0001", role: "member", exp: String(NOW + 60) }],
+    ["端末 ID が空", { device: "", role: "member", exp: NOW + 60 }],
+    ["端末 ID が無い", { role: "member", exp: NOW + 60 }],
+    ["配列", ["dev-0001", "member", NOW + 60]],
+  ])("署名が正しくても%sなら null", async (_name, body) => {
+    expect(await verifySessionToken(await signed(body), hmac, NOW)).toBeNull();
+  });
+});
