@@ -94,3 +94,15 @@ describe("SOS の後ろ", () => {
     expect(inspectJpeg(jpeg(SOF0, scan)).appSegments).toEqual([]);
   });
 });
+
+describe("SOF の種類", () => {
+  const markers = [
+    0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce,
+    0xcf,
+  ];
+
+  it.each(markers)("マーカー %i から幅・高さを取る", (marker) => {
+    const { width, height } = inspectJpeg(jpeg(sof(marker, 640, 480), SCAN));
+    expect({ width, height }).toEqual({ width: 640, height: 480 });
+  });
+});
