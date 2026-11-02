@@ -147,3 +147,15 @@ describe("長さの欄が不正", () => {
     );
   });
 });
+
+describe("途中で切れた JPEG", () => {
+  it.each([
+    ["SOI だけ", []],
+    ["マーカーの途中", [[0xff]]],
+    ["長さの欄の途中", [[0xff, 0xe1, 0x00]]],
+    ["SOF で終わる（SOS が無い）", [SOF0]],
+    ["SOS の前に EOI", [SOF0, EOI]],
+  ])("%s は例外", (_name, parts) => {
+    expect(() => inspectJpeg(jpeg(...parts))).toThrow(InvalidJpegError);
+  });
+});
