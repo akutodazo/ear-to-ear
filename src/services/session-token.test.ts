@@ -184,3 +184,29 @@ describe("返す中身（攻撃役の指摘）", () => {
     expect(await verifySessionToken(token, hmac, NOW)).toStrictEqual(MEMBER);
   });
 });
+
+/** 前半の文字列をそのまま使い、正しい鍵で署名する（base64url として崩れた前半を試す） */
+async function signedRaw(payload: string): Promise<string> {
+  return `${payload}.${Buffer.from(await hmac(payload)).toString("base64url")}`;
+}
+
+describe("base64url の形（攻撃役の指摘）", () => {
+  it.each([
+    ["= が付く", (p: string) => `${p}=`],
+    ["+ が混ざる", (p: string) => `${p.slice(0, -1)}+`],
+    ["/ が混ざる", (p: string) => `${p.slice(0, -1)}/`],
+  ])("前半に%sと、署名が正しくても null", async (_name, change) => {
+    const [payload] = (await issueSessionToken(MEMBER, hmac)).split(".");
+    expect(await verifySessionToken(await signedRaw(change(payload)), hmac, NOW)).toBeNull();
+  });
+
+  it.each([
+    ["= が付く", (s: string) => `${s}=`],
+    ["+ に置き換わる", (s: string) => s.replaceAll("-", "+")],
+  ])("署名に%sと null", async (_name, change) => {
+    const [payload, signature] = (await issueSessionToken({ ...MEMBER, device: "dev-0003" }, hmac)).split(".");
+    const forged = change(signature);
+    if (forged === signature) return;
+    expect(await verifySessionToken(`${payload}.${forged}`, hmac, NOW)).toBeNull();
+  });
+});
