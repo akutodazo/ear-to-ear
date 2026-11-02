@@ -265,3 +265,12 @@ describe("主キー（穴を突く実装の指摘）", () => {
     expect(columns(table).filter((c) => c.pk > 0).map((c) => c.name)).toEqual([column]);
   });
 });
+
+describe("動きを変える仕組み（穴を突く実装の指摘）", () => {
+  it("トリガーとビューが無い", () => {
+    const rows = db
+      .prepare("SELECT type, name FROM sqlite_master WHERE type IN ('trigger', 'view')")
+      .all();
+    expect(rows).toEqual([]);
+  });
+});
