@@ -16,3 +16,21 @@ describe("空の実装を作る", () => {
     expect(out).not.toMatch(/return 1/);
   });
 });
+
+describe("残すものと消すもの", () => {
+  it("import・型・export したクラスは残す", () => {
+    const src = [
+      'import type { Role } from "@/types";',
+      "export type T = Role;",
+      "export interface I { a: number }",
+      "export class E extends Error {}",
+    ].join("\n");
+    const out = stubImpl(src);
+    for (const line of src.split("\n")) expect(out).toContain(line);
+  });
+
+  it("export していない補助の関数と定数は消す", () => {
+    const out = stubImpl('const SECRET_LOGIC = 1;\nfunction helper() { return SECRET_LOGIC; }\nexport function f() { return helper(); }\n');
+    expect(out).not.toMatch(/SECRET_LOGIC|helper/);
+  });
+});
