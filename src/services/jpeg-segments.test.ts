@@ -87,3 +87,10 @@ describe("SOF の後ろ", () => {
     expect(inspectJpeg(jpeg(SOF0, app1, SCAN)).appSegments).toEqual([1]);
   });
 });
+
+describe("SOS の後ろ", () => {
+  it("画像データの中の APP1 に似たバイト列は見ない", () => {
+    const scan = [...SOS, 0xff, 0xe1, 0x00, 0x04, 0x00, 0x00, ...EOI];
+    expect(inspectJpeg(jpeg(SOF0, scan)).appSegments).toEqual([]);
+  });
+});
