@@ -1,0 +1,70 @@
+import { execFileSync, spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { createInterface } from "node:readline";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+const SERVER = resolve("scripts/cage/server.mjs");
+const SECRET = "DUMMY_CANARY";
+
+type Result = { content: { text: string }[]; isError?: boolean; tools?: { name: string }[] };
+
+let root: string;
+let child: ChildProcessWithoutNullStreams;
+let lines: AsyncIterableIterator<string>;
+let id = 0;
+
+const git = (...args: string[]) => execFileSync("git", args, { cwd: root, encoding: "utf8" });
+
+async function rpc(method: string, params: unknown): Promise<Result> {
+  child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: ++id, method, params })}\n`);
+  return JSON.parse((await lines.next()).value).result;
+}
+const call = (name: string, args: unknown = {}) => rpc("tools/call", { name, arguments: args });
+
+beforeEach(async () => {
+  root = mkdtempSync(join(tmpdir(), "cage-"));
+  mkdirSync(join(root, "src"));
+  writeFileSync(join(root, "src/add.mjs"), 'throw new Error("not implemented");\n');
+  writeFileSync(join(root, "src/add.test.mjs"), "export {};\n");
+  git("init", "-q", "-b", "trunk");
+  git("config", "user.name", "cage");
+  git("config", "user.email", "cage@example.invalid");
+  git("add", "-A");
+  git("commit", "-q", "-m", "T99 RED");
+  writeFileSync(join(root, ".git/info/exclude"), ".dev.vars\n");
+  writeFileSync(join(root, ".dev.vars"), `X=${SECRET}\n`);
+  child = spawn("node", [SERVER], {
+    env: {
+      ...process.env,
+      CAGE_ROOT: root,
+      CAGE_ALLOW: "src/add.mjs,docs/run/REPORT.md",
+      CAGE_LOG: `${root}.log`,
+      CAGE_TEST: JSON.stringify(["-e", 'console.log("ran", process.env.CAGE_PROBE ?? "no-env")']),
+      CAGE_CHECKS: JSON.stringify([{ name: "C1", argv: ["node", "-e", 'console.log("C1 ok")'] }]),
+      CAGE_PROBE: SECRET,
+    },
+  });
+  lines = createInterface({ input: child.stdout })[Symbol.asyncIterator]();
+  await rpc("initialize", { protocolVersion: "2025-06-18" });
+});
+
+afterEach(() => {
+  child.kill();
+  rmSync(root, { recursive: true, force: true });
+  rmSync(`${root}.log`, { force: true });
+});
+
+describe("道具", () => {
+  it("5つだけを見せる", async () => {
+    const r = await rpc("tools/list", {});
+    expect(r.tools?.map((t) => t.name).sort()).toEqual([
+      "commit_green",
+      "read_file",
+      "report",
+      "run_tests",
+      "write_file",
+    ]);
+  });
+});
