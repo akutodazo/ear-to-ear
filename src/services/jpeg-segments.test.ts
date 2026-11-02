@@ -114,3 +114,13 @@ describe("SOF に似たマーカー", () => {
     expect({ width, height }).toEqual({ width: WIDTH, height: HEIGHT });
   });
 });
+
+describe("詰め物の 0xFF", () => {
+  it("マーカーの前の 0xFF を読み飛ばす", () => {
+    const app1 = segment(0xe1, [0x00]);
+    const { width, appSegments } = inspectJpeg(
+      jpeg([0xff, 0xff], app1, [0xff], SOF0, SCAN),
+    );
+    expect({ width, appSegments }).toEqual({ width: WIDTH, appSegments: [1] });
+  });
+});
