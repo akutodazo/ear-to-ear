@@ -60,3 +60,12 @@ describe("APP1", () => {
     expect(inspectJpeg(jpeg(APP0, app1, SOF0, SCAN)).appSegments).toEqual([1]);
   });
 });
+
+describe("APP2〜15", () => {
+  const numbers = Array.from({ length: 14 }, (_, i) => i + 2);
+
+  it.each(numbers)("APP%i を検出する", (n) => {
+    const app = segment(0xe0 + n, [0x00]);
+    expect(inspectJpeg(jpeg(app, SOF0, SCAN)).appSegments).toEqual([n]);
+  });
+});
