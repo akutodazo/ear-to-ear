@@ -34,3 +34,12 @@ describe("残すものと消すもの", () => {
     expect(out).not.toMatch(/SECRET_LOGIC|helper/);
   });
 });
+
+describe("いまの Service", () => {
+  it("session-token の実装が空の実装に出ない", () => {
+    const out = stubImpl(readFileSync("src/services/session-token.ts", "utf8"));
+    expect(out).toMatch(/export (async )?function issueSessionToken/);
+    expect(out).toMatch(/export (async )?function verifySessionToken/);
+    expect(out).not.toMatch(/atob|btoa|BASE64URL/);
+  });
+});
