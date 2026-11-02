@@ -118,3 +118,16 @@ describe("run_tests の抜け穴", () => {
     expect(existsSync(join(root, "docs/run/REPORT.md"))).toBe(true);
   });
 });
+
+describe("report", () => {
+  it("検査を自分で実行して REPORT.md に残し、Txx REPORT でコミットする", async () => {
+    const r = await call("report", { task: "T99" });
+    expect(r.content[0].text).toMatch(/C1 ok/);
+    expect(readFileSync(join(root, "docs/run/REPORT.md"), "utf8")).toMatch(/C1 ok/);
+    expect(git("log", "-1", "--format=%s").trim()).toBe("T99 REPORT");
+  });
+
+  it("task の形が違うと拒否する", async () => {
+    expect((await call("report", { task: "x; rm" })).isError).toBe(true);
+  });
+});
