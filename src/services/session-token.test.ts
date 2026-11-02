@@ -266,7 +266,6 @@ describe("効いていなかった確認（レビューの指摘 2）", () => {
   });
 
   it("中身が不正な UTF-8 なら、署名が正しくても null", async () => {
-    const json = Buffer.from(JSON.stringify({ ...MEMBER, device: "dev-\u0001" }));
     const bytes = Buffer.concat([
       Buffer.from('{"device":"dev-'),
       Buffer.from([0xff]),
