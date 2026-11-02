@@ -226,3 +226,28 @@ describe("判断", () => {
     expect(db.prepare("SELECT id FROM field_status_events").get()).toEqual({ id: 2 });
   });
 });
+
+describe("回数の上限", () => {
+  it("同じ key は 1 行だけ（UPSERT で数える）", () => {
+    const up = db.prepare(
+      "INSERT INTO usage_counters (key, count, expires_at) VALUES (?, 1, ?) ON CONFLICT(key) DO UPDATE SET count = count + 1",
+    );
+    up.run("login:abc:2026-11-03T00:10", NOW);
+    up.run("login:abc:2026-11-03T00:10", NOW);
+    expect(db.prepare("SELECT count FROM usage_counters").all()).toEqual([{ count: 2 }]);
+  });
+});
+
+function indexColumns(name: string): string[] {
+  const rows = db.prepare(`PRAGMA index_info(${name})`).all() as unknown as { name: string }[];
+  return rows.map((r) => r.name);
+}
+
+describe("索引", () => {
+  it.each([
+    ["idx_photos_field", ["field_id", "taken_at"]],
+    ["idx_photos_uploaded", ["uploaded_at"]],
+  ])("%s の列が仕様どおり", (name, expected) => {
+    expect(indexColumns(name)).toEqual(expected);
+  });
+});
