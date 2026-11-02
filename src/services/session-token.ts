@@ -30,11 +30,47 @@ export async function issueSessionToken(claims: SessionClaims, hmac: Hmac): Prom
   return `${payload}.${encodeBase64url(await hmac(payload))}`;
 }
 
+/** 余白や = を含まない base64url だけを通す（Node の読み取りは不正な文字を読み飛ばすため） */
+const BASE64URL = /^[A-Za-z0-9_-]+$/;
+
+/** 長さが同じなら、どこで違っても最後まで比べる（違う位置から署名を推測させない） */
+function equalsConstantTime(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+function decodeBase64url(text: string): string | null {
+  const base64 = text.replaceAll("-", "+").replaceAll("_", "/");
+  try {
+    const binary = atob(base64 + "=".repeat((4 - (base64.length % 4)) % 4));
+    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    return null;
+  }
+}
+
 /** 正しければ中身を返す。改ざん・期限切れ・形の崩れは null */
 export async function verifySessionToken(
-  _token: string,
-  _hmac: Hmac,
-  _nowSec: number,
+  token: string,
+  hmac: Hmac,
+  nowSec: number,
 ): Promise<SessionClaims | null> {
-  throw new Error("not implemented");
+  const parts = token.split(".");
+  if (parts.length !== 2) return null;
+  const [payload, signature] = parts;
+  if (!BASE64URL.test(payload) || !BASE64URL.test(signature)) return null;
+
+  // 署名は文字列として比べる（末尾の使われないビットだけ違う署名も通さない）
+  if (!equalsConstantTime(signature, encodeBase64url(await hmac(payload)))) return null;
+
+  const json = decodeBase64url(payload);
+  if (json === null) return null;
+  try {
+    return JSON.parse(json) as SessionClaims;
+  } catch {
+    return null;
+  }
 }
