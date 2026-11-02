@@ -19,9 +19,44 @@ export interface JpegInfo {
   appSegments: number[];
 }
 
+const SOS = 0xda;
+
+/** 長さの欄を持たないマーカー。SOS より前に出てくるのは壊れた JPEG */
+function isStandaloneMarker(marker: number): boolean {
+  return marker < 0xc0 || (marker >= 0xd0 && marker <= 0xd9);
+}
+
 export function inspectJpeg(bytes: Uint8Array): JpegInfo {
   if (bytes[0] !== 0xff || bytes[1] !== 0xd8) {
     throw new InvalidJpegError("JPEG ではない（SOI が無い）");
   }
-  throw new Error("not implemented");
+
+  let offset = 2;
+  while (true) {
+    if (bytes[offset] !== 0xff) {
+      throw new InvalidJpegError(`マーカーが無い（位置 ${offset}）`);
+    }
+    // マーカーの前の 0xFF は詰め物
+    while (bytes[offset] === 0xff) offset++;
+
+    const marker = bytes[offset];
+    if (isStandaloneMarker(marker)) {
+      throw new InvalidJpegError(`SOS の前に不正なマーカー（位置 ${offset}）`);
+    }
+
+    const start = offset + 1;
+    if (start + 2 > bytes.length) {
+      throw new InvalidJpegError("長さの欄の途中で切れている");
+    }
+    // 長さの欄は自分の2バイトを含む
+    const length = (bytes[start] << 8) | bytes[start + 1];
+    if (length < 2 || start + length > bytes.length) {
+      throw new InvalidJpegError(`セグメントの長さが不正（位置 ${offset}）`);
+    }
+
+    if (marker === SOS) {
+      throw new InvalidJpegError("SOF が無い");
+    }
+    offset = start + length;
+  }
 }
