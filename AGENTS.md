@@ -35,6 +35,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - 例外を期待するテストに引数なしの `toThrow()` を使わない（`toThrow(InvalidJpegError)` や `toThrow(/JPEG ではない/)` のように何を期待するか書く）
 - **1つの PR に1つの関心事**。PR の本文: 影響範囲／使ったライブラリ／同時に更新した文書／弱点候補3〜5個／検証ログ（RED・GREEN・lint・test・build）
 - **レビューは書いた側と違う側**: 本人の PR は先輩、先輩の PR は本人。`main` に直接 push しない
+  - main の保護（GitHub の Ruleset）は「PR 必須・CI（`check`）必須・削除と force push の禁止」。**マージに要る承認は 0**（11-02 本人決定。先輩の作業を増やさないため）。書いた側だけでもマージできるので、相手のレビューは仕組みでは強制されない。運用で守る
 - PR の前に `npm run check`（安全検査 → lint → 型 → テスト → build）を通し、差分を目で見る（画像・CSV・文書が増えていないか）
 - Claude が書いた変更は PR の前に Codex の点検を通し、結果を `docs/reviews/` に置く
 

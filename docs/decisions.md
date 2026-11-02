@@ -26,3 +26,5 @@
 - 11-02 リポジトリ名 `ear-to-ear`、最初から公開で作る。副題「穂から穂へ、写真と判断をつなぐ」とロゴをセットで出す
 - 11-02 担当は層で分ける（AGENTS.md §2）。先輩は L0 のサーバーの中心だけ
 - 11-02 T00: Next.js 16（App Router・`output: 'export'`）。`cacheComponents` は Node.js サーバーが要るので外した。`@types/node` は実行環境に合わせて 24 系。`check:safety` は名前の検査のみ（中身は T17）
+- 11-02 GitHub の設定: Secret scanning と Push protection をオン／コミットのメールは noreply／main の Ruleset（削除禁止・force push 禁止・PR 必須・CI `check` 必須）／マージ後のブランチ自動削除／Dependabot alerts だけオン（自動の更新 PR はオフ）。GitHub Pages は使わない。Actions に Cloudflare の秘密を置かない（デプロイは本人の手元から。期間中は自動デプロイにしない）
+- 11-02 **main へのマージに要る承認は 0**（最初は 1）。背景: 自分の PR は自分で承認できず、承認 1 では本人だけでマージできなかった。決定: 承認を 0 にし、PR 必須・CI 必須は残す。理由: 先輩の作業を増やさない。レビューは「書いた側と違う側」を運用で守る（AGENTS.md §3）
