@@ -102,3 +102,29 @@ describe("レビュー役", () => {
     expect(run("reviewer", "--pr", `33 ${HISTORY}`).status).not.toBe(0);
   });
 });
+
+describe("余計な情報", () => {
+  it("知らない引数で経緯を足せない", () => {
+    const r = run("attacker", "--impl", "src/services/a.ts", "--test", "src/services/a.test.ts", "--context", HISTORY);
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toMatch(/--context/);
+  });
+
+  it.each([
+    ["attacker", ["--impl", "src/services/a.ts", "--test", "src/services/a.test.ts"]],
+    ["reviewer", ["--pr", "33"]],
+  ])("%s の文面に NOTES.md の経緯が入らない", (role, args) => {
+    run(role, ...args);
+    expect(readFileSync(join(out, "PROMPT.txt"), "utf8")).not.toMatch(HISTORY);
+  });
+
+  it("知らない役は受け付けない", () => {
+    expect(run("planner").status).not.toBe(0);
+  });
+
+  it("空でないフォルダには作らない", () => {
+    mkdirSync(out);
+    writeFileSync(join(out, "x"), "x");
+    expect(run("human", "--questions", join(repo, "AGENTS.md")).status).not.toBe(0);
+  });
+});
