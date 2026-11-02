@@ -20,3 +20,12 @@ CREATE TABLE photo_assignments (
   from_field_id TEXT, to_field_id TEXT NOT NULL,
   actor_device TEXT NOT NULL, at TEXT NOT NULL
 );
+CREATE TABLE field_status_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  field_id TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('ready','done')),
+  reasons TEXT NOT NULL DEFAULT '[]',         -- JSON 配列（選択肢のコード）
+  note TEXT,
+  ref_photo_ids TEXT NOT NULL DEFAULT '[]',
+  actor_device TEXT NOT NULL, at TEXT NOT NULL, revoked_at TEXT
+);
