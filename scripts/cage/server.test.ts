@@ -68,3 +68,15 @@ describe("道具", () => {
     ]);
   });
 });
+
+describe("正常系", () => {
+  it("読む → 書く → テスト → コミットができ、変更は許可リストだけ", async () => {
+    expect((await call("read_file", { path: "src/add.test.mjs" })).isError).toBeFalsy();
+    const w = await call("write_file", { path: "src/add.mjs", content: "export const add = (a, b) => a + b;\n" });
+    expect(w.isError).toBeFalsy();
+    expect((await call("run_tests")).content[0].text).toMatch(/ran/);
+    expect((await call("commit_green", { message: "T99 GREEN: add" })).isError).toBeFalsy();
+    expect(git("log", "-1", "--format=%s").trim()).toBe("T99 GREEN: add");
+    expect(git("diff", "--name-only", "HEAD~1", "HEAD").trim()).toBe("src/add.mjs");
+  });
+});
