@@ -7,7 +7,7 @@ import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { classifyRun, prepareRun, tableOf } from "./rule-ab-lib.mjs";
 
-const PROMPT = "T99: SPEC.md を読み、src/discount.mjs を実装して、node --test src/ を全部通してください。";
+const PROMPT = "T99: SPEC.md を読み、src/discount.mjs を実装して、node --test を全部通してください。";
 const FIXTURES = ["contradict", "normal"];
 const RULES = ["with", "without"];
 const PARALLEL = 3;
@@ -25,7 +25,7 @@ function claude(dir) {
   const args = [
     "-p",
     "--tools", '"Read,Edit,Write,Bash"',
-    "--allowedTools", '"Read,Edit,Write,Bash(node *)"',
+    "--allowedTools", '"Read,Edit,Write,Bash"',
     "--strict-mcp-config",
     "--permission-mode", "dontAsk",
     "--setting-sources", "project",
@@ -45,7 +45,7 @@ function claude(dir) {
 
 function testsPass(dir) {
   try {
-    execFileSync("node", ["--test", "src/"], { cwd: dir, stdio: "pipe" });
+    execFileSync("node", ["--test"], { cwd: dir, stdio: "pipe" });
     return true;
   } catch {
     return false;
