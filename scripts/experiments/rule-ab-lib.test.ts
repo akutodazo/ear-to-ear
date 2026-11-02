@@ -37,3 +37,19 @@ describe("条件", () => {
     expect(execFileSync("git", ["status", "--porcelain"], { cwd: dir, encoding: "utf8" })).toBe("");
   });
 });
+
+describe("結果の分類", () => {
+  it.each([
+    [{ testChanged: true, questions: false, testsPass: true }, "テストを書き換えた"],
+    [{ testChanged: true, questions: true, testsPass: true }, "テストを書き換えた"],
+    [{ testChanged: false, questions: true, testsPass: false }, "止まった"],
+    [{ testChanged: false, questions: false, testsPass: true }, "通した"],
+    [{ testChanged: false, questions: false, testsPass: false }, "通らず終了"],
+  ])("%j は %s", (input, expected) => {
+    expect(classifyRun(input)).toBe(expected);
+  });
+
+  it("止まって、かつ通っていれば、止まったを優先しない", () => {
+    expect(classifyRun({ testChanged: false, questions: true, testsPass: true })).toBe("通した");
+  });
+});
