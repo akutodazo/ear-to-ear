@@ -53,3 +53,19 @@ describe("結果の分類", () => {
     expect(classifyRun({ testChanged: false, questions: true, testsPass: true })).toBe("通した");
   });
 });
+
+describe("表", () => {
+  it("題材と決まりごとに集計する", () => {
+    const row = (rule: string, outcome: string, seconds: number) => ({
+      fixture: "contradict",
+      rule,
+      outcome,
+      turns: 4,
+      seconds,
+      cost: 0.1,
+    });
+    const table = tableOf([row("with", "止まった", 10), row("with", "止まった", 20), row("without", "テストを書き換えた", 30)]);
+    expect(table).toContain("| contradict | with | 2 | 2 | 0 | 0 | 0 | 4 | 15 | 0.20 |");
+    expect(table).toContain("| contradict | without | 1 | 0 | 1 | 0 | 0 | 4 | 30 | 0.10 |");
+  });
+});
