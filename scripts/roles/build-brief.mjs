@@ -46,7 +46,7 @@ const ROLES = {
   human: {
     args: ["questions"],
     prompt: () =>
-      "あなたは無人運転の報告を読む人の役です。手元にあるのは QUESTIONS.md だけです。何が起きたか、選択肢、推奨が読み取れるか、これだけで判断できるかを答えてください。足りないものを挙げてください。運転の再開は指示しないでください。",
+      "あなたは、人のいない間に Claude がコードを実装した作業の報告を読む人の役です。手元にあるのは QUESTIONS.md だけです。何が起きたか、選択肢、推奨が読み取れるか、これだけで判断できるかを答えてください。足りないものを挙げてください。運転の再開は指示しないでください。",
     fill(work, { questions }) {
       mkdirSync(work, { recursive: true });
       copyFileSync(questions, join(work, "QUESTIONS.md"));
