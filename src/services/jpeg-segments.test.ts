@@ -53,3 +53,10 @@ describe("APP0", () => {
     expect(inspectJpeg(jpeg(APP0, SOF0, SCAN)).appSegments).toEqual([]);
   });
 });
+
+describe("APP1", () => {
+  it("APP1 を検出する", () => {
+    const app1 = segment(0xe1, [0x45, 0x78, 0x69, 0x66]);
+    expect(inspectJpeg(jpeg(APP0, app1, SOF0, SCAN)).appSegments).toEqual([1]);
+  });
+});
