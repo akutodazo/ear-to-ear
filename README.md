@@ -12,7 +12,7 @@ Built with Claude: Japan 2026（2026-11-02 〜 11-08）の期間中に、ゼロ�
 
 ## いまの状態
 - L0（送る・新着・確定）を作っています。画面はまだ準備中です
-- 仕様: [docs/spec.md](docs/spec.md)／決定: [docs/decisions.md](docs/decisions.md)／公開範囲: [docs/privacy.md](docs/privacy.md)
+- 仕様: [docs/spec.md](docs/spec.md)／決定: [docs/decisions.md](docs/decisions.md)／公開範囲: [docs/privacy.md](docs/privacy.md)／予定表: [docs/schedule.md](docs/schedule.md)
 
 ## 手元で動かす
 ```bash
