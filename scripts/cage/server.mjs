@@ -7,7 +7,10 @@ import { checkCommitMessage, checkPurity, checkWrite, cleanPath } from "./policy
 
 const ROOT = process.env.CAGE_ROOT;
 const REPORT = "docs/run/REPORT.md";
-const ALLOW = new Set(process.env.CAGE_ALLOW.split(","));
+const QUESTIONS = "docs/run/QUESTIONS.md";
+// REPORT は report だけが書く。QUESTIONS は止まるときに書き、コミットはしない（AGENTS.md §5）
+const COMMITTABLE = process.env.CAGE_ALLOW.split(",").filter((p) => p !== REPORT && p !== QUESTIONS);
+const ALLOW = new Set([...COMMITTABLE, QUESTIONS]);
 const LOG = process.env.CAGE_LOG;
 const TEST_ARGS = JSON.parse(process.env.CAGE_TEST ?? '["node_modules/vitest/vitest.mjs","run"]');
 const CHECKS = JSON.parse(process.env.CAGE_CHECKS ?? "[]");
@@ -66,7 +69,7 @@ const tools = {
     schema: { message: { type: "string" } },
     run: ({ message }) => {
       if (!checkCommitMessage(message)) throw new Error("拒否: メッセージは 'Txx GREEN: ' で始める1行");
-      const paths = [...ALLOW].filter((p) => existsSync(join(ROOT, p)));
+      const paths = COMMITTABLE.filter((p) => existsSync(join(ROOT, p)));
       git("add", "--", ...paths);
       git("commit", "-m", message, "--", ...paths);
       return git("log", "--oneline", "-1");
