@@ -29,7 +29,13 @@ claude -p "<パケットの指示>" --tools "" --strict-mcp-config --mcp-config 
 | `CAGE_TEST` | `node` に渡す引数（JSON の配列）。既定は vitest の全件 |
 | `CAGE_CHECKS` | 検査の一覧（JSON、`[{"name":"C1","argv":[...]}]`）。C1〜C5 の中身は本人のハーネスにあるので、ここでは決めていない |
 
-`server.mjs` は `CAGE_ROOT` の外に置く（Claude が書き換えられない場所）。
+`CAGE_ALLOW` に REPORT.md・QUESTIONS.md を入れなくてよい。REPORT.md は `report` だけが書き、`write_file` では書けない。QUESTIONS.md は常に書けるが、コミットはされない。
+
+`CAGE_TIMEOUT_MS` で子プロセスの上限を変えられる（既定 120 秒）。`CAGE_CHECKS` の `argv` はシェルを通らないので、Windows では `npm` を直接書けない。`node` から書く。
+
+`server.mjs` は `CAGE_ROOT` の外に置く（Claude が書き換えられない場所）。`typescript` を解決するので、`node_modules` が見える場所（本体のチェックアウトや別の worktree）から動かす。
+
+push の前に、人が REPORT.md を読む。既知の抜けを通ったコードは、検査の出力から秘密を REPORT.md に載せられる。
 
 ## 実機の結果（11-02、Claude Code 2.1.299、Haiku、使い捨ての複製）
 | 確かめたこと | 結果 |
@@ -41,6 +47,7 @@ claude -p "<パケットの指示>" --tools "" --strict-mcp-config --mcp-config 
 ## 既知の抜け
 | 抜け | 中身 | 対応 |
 |---|---|---|
-| 計算した名前 | `const k = "con" + "structor"; (() => 0)[k]("...")()` は純粋関数の検査を通る（11-02 に確認）。構文を見るだけなので、実行時に作る名前は見えない | 塞がない。公式の文書のとおり、悪意のあるコードは防げない。誤操作の防止として使う |
+| 計算した名前 | `const k = "con" + "structor"; (() => 0)[k]("...")()` は純粋関数の検査を通る（11-02 に確認）。`Object.getOwnPropertyDescriptor` など他の経路も残る。構文を見るだけなので、実行時に作る名前は見えない | 塞がない。公式の文書のとおり、悪意のあるコードは防げない。誤操作の防止として使う |
+| 検査の対象 | Service を想定した検査。`react` は通らないので、hooks・components のパケットには使えない | 対象を Service に限る |
 | `run_tests` の隔離 | Claude が書いたコードは手元の権限で動く。Node の権限モデルは vitest のワーカーに引き継がれない | 隔離は未検証。先輩の PC には WSL が入っていない（11-02 に確認）。本人の PC は未確認 |
 | 手元の deny・push 先の無効化 | この檻の代わりにはならない | 重ねて使う |
