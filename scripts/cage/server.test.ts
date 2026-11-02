@@ -137,3 +137,11 @@ describe("report", () => {
     expect((await call("report", { task: "x; rm" })).isError).toBe(true);
   });
 });
+
+describe("レビューの指摘: 検査が空の report", () => {
+  it("検査が0件なら REPORT を作らない", async () => {
+    await start({ CAGE_CHECKS: "[]" });
+    expect((await call("report", { task: "T99" })).isError).toBe(true);
+    expect(git("log", "-1", "--format=%s").trim()).toBe("T99 RED");
+  });
+});
