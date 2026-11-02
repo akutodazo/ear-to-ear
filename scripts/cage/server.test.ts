@@ -80,3 +80,19 @@ describe("正常系", () => {
     expect(git("diff", "--name-only", "HEAD~1", "HEAD").trim()).toBe("src/add.mjs");
   });
 });
+
+describe("拒否", () => {
+  it.each([
+    ["秘密を読む", "read_file", { path: ".dev.vars" }],
+    ["外を読む", "read_file", { path: "../x" }],
+    ["テストを書き換える", "write_file", { path: "src/add.test.mjs", content: "x" }],
+    ["迂回して書き換える", "write_file", { path: "src/../src/add.test.mjs", content: "x" }],
+    ["大文字で迂回", "write_file", { path: "SRC/ADD.TEST.MJS", content: "x" }],
+    ["git のフック", "write_file", { path: ".git/hooks/pre-commit", content: "x" }],
+    ["形式違いのコミット", "commit_green", { message: "push origin" }],
+    ["知らない道具", "shell", { command: "ls" }],
+  ])("%s", async (_label, name, args) => {
+    expect((await call(name, args)).isError).toBe(true);
+    expect(git("status", "--porcelain").trim()).toBe("");
+  });
+});
