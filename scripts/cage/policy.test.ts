@@ -127,3 +127,18 @@ describe("レビューの指摘: 許可リストの外へ抜ける import", () =
     expect(checkPurity(code).length).toBeGreaterThan(0);
   });
 });
+
+describe("レビューの指摘: 文字列のキーとブラウザ API", () => {
+  it.each([
+    'const { "constructor": F } = () => 0;',
+    "const { constructor: F } = () => 0;",
+    'localStorage.getItem("a")',
+    "sessionStorage.clear()",
+    "navigator.userAgent",
+    "crypto.subtle",
+    "location.href",
+    "indexedDB.open",
+  ])("%s は通らない", (code) => {
+    expect(checkPurity(code).length).toBeGreaterThan(0);
+  });
+});
