@@ -83,3 +83,56 @@ describe("持ってはいけない列", () => {
     expect(names.filter((n) => pattern.test(n))).toEqual([]);
   });
 });
+
+const NOW = "2026-11-03T00:00:00.000Z";
+
+function insertPhoto(overrides: Record<string, string | number | null> = {}): void {
+  const row: Record<string, string | number | null> = {
+    id: "photo-1",
+    field_id: null,
+    state: "unconfirmed",
+    candidate_field_ids: '["A-01"]',
+    taken_at: null,
+    taken_at_source: "none",
+    content_hash: "a".repeat(64),
+    r2_key: "uploads/photo-1.jpg",
+    width: 1600,
+    height: 1200,
+    bytes: 1000,
+    uploader_device: "dev-0001",
+    uploaded_at: NOW,
+    updated_at: NOW,
+    ...overrides,
+  };
+  const names = Object.keys(row);
+  db.prepare(
+    `INSERT INTO uploaded_photos (${names.join(", ")}) VALUES (${names.map(() => "?").join(", ")})`,
+  ).run(...Object.values(row));
+}
+
+function countPhotos(): unknown {
+  return db.prepare("SELECT count(*) AS n FROM uploaded_photos").get();
+}
+
+describe("uploaded_photos の値", () => {
+  it("番号なし・日付なしの未確定の写真が入る", () => {
+    insertPhoto();
+    expect(countPhotos()).toEqual({ n: 1 });
+  });
+
+  it.each([
+    ["confirmed", { state: "confirmed", field_id: "A-01" }],
+    ["xmp", { taken_at_source: "xmp", taken_at: "2026-07-21" }],
+    ["exif", { taken_at_source: "exif", taken_at: "2026-07-21" }],
+  ])("%s が入る", (_name, overrides) => {
+    insertPhoto(overrides);
+    expect(countPhotos()).toEqual({ n: 1 });
+  });
+
+  it.each([
+    ["state", { state: "deleted" }],
+    ["taken_at_source", { taken_at_source: "gps" }],
+  ])("%s が不正なら拒否", (_name, overrides) => {
+    expect(() => insertPhoto(overrides)).toThrow(/CHECK constraint failed/);
+  });
+});
