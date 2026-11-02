@@ -157,3 +157,21 @@ describe("レビューの指摘: 時間の上限", () => {
     expect((await call("report", { task: "T99" })).content[0].text).toMatch(/no-such-command/);
   });
 });
+
+describe("レビューの指摘: REPORT と QUESTIONS", () => {
+  it("REPORT.md は write_file で書けない", async () => {
+    expect((await call("write_file", { path: "docs/run/REPORT.md", content: "偽" })).isError).toBe(true);
+  });
+
+  it("CAGE_ALLOW に REPORT.md があっても write_file で書けない", async () => {
+    await start({ CAGE_ALLOW: "src/add.mjs,docs/run/REPORT.md" });
+    expect((await call("write_file", { path: "docs/run/REPORT.md", content: "偽" })).isError).toBe(true);
+  });
+
+  it("QUESTIONS.md は書けるが、commit_green には入らない", async () => {
+    await call("write_file", { path: "docs/run/QUESTIONS.md", content: "止まった" });
+    await call("write_file", { path: "src/add.mjs", content: "export const a = 1;" });
+    await call("commit_green", { message: "T99 GREEN: add" });
+    expect(git("diff", "--name-only", "HEAD~1", "HEAD").trim()).toBe("src/add.mjs");
+  });
+});
