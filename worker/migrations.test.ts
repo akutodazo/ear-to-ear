@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -77,6 +77,15 @@ describe("列", () => {
 });
 
 describe("持ってはいけない列", () => {
+  // 0001 だけを見ると、次のマイグレーションで座標の列を足しても通る（レビューの指摘 1）
+  beforeEach(() => {
+    const dir = new URL("../migrations/", import.meta.url);
+    db = new DatabaseSync(":memory:");
+    for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
+      db.exec(readFileSync(new URL(file, dir), "utf8"));
+    }
+  });
+
   it.each([
     ["撮影位置（K6）", /(^|_)(lat|lng|lon|latitude|longitude|gps|distance|dist|coord|coords|location)(_|$)/],
     ["水分（K16）", /(^|_)(moisture|water)(_|$)/],
