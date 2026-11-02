@@ -202,12 +202,10 @@ describe("base64url の形（攻撃役の指摘）", () => {
 
   it.each([
     ["= が付く", (s: string) => `${s}=`],
-    ["+ に置き換わる", (s: string) => s.replaceAll("-", "+")],
-  ])("署名に%sと null", async (_name, change) => {
-    const [payload, signature] = (await issueSessionToken({ ...MEMBER, device: "dev-0003" }, hmac)).split(".");
-    const forged = change(signature);
-    if (forged === signature) return;
-    expect(await verifySessionToken(`${payload}.${forged}`, hmac, NOW)).toBeNull();
+    ["同じバイトの標準 base64（= 付き）", (s: string) => Buffer.from(s, "base64url").toString("base64")],
+  ])("署名が%sだと null", async (_name, change) => {
+    const [payload, signature] = (await issueSessionToken(MEMBER, hmac)).split(".");
+    expect(await verifySessionToken(`${payload}.${change(signature)}`, hmac, NOW)).toBeNull();
   });
 });
 
