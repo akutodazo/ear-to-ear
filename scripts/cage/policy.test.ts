@@ -71,3 +71,41 @@ describe("純粋関数の検査: import", () => {
     expect(checkPurity(code).length).toBeGreaterThan(0);
   });
 });
+
+describe("純粋関数の検査: 外に触る名前", () => {
+  it.each([
+    "process.env.X",
+    'fetch("http://example.invalid")',
+    'eval("1")',
+    'new Function("return 1")',
+    "globalThis.x",
+    "global.x",
+    "window.x",
+    "self.x",
+    'new WebSocket("ws://example.invalid")',
+    'Reflect.get(a, "b")',
+    "import.meta.url",
+    "(() => 0).constructor",
+    'a["constructor"]',
+    "a.__proto__",
+  ])("%s は通らない", (code) => {
+    expect(checkPurity(code).length).toBeGreaterThan(0);
+  });
+
+  it("理由に名前が出る", () => {
+    expect(checkPurity("process.exit(1)").join()).toMatch(/process/);
+  });
+});
+
+describe("純粋関数の検査: 誤検出しない", () => {
+  it.each([
+    "// process や fetch はコメントなら書ける",
+    'const s = "process を文字列で書ける";',
+    "const a = { process: 1, fetch: 2 };",
+    "const b = a.process + a.fetch;",
+    "export function add(a: number, b: number) { return a + b; }",
+    'const t = btoa("a") + new TextEncoder().encode("b").length;',
+  ])("%s は通る", (code) => {
+    expect(checkPurity(code)).toEqual([]);
+  });
+});
