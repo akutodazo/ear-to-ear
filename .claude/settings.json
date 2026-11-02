@@ -11,5 +11,18 @@
       "Bash(git push * main*)",
       "PowerShell(git push * main*)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks/ask-before-edit.mjs\""
+          }
+        ]
+      }
+    ]
   }
 }
