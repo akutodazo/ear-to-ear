@@ -109,3 +109,9 @@ describe("純粋関数の検査: 誤検出しない", () => {
     expect(checkPurity(code)).toEqual([]);
   });
 });
+
+describe("いまの Service", () => {
+  it.each(["src/services/jpeg-segments.ts", "src/services/session-token.ts"])("%s は検査を通る", (path) => {
+    expect(checkPurity(readFileSync(path, "utf8"))).toEqual([]);
+  });
+});
