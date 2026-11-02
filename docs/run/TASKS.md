@@ -29,10 +29,11 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **合格条件**: main で `npm run check` が通る
 
 ## T02 `src/services/candidates.ts`（候補の圃場を近い順に出す）
-- **状態**: 予定
+- **状態**: RED済み（人、11-02）
 - **依存**: T00
 - **変えてよいファイル**: `src/services/candidates.ts` のみ（＋ `docs/run/REPORT.md`、止まったときは `docs/run/QUESTIONS.md`）
-- **テスト（凍結）**: `src/services/candidates.test.ts`。件数: RED のときに人が書く
+- **テスト（凍結）**: `src/services/candidates.test.ts`。**13 件**（`candidateFieldIds` 9・`distanceMeters` 4）。距離が同じなら番号の昇順。地球の半径は 6,371km
+- **関数**: `candidateFieldIds(position: LatLng | null, fields: readonly Field[], max = MAX_CANDIDATES): string[]`、`distanceMeters(from: LatLng, to: LatLng): number`（`LatLng` は candidates.ts の中で定義済み）
 - **RED で人が足すもの**: `src/types/`（`Field` は T00 で済み）、`src/config.ts` の `MAX_CANDIDATES`（T00 で済み）、空の実装 `throw new Error('not implemented')`、このパケット項目の件数
 - **合格条件（テストにする）**:
   - 撮影位置（lat, lng）と圃場一覧から、近い順に圃場の **番号だけ** を返す（距離は返さない。K6）
