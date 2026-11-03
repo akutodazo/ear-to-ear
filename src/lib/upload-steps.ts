@@ -1,14 +1,15 @@
 /**
  * 送る前にブラウザの中で行う処理（docs/spec.md §4 の 3）。
- * - 写真の情報の読み取り（XMP/EXIF の位置・日時）は T01 `photo-meta` で置き換える。それまでは「位置なし・日付不明」
+ * - 写真の情報の読み取り（XMP/EXIF の位置・日時）は T01 の `readPhotoMeta`。写真の先頭だけを読む
  * - 縮小・再エンコード（メタデータを消す）と元ファイルの SHA-256。**元のファイルは決して送らない**（K6）。
  *   ブラウザが付ける APP2（色の情報）なども取り除き、inspectJpeg で APP1〜15 が無いことを確かめてから渡す
  */
-import type { TakenAtSource } from "@/types";
-import type { LatLng } from "@/services/candidates";
-import { MAX_UPLOAD_BYTES } from "@/config";
-import { inspectJpeg } from "@/services/jpeg-segments";
-import { prepareJpeg } from "@/services/prepared-photo";
+import type { TakenAtSource } from "../types";
+import type { LatLng } from "../services/candidates";
+import { MAX_UPLOAD_BYTES } from "../config";
+import { inspectJpeg } from "../services/jpeg-segments";
+import { prepareJpeg } from "../services/prepared-photo";
+import { readPhotoMeta } from "../services/photo-meta";
 import { JPEG_QUALITIES, resizeToJpeg } from "./resize-jpeg";
 import { sha256Hex } from "./sha256";
 
@@ -35,10 +36,17 @@ export class PreparePhotoUnavailableError extends Error {
   }
 }
 
-/** 写真の情報を読む（仮: T01 までは位置なし・日付不明） */
+/**
+ * 写真の情報を読むときに読む先頭のバイト数。EXIF・XMP の APP1 は画像のデータ（SOS）より前にあり、
+ * 1つ 64KB までなので、普通の写真では 512KB あれば足りる見込み（推定。APP の個数に上限は無い）。
+ * 足りないときは位置なし・日付不明になる。12MB の写真を丸ごと読まないため（PR #50 のレビュー #7）
+ */
+export const PHOTO_INFO_HEAD_BYTES = 512 * 1024;
+
+/** 写真の情報（撮影位置・撮影日）を端末の中で読む。位置は端末の外に出さない（K6） */
 export async function readPhotoInfo(file: File): Promise<PhotoInfo> {
-  void file;
-  return { position: null, takenAt: null, takenAtSource: "none" };
+  const head = new Uint8Array(await file.slice(0, PHOTO_INFO_HEAD_BYTES).arrayBuffer());
+  return readPhotoMeta(head);
 }
 
 /** 送る形にする: 元ファイルのハッシュ → 縮小・再エンコード → 取り除く → 確かめる（流れは prepareJpeg） */
