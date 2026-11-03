@@ -129,3 +129,41 @@ export function multipartRequest(
     body: multipartBody(parts, boundary),
   });
 }
+
+/**
+ * content-length の無い（chunked の）本文の要求。chunks は読まれたときに 1 つずつ取り出す。
+ * pulled は読まれたバイト数（上限で読むのをやめたかを確かめる）
+ */
+export function streamRequest(
+  path: string,
+  chunks: Iterable<Uint8Array>,
+  headers: Record<string, string> = {},
+): { req: Request; pulled: () => number } {
+  const iterator = chunks[Symbol.iterator]();
+  let pulled = 0;
+  const body = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      const next = iterator.next();
+      if (next.done) {
+        controller.close();
+        return;
+      }
+      pulled += next.value.byteLength;
+      controller.enqueue(next.value);
+    },
+  });
+  const req = new Request(`https://example.test${path}`, {
+    method: "POST",
+    headers,
+    body,
+    duplex: "half",
+  } as RequestInit);
+  return { req, pulled: () => pulled };
+}
+
+/** totalBytes を chunkBytes ずつ "a" で埋めた本文（作るのは読まれたときだけ） */
+export function* repeatChunks(totalBytes: number, chunkBytes: number): Generator<Uint8Array> {
+  for (let sent = 0; sent < totalBytes; sent += chunkBytes) {
+    yield new Uint8Array(Math.min(chunkBytes, totalBytes - sent)).fill(0x61);
+  }
+}
