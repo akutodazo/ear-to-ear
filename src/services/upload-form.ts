@@ -72,14 +72,34 @@ export interface PhotoRowInput {
 
 /** media type が multipart/form-data か（大文字小文字と ; 以降のパラメータは無視） */
 export function isMultipartContentType(header: string | null): boolean {
-  void header;
-  throw new Error("not implemented");
+  if (header === null) return false;
+  const mediaType = header.split(";")[0].trim().toLowerCase();
+  return mediaType === "multipart/form-data";
 }
 
 /** 欄はちょうど 2 つ: image（バイト列）と meta（文字列）が 1 つずつ。それ以外は bad_form */
 export function checkUploadParts(parts: readonly FormPart[]): UploadPartsResult {
-  void parts;
-  throw new Error("not implemented");
+  const badForm: UploadPartsResult = { ok: false, reason: "bad_form" };
+  if (parts.length !== 2) return badForm;
+  let image: Uint8Array | null = null;
+  let meta: string | null = null;
+  for (const part of parts) {
+    if (part.name === "image" && image === null && typeof part.value !== "string") {
+      image = part.value;
+    } else if (part.name === "meta" && meta === null && typeof part.value === "string") {
+      meta = part.value;
+    } else {
+      return badForm;
+    }
+  }
+  if (image === null || meta === null) return badForm;
+  return { ok: true, image, meta };
+}
+
+/** 末尾の 2 バイトが EOI（FF D9）か */
+function endsWithEoi(bytes: Uint8Array): boolean {
+  const n = bytes.byteLength;
+  return n >= 2 && bytes[n - 2] === 0xff && bytes[n - 1] === 0xd9;
 }
 
 /**
@@ -92,27 +112,47 @@ export function checkUploadImage(
   maxBytes: number,
   maxLongEdge: number,
 ): UploadImageResult {
-  void bytes;
-  void inspect;
-  void maxBytes;
-  void maxLongEdge;
-  throw new Error("not implemented");
+  if (bytes.byteLength > maxBytes) return { ok: false, reason: "too_large" };
+  let info: JpegInfo;
+  try {
+    info = inspect(bytes);
+  } catch {
+    return { ok: false, reason: "not_jpeg" };
+  }
+  if (info.appSegments.length > 0) return { ok: false, reason: "metadata" };
+  if (Math.max(info.width, info.height) > maxLongEdge) return { ok: false, reason: "bad_dimensions" };
+  if (!endsWithEoi(bytes)) return { ok: false, reason: "not_jpeg" };
+  return { ok: true, width: info.width, height: info.height };
 }
 
 /** R2 のキー uploads/<id>.jpg */
 export function r2KeyFor(id: string): string {
-  void id;
-  throw new Error("not implemented");
+  return `uploads/${id}.jpg`;
 }
 
 /** 保存する 1 行。chosenFieldId があっても state は unconfirmed、field_id は null */
 export function photoRow(input: PhotoRowInput): PhotoRow {
-  void input;
-  throw new Error("not implemented");
+  const { id, meta, width, height, bytes, device, nowIso } = input;
+  return {
+    id,
+    field_id: null,
+    chosen_field_id: meta.chosenFieldId,
+    state: "unconfirmed",
+    candidate_field_ids: JSON.stringify(meta.candidateFieldIds),
+    taken_at: meta.takenAt,
+    taken_at_source: meta.takenAtSource,
+    content_hash: meta.contentHash,
+    r2_key: r2KeyFor(id),
+    width,
+    height,
+    bytes,
+    uploader_device: device,
+    uploaded_at: nowIso,
+    updated_at: nowIso,
+  };
 }
 
 /** PHOTO_COLUMNS の並びの値 */
 export function photoRowValues(row: PhotoRow): unknown[] {
-  void row;
-  throw new Error("not implemented");
+  return PHOTO_COLUMNS.map((column) => row[column]);
 }
