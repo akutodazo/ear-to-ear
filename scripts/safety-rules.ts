@@ -74,6 +74,18 @@ export function checkFieldsArea(data: unknown, area: Area): string[] {
   return reasons;
 }
 
+/** 先頭が FF D8 FF（JPEG の始まり）なら true。拡張子によらず中身で見分ける */
+export function looksLikeJpeg(bytes: Uint8Array): boolean {
+  void bytes;
+  throw new Error("not implemented");
+}
+
+/** 文字のファイルとして読む（UTF-8、BOM 付きの UTF-16LE・BE）。BOM が無く NUL を含めば文字ではないとして null */
+export function decodeText(bytes: Uint8Array): string | null {
+  void bytes;
+  throw new Error("not implemented");
+}
+
 /** 秘密の値を入れる名前（docs/spec.md §6・§11 の Secret） */
 const SECRET_NAMES = "(?:MEMBER_PASSPHRASE|ADMIN_PASSPHRASE|SESSION_SECRET|ANTHROPIC_API_KEY)";
 /** `名前=値`（.dev.vars の形）。値は8文字以上で、空白・引用符・<>（見本の印）を含まない */

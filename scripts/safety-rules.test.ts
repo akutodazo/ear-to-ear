@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { FICTIONAL_AREA } from "../src/config";
-import { checkDemoJpeg, checkFieldsArea, checkFileName, findSecretLikeLines } from "./safety-rules";
+import {
+  checkDemoJpeg,
+  checkFieldsArea,
+  checkFileName,
+  decodeText,
+  findSecretLikeLines,
+  looksLikeJpeg,
+} from "./safety-rules";
 
 // このファイル自身も安全検査にかかる。秘密らしい文字列は、そのままの形で書かず、つないで作る
 const ANT = "sk-" + "ant-";
@@ -73,6 +80,55 @@ describe("checkDemoJpeg（デモの写真のメタデータ）", () => {
     };
     expect(checkDemoJpeg(bytes, broken)).not.toBeNull();
   });
+
+  it("中に別の JPEG（FF D8 FF）がつながっていれば止める（最初の画像の見出ししか読まないため）", () => {
+    const joined = new Uint8Array([0xff, 0xd8, 0xff, 0xdb, 0x00, 0xff, 0xd9, 0xff, 0xd8, 0xff, 0xe1]);
+    expect(checkDemoJpeg(joined, () => ({ appSegments: [] }))).not.toBeNull();
+  });
+});
+
+describe("looksLikeJpeg（拡張子によらず中身で JPEG を見分ける）", () => {
+  it("先頭が FF D8 FF なら JPEG", () => {
+    expect(looksLikeJpeg(new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00]))).toBe(true);
+  });
+
+  it("PNG の先頭は JPEG ではない", () => {
+    expect(looksLikeJpeg(new Uint8Array([0x89, 0x50, 0x4e, 0x47]))).toBe(false);
+  });
+
+  it("3バイトに満たなければ JPEG ではない", () => {
+    expect(looksLikeJpeg(new Uint8Array([0xff, 0xd8]))).toBe(false);
+  });
+});
+
+describe("decodeText（文字のファイルを読む。文字でなければ null）", () => {
+  const MARK = "ear-to-ear の確認用の文字";
+
+  it("UTF-8 はそのまま読む", () => {
+    expect(decodeText(new TextEncoder().encode(MARK))).toBe(MARK);
+  });
+
+  it("UTF-8 の BOM は外す", () => {
+    const body = new TextEncoder().encode(MARK);
+    const bytes = new Uint8Array([0xef, 0xbb, 0xbf, ...body]);
+    expect(decodeText(bytes)).toBe(MARK);
+  });
+
+  it("UTF-16LE（BOM FF FE）を読む（Windows PowerShell 5.1 の既定）", () => {
+    const units = Array.from(MARK, (c) => c.charCodeAt(0));
+    const bytes = new Uint8Array([0xff, 0xfe, ...units.flatMap((u) => [u & 0xff, u >> 8])]);
+    expect(decodeText(bytes)).toBe(MARK);
+  });
+
+  it("UTF-16BE（BOM FE FF）を読む", () => {
+    const units = Array.from(MARK, (c) => c.charCodeAt(0));
+    const bytes = new Uint8Array([0xfe, 0xff, ...units.flatMap((u) => [u >> 8, u & 0xff])]);
+    expect(decodeText(bytes)).toBe(MARK);
+  });
+
+  it("BOM が無く NUL を含むものは文字ではない（画像・フォントなど）", () => {
+    expect(decodeText(new Uint8Array([0x89, 0x50, 0x00, 0x47]))).toBeNull();
+  });
 });
 
 describe("checkFieldsArea（圃場の一覧の座標が架空の範囲の中か）", () => {
@@ -93,6 +149,11 @@ describe("checkFieldsArea（圃場の一覧の座標が架空の範囲の中か�
   it("経度が外の圃場も返す", () => {
     const data = [f("A-05", 41.807, 143.2)];
     expect(checkFieldsArea(data, FICTIONAL_AREA)).toHaveLength(1);
+  });
+
+  it("緯度が下限のすぐ外・経度が上限のすぐ外も返す（4つの端をすべて確かめる）", () => {
+    const data = [f("A-08", 41.799, 144.51), f("A-09", 41.807, 144.521)];
+    expect(checkFieldsArea(data, FICTIONAL_AREA)).toHaveLength(2);
   });
 
   it("座標が数でなければ返す（範囲を確かめられないものは通さない）", () => {
@@ -146,8 +207,19 @@ describe("findSecretLikeLines（秘密らしい文字列）", () => {
     [`${SECRET_NAME}=<生成した値>`, "置き換える前の見本"],
     [`${MEMBER_NAME}=`, "値が空"],
     [`${ANT}xxx`, "短すぎるキー"],
+    [`const ${SECRET_NAME} = env.${SECRET_NAME};`, "環境の値を入れ直す"],
+    [`const ${ADMIN_NAME} = c.env.${ADMIN_NAME}`, "Hono の環境から入れ直す"],
+    [`const ${MEMBER_NAME} = process.env.${MEMBER_NAME};`, "Node の環境から入れ直す"],
+    [`if (env.${SECRET_NAME}===undefined) return;`, "比べるだけ"],
+    [`${ADMIN_NAME}=\${${ADMIN_NAME}}`, "シェルの変数で渡す"],
+    [`${SECRET_NAME}=$(node -e "x")`, "コマンドの結果で渡す"],
   ])("%s（%s）は止めない", (text) => {
     expect(findSecretLikeLines(text)).toEqual([]);
+  });
+
+  it("値は8文字から止める（7文字は止めない）", () => {
+    expect(findSecretLikeLines(`${MEMBER_NAME}=abcdefg`)).toEqual([]);
+    expect(findSecretLikeLines(`${MEMBER_NAME}=abcdefgh`)).toEqual([{ line: 1, kind: "secret-assignment" }]);
   });
 
   it("結果に秘密の値そのものを含めない", () => {
