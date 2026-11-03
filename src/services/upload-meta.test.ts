@@ -76,3 +76,37 @@ describe("chosenFieldId", () => {
     expect(reasonOf({ ...VALID, chosenFieldId })).toBe("bad_chosen_field");
   });
 });
+
+describe("JSON の形", () => {
+  it.each([
+    ["空文字", ""],
+    ["JSON でない", "not json"],
+    ["途中で切れた", '{"contentHash":'],
+  ])("%s は not_json", (_name, text) => {
+    expect(parseUploadMeta(text, KNOWN)).toStrictEqual({ ok: false, reason: "not_json" });
+  });
+
+  it.each([
+    ["配列", "[]"],
+    ["null", "null"],
+    ["数", "42"],
+    ["文字列", '"meta"'],
+    ["真偽", "true"],
+  ])("%s は not_object", (_name, text) => {
+    expect(parseUploadMeta(text, KNOWN)).toStrictEqual({ ok: false, reason: "not_object" });
+  });
+
+  it("上限ちょうどの長さは通る", () => {
+    const text = JSON.stringify(VALID).padEnd(UPLOAD_META_MAX_CHARS, " ");
+    expect(parseUploadMeta(text, KNOWN).ok).toBe(true);
+  });
+
+  it("上限を超えると、中身が正しくても too_long", () => {
+    const text = JSON.stringify(VALID).padEnd(UPLOAD_META_MAX_CHARS + 1, " ");
+    expect(parseUploadMeta(text, KNOWN)).toStrictEqual({ ok: false, reason: "too_long" });
+  });
+
+  it("上限は 1024 文字", () => {
+    expect(UPLOAD_META_MAX_CHARS).toBe(1024);
+  });
+});
