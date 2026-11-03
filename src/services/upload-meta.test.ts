@@ -45,3 +45,34 @@ describe("正しい meta", () => {
     expect(result).toStrictEqual({ ok: true, meta: { ...VALID, candidateFieldIds: ids } });
   });
 });
+
+describe("chosenFieldId", () => {
+  it("省略すると null になる", () => {
+    expect(parse(without("chosenFieldId"))).toStrictEqual({
+      ok: true,
+      meta: { ...VALID, chosenFieldId: null },
+    });
+  });
+
+  it("null はそのまま null", () => {
+    expect(parse({ ...VALID, chosenFieldId: null })).toStrictEqual({
+      ok: true,
+      meta: { ...VALID, chosenFieldId: null },
+    });
+  });
+
+  it("候補に無い既知の番号も通る（位置の無い写真で委員が選ぶため）", () => {
+    const body = { ...VALID, candidateFieldIds: [], chosenFieldId: "A-05" };
+    expect(parse(body)).toStrictEqual({ ok: true, meta: body });
+  });
+
+  it.each([
+    ["未知の番号", "A-99"],
+    ["空文字", ""],
+    ["数", 1],
+    ["オブジェクト", { id: "A-01" }],
+    ["配列", ["A-01"]],
+  ])("%s は bad_chosen_field", (_name, chosenFieldId) => {
+    expect(reasonOf({ ...VALID, chosenFieldId })).toBe("bad_chosen_field");
+  });
+});
