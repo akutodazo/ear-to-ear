@@ -52,8 +52,19 @@ export function checkDemoJpeg(bytes: Uint8Array, inspect: InspectJpeg): string |
     // 見られないものは通さない
     return "JPEG として読めない";
   }
-  if (apps.length === 0) return null;
-  return `メタデータ（${apps.map((n) => `APP${n}`).join("・")}）がある`;
+  if (apps.length > 0) return `メタデータ（${apps.map((n) => `APP${n}`).join("・")}）がある`;
+  // inspect は最初の画像の見出ししか読まない。後ろにつないだ JPEG は FF D8 FF で見つける
+  // （画像のデータの中では FF の後ろに D8 は来ない）
+  if (indexOfJpegStart(bytes, 1) !== -1) return "中に別の JPEG がつながっている";
+  return null;
+}
+
+/** FF D8 FF の位置。無ければ -1 */
+function indexOfJpegStart(bytes: Uint8Array, from: number): number {
+  for (let i = from; i + 2 < bytes.length; i++) {
+    if (bytes[i] === 0xff && bytes[i + 1] === 0xd8 && bytes[i + 2] === 0xff) return i;
+  }
+  return -1;
 }
 
 /** 圃場の一覧（fields.json を JSON.parse したもの）の座標が範囲の外なら、圃場ごとに理由を返す */
@@ -76,20 +87,39 @@ export function checkFieldsArea(data: unknown, area: Area): string[] {
 
 /** 先頭が FF D8 FF（JPEG の始まり）なら true。拡張子によらず中身で見分ける */
 export function looksLikeJpeg(bytes: Uint8Array): boolean {
-  void bytes;
-  throw new Error("not implemented");
+  return indexOfJpegStart(bytes, 0) === 0;
 }
 
 /** 文字のファイルとして読む（UTF-8、BOM 付きの UTF-16LE・BE）。BOM が無く NUL を含めば文字ではないとして null */
 export function decodeText(bytes: Uint8Array): string | null {
-  void bytes;
-  throw new Error("not implemented");
+  if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+    return new TextDecoder("utf-8").decode(bytes.subarray(3));
+  }
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) {
+    return new TextDecoder("utf-16le").decode(bytes.subarray(2));
+  }
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) {
+    // UTF-16BE は上下のバイトを入れ替えて LE として読む（"utf-16be" が使えない Node もあるため）
+    const swapped = new Uint8Array(bytes.length - 2);
+    for (let i = 2; i + 1 < bytes.length; i += 2) {
+      swapped[i - 2] = bytes[i + 1];
+      swapped[i - 1] = bytes[i];
+    }
+    return new TextDecoder("utf-16le").decode(swapped);
+  }
+  if (bytes.includes(0)) return null;
+  return new TextDecoder("utf-8").decode(bytes);
 }
 
 /** 秘密の値を入れる名前（docs/spec.md §6・§11 の Secret） */
 const SECRET_NAMES = "(?:MEMBER_PASSPHRASE|ADMIN_PASSPHRASE|SESSION_SECRET|ANTHROPIC_API_KEY)";
-/** `名前=値`（.dev.vars の形）。値は8文字以上で、空白・引用符・<>（見本の印）を含まない */
-const ASSIGN_EQUALS = new RegExp(`${SECRET_NAMES}\\s*=\\s*["']?[^\\s"'<>]{8,}`);
+/**
+ * `名前=値`（.dev.vars の形）。値は8文字以上で、空白・引用符・<>（見本の印）を含まない。
+ * 比べるだけの `===`、環境からの入れ直し（`env.`・`c.env.`・`process.env.`）、シェルの `${…}`・`$(…)` は値ではないので止めない
+ */
+const ASSIGN_EQUALS = new RegExp(
+  `${SECRET_NAMES}\\s*=(?!=)\\s*["']?(?!env\\.|c\\.env\\.|process\\.env\\.|\\$\\{|\\$\\()[^\\s"'<>]{8,}`,
+);
 /** `名前: "値"`（オブジェクトの形）。型の宣言（`名前: string;`）は引用符が無いので当たらない */
 const ASSIGN_COLON = new RegExp(`${SECRET_NAMES}\\s*:\\s*["'][^"']{8,}["']`);
 const ANTHROPIC_KEY = /sk-ant-[A-Za-z0-9_-]{20,}/;
