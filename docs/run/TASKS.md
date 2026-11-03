@@ -204,11 +204,11 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **担当**: 先輩
 
 ## T22 `GET /api/photos?fieldId=`（圃場ごとの確定済みの写真。認証なし）
-- **状態**: RED済み（人、11-04）
+- **状態**: RED済み（人、11-04。攻撃役を 2 回通して凍結）
 - **Issue**: #85
 - **依存**: T21（`PHOTO_LIST_COLUMNS`・`photoFromRow`・`RECENT_LIMIT_MAX`）
 - **変えてよいファイル**: `src/services/photo-query.ts`・`worker/photos.ts`（＋ `docs/run/REPORT-T22.md`、止まったときは `docs/run/QUESTIONS.md`）
-- **テスト（凍結）**: `src/services/photo-query.test.ts`（`parseFieldIdQuery` を足した）・`worker/photos-field.test.ts`・`worker/app.test.ts`（「認証なしの経路は 501」を health に付け替え）・`worker/routes.test.ts`（`GET /api/photos` の付け先）
+- **テスト（凍結）**: `src/services/photo-query.test.ts`（`parseFieldIdQuery` 18 件を足した）・`worker/photos-field.test.ts`（24 件）・`worker/photos-config.test.ts`（1 件を足した）・`worker/app.test.ts`（「認証なしの経路は 501」を health に付け替え）・`worker/routes.test.ts`（`GET /api/photos` の付け先）
 - **人が RED で置いたもの（凍結）**: `photo-query.ts` の `parseFieldIdQuery` の空の実装、`worker/photos.ts` の `getPhotosByField` の空の実装、`routes.ts` の配線
 - **関数**: `parseFieldIdQuery(raw: string | null, knownFieldIds: ReadonlySet<string>): string | null`（一覧にある番号ならそのまま、それ以外は null。例外を出さない）、`getPhotosByField: Handler`
 - **合格条件**:
@@ -219,6 +219,11 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
   - 件数の上限は `RECENT_LIMIT_MAX`（200）。`limit` のクエリは読まない
   - 本文は `results.map(photoFromRow)` を `json(200, …)`。候補の列が壊れた行は 500（握らない）
   - 認証なし（Cookie を読まない）。`console`・`Date`・`crypto`・R2・`newId`・`nowMs` を使わない。`cache-control` を触らない（共通ヘッダの `no-store`）
+- **RED の確かめ（11-04）**: 新しいテストのうち空の実装で失敗するのは 41 件。通るのは、空の実装でも成り立つ 500 の 2 件・405・人が置いた配線と付け替えた health の 2 件。仮の実装で `src/services` と `worker` の 951 件がすべて通り、檻の純粋関数の検査も通ることを確かめてから空に戻した
+- **攻撃役（Sonnet、檻の中、仕様・決まりのファイルを消した複製で）**:
+  - 1 回目（12 手、$0.16）: 114 件を全部通す手抜きが書けた。使った手抜きは 2 つ（圃場の一覧を A-01〜A-12 に決め打ち、上限の 200 を直書き）。3 件を足した（一覧は `deps.knownFieldIds` に従う、上限は config に従う、委員の番号と別の圃場に確定した行）
+  - 2 回目（14 手、$0.16）: 118 件を通す手抜きは書けず、正しい実装が最小になった
+  - 入れなかった指摘: 撮影日の形の違い（`2026-7-5`・時刻付き）は uploads が `YYYY-MM-DD` だけを書く（T04・T20）ので起きない。`taken_at_source` との食い違いも同じ。上限ちょうど・1 少ない場合は LIMIT の bind で、201 枚と config の差し替えで十分。`?fieldId=A-01&fieldId=`・URL エンコードは `searchParams` の仕様で、最初の値のテストで足りる。撮影日が null 同士の id の降順は、撮影日ありの同じ並びのテストと同じ式なので足さない
 - **決めたこと（先輩、11-04）**: 一覧に無い番号は 404 ではなく 400（spec §6 の誤りの欄が 400 だけ）。上限は新着と同じ 200（ページ送りは作らない）
 - **書き方の注意（`scripts/cage/policy.mjs`）**: import は Service が `@/config`・`@/types`、worker が `@/services/...`・`./...`。`Response.json()` を使わず `http.ts` の `json()`・`errorResponse()`
 - **参照**: `docs/spec.md` §6、`docs/privacy.md`
