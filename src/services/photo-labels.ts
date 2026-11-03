@@ -29,10 +29,13 @@ export function takenAtLabel(takenAt: string | null): string {
 export function assignmentLabel(
   photo: Pick<UploadedPhoto, "state" | "fieldId" | "chosenFieldId" | "candidateFieldIds">,
 ): string {
-  if (photo.state === "confirmed" && photo.fieldId !== null) return `確定 ${photo.fieldId}`;
-  if (photo.chosenFieldId !== null) return `未確定（選択 ${photo.chosenFieldId}）`;
+  if (photo.state === "confirmed") {
+    // 確定なのに番号が無いのはデータの矛盾。隠さずに目立たせる
+    return photo.fieldId === null ? "確定（番号なし）" : `確定 ${photo.fieldId}`;
+  }
+  // 委員が選んだ番号（chosenFieldId）の出し方は決めていないので出さない（spec §7）
   const nearest = photo.candidateFieldIds[0];
-  return nearest === undefined ? "未確定（候補なし）" : `未確定（推定 ${nearest}）`;
+  return nearest === undefined ? "未確定" : `未確定（推定 ${nearest}）`;
 }
 
 const OUTCOME_LABELS: Record<UploadOutcome["kind"], string> = {

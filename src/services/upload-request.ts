@@ -14,6 +14,12 @@ export interface UploadMetaInput {
 }
 
 export function buildUploadMeta(input: UploadMetaInput): UploadMeta {
-  void input;
-  throw new Error("not implemented");
+  // 項目を1つずつ書き出す（入力をまるごと広げると、撮影位置などが紛れたときに送ってしまう）
+  return {
+    contentHash: input.contentHash,
+    takenAt: input.takenAt,
+    takenAtSource: input.takenAtSource,
+    candidateFieldIds: input.candidateFieldIds.map(String),
+    chosenFieldId: input.chosenFieldId,
+  };
 }
