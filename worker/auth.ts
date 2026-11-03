@@ -14,13 +14,16 @@ export type AuthDecision =
   | { ok: true; session: SessionClaims | null }
   | { ok: false; status: 401 | 403 };
 
+/** deps.nowMs はミリ秒。秒に直すのはここだけ（Cookie の exp は秒） */
+export function nowSec(deps: Deps): number {
+  return Math.floor(deps.nowMs() / 1000);
+}
+
 /** Cookie を読んで verifySessionToken で確かめる。hmac の例外は握らない */
 export async function authenticate(request: Request, deps: Deps): Promise<AuthResult> {
   const token = readCookie(request.headers.get("cookie"), SESSION_COOKIE_NAME);
   if (token === null) return { kind: "anonymous" };
-  // deps.nowMs はミリ秒。秒に直すのはここだけ
-  const nowSec = Math.floor(deps.nowMs() / 1000);
-  const claims = await verifySessionToken(token, deps.hmac, nowSec);
+  const claims = await verifySessionToken(token, deps.hmac, nowSec(deps));
   return claims === null ? { kind: "invalid" } : { kind: "ok", claims };
 }
 
