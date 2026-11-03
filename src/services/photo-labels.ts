@@ -30,8 +30,8 @@ export function candidateSummary(
   };
 }
 
-/** 送り終わった後のまとめ（例 3枚送りました。1枚は送れませんでした）。どちらも 0 なら null */
-export function sendSummaryLabel(counts: { sent: number; failed: number }): string | null {
+/** 送り終わった後のまとめ（例 3枚送りました。1枚は同じ写真がもう送られていました。1枚は送れませんでした）。全部 0 なら null */
+export function sendSummaryLabel(counts: { sent: number; duplicate: number; failed: number }): string | null {
   const parts: string[] = [];
   if (counts.sent > 0) parts.push(`${counts.sent}枚送りました`);
   if (counts.failed > 0) parts.push(`${counts.failed}枚は送れませんでした`);

@@ -227,6 +227,7 @@ export function useUpload(repository?: IPhotoRepository) {
   const summary = finished
     ? sendSummaryLabel({
         sent: items.filter((i) => i.status === "sent").length,
+        duplicate: 0,
         failed: items.filter((i) => i.status === "failed").length,
       })
     : null;

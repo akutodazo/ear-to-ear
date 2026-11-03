@@ -81,7 +81,7 @@ describe("assignmentLabel（新着の番号）", () => {
 describe("uploadOutcomeLabel（送った結果）", () => {
   it.each<[UploadOutcome, string]>([
     [{ kind: "created", id: "x" }, "送りました"],
-    [{ kind: "duplicate", id: "x" }, "同じ写真はもう送られています"],
+    [{ kind: "duplicate", id: "x" }, "送り済み（同じ写真）"],
     [{ kind: "unauthorized" }, "送るには合言葉が要ります"],
     [{ kind: "too-large" }, "写真が大きすぎて送れませんでした"],
     [{ kind: "rejected" }, "この写真は送れませんでした"],
@@ -114,15 +114,19 @@ describe("candidateSummary（候補の出し方。数字は一番近い候補だ
 
 describe("sendSummaryLabel（送り終わった後のまとめ）", () => {
   it.each([
-    [{ sent: 3, failed: 0 }, "3枚送りました"],
-    [{ sent: 3, failed: 1 }, "3枚送りました。1枚は送れませんでした"],
-    [{ sent: 0, failed: 2 }, "2枚は送れませんでした"],
+    [{ sent: 3, duplicate: 0, failed: 0 }, "3枚送りました"],
+    [{ sent: 3, duplicate: 0, failed: 1 }, "3枚送りました。1枚は送れませんでした"],
+    [{ sent: 0, duplicate: 0, failed: 2 }, "2枚は送れませんでした"],
+    // 同じ写真の知らせはまとめに入れる（11-03 本人: カードの下では位置が悪い）
+    [{ sent: 1, duplicate: 1, failed: 0 }, "1枚送りました。1枚は同じ写真がもう送られていました"],
+    [{ sent: 0, duplicate: 2, failed: 0 }, "2枚は同じ写真がもう送られていました"],
+    [{ sent: 2, duplicate: 1, failed: 1 }, "2枚送りました。1枚は同じ写真がもう送られていました。1枚は送れませんでした"],
   ])("%o は「%s」", (counts, label) => {
     expect(sendSummaryLabel(counts)).toBe(label);
   });
 
   it("送った写真も送れなかった写真も無ければ null（まとめを出さない）", () => {
-    expect(sendSummaryLabel({ sent: 0, failed: 0 })).toBeNull();
+    expect(sendSummaryLabel({ sent: 0, duplicate: 0, failed: 0 })).toBeNull();
   });
 });
 
