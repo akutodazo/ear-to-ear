@@ -1,6 +1,6 @@
 # MCP の檻（無人の Claude に組み込みの道具を渡さない）
 
-Issue: akutodazo/ear-to-ear#14。**状態: 提案（11-02）。本人の決定待ち**（#12 の「MCP の追加はしない」とハーネス v0.4 の変更にあたる）。
+Issue: akutodazo/ear-to-ear#14。**状態: 採用（11-03 本人決定）。Service だけのパケットは檻、画面・`src/lib`・ブラウザの API を使うものは `/goal`**（AGENTS.md §5、ハーネス v0.5）。`report` が書くファイルを `docs/run/REPORT-Txx.md` にするのは未対応（それまでは人が名前を変える）。
 
 ## 何をするか
 無人の Claude から Bash・Edit・Read を外し、`scripts/cage/server.mjs` の5つの道具だけを渡す。deny で止めるのではなく、道具が無いので起きない。
