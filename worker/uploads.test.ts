@@ -525,3 +525,29 @@ describe("POST /api/uploads 保存の失敗", () => {
     expect(logged).toContain(`uploads/${ID}.jpg`);
   });
 });
+
+describe("POST /api/uploads 隠したメタデータ（PR #64 のレビュー #1）", () => {
+  const seg = (marker: number, payload: number[]) => [0xff, marker, (payload.length + 2) >> 8, (payload.length + 2) & 0xff, ...payload];
+  const APP1 = seg(0xe1, [0x45, 0x78, 0x69, 0x66, 0x00]);
+  const SOF = seg(0xc0, [8, 1200 >> 8, 1200 & 0xff, 1600 >> 8, 1600 & 0xff, 1, 1, 0x11, 0]);
+  const SOS = seg(0xda, [1, 1, 0x00, 0x00, 0x3f, 0x00]);
+
+  it("2 枚目のスキャンの前に APP1 を隠した画像は 422 metadata で、R2 にも D1 にも残らない", async () => {
+    const { deps, bucket, testDb } = setup();
+    const image = Uint8Array.from([0xff, 0xd8, ...SOF, ...SOS, 0x12, 0x34, ...APP1, ...SOS, 0x56, 0xff, 0xd9]);
+    const response = await upload(deps, { image });
+    expect(response.status).toBe(422);
+    expect(await response.json()).toStrictEqual({ error: "unprocessable", reason: "metadata" });
+    expect(bucket.calls).toEqual([]);
+    expect(rows(testDb)).toEqual([]);
+  });
+
+  it("EOI の後ろに APP1 を足して FF D9 で終えた画像は 422 not_jpeg", async () => {
+    const { deps, bucket } = setup();
+    const image = Uint8Array.from([0xff, 0xd8, ...SOF, ...SOS, 0x12, 0x34, 0xff, 0xd9, ...APP1, 0xff, 0xd9]);
+    const response = await upload(deps, { image });
+    expect(response.status).toBe(422);
+    expect(await response.json()).toStrictEqual({ error: "unprocessable", reason: "not_jpeg" });
+    expect(bucket.calls).toEqual([]);
+  });
+});
