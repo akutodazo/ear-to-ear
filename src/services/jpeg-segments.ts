@@ -109,8 +109,48 @@ export interface JpegScan {
   endsAtEoi: boolean;
 }
 
-/** 最初のスキャンの後ろまでセグメントをたどる。例外は出さない */
+const EOI = 0xd9;
+
+/**
+ * 最初のスキャンの後ろまでセグメントをたどる。例外は出さない。
+ * セグメントの中身は長さで飛ばす（DQT・DHT の中の FF E1 を APP と見誤らない）。
+ * スキャンの中の FF は FF 00（詰め物）・FF D0〜D7（RST）・FF FF（詰め物）だけなので、それ以外の FF が次のマーカー。
+ * FF は indexOf で探す（3MB を 1 バイトずつ JS で回さない）
+ */
 export function scanJpegMarkers(bytes: Uint8Array): JpegScan {
-  void bytes;
-  throw new Error("not implemented");
+  const appSegments: number[] = [];
+  const broken: JpegScan = { appSegments, endsAtEoi: false };
+  const n = bytes.length;
+  if (n < 2 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return broken;
+  let offset = 2;
+  while (offset < n) {
+    if (bytes[offset] !== 0xff) return broken;
+    while (offset < n && bytes[offset] === 0xff) offset++;
+    if (offset >= n) return broken;
+    const marker = bytes[offset];
+    if (marker === EOI) return { appSegments, endsAtEoi: offset + 1 === n };
+    if (isStandaloneMarker(marker)) return broken;
+    const start = offset + 1;
+    if (start + 2 > n) return broken;
+    const length = (bytes[start] << 8) | bytes[start + 1];
+    if (length < 2 || start + length > n) return broken;
+    if (marker > APP0 && marker <= APP15) appSegments.push(marker - APP0);
+    offset = start + length;
+    if (marker !== SOS) continue;
+    // スキャンの中身: 詰め物と RST を飛ばして、次のマーカーの FF まで進む
+    for (;;) {
+      const ff = bytes.indexOf(0xff, offset);
+      if (ff === -1 || ff + 1 >= n) return broken;
+      const next = bytes[ff + 1];
+      if (next === 0x00 || (next >= 0xd0 && next <= 0xd7)) {
+        offset = ff + 2;
+      } else if (next === 0xff) {
+        offset = ff + 1;
+      } else {
+        offset = ff;
+        break;
+      }
+    }
+  }
+  return broken;
 }
