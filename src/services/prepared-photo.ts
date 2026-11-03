@@ -17,3 +17,13 @@ export function checkPreparedJpeg(bytes: Uint8Array, inspect: InspectJpeg, maxBy
   if (apps.length > 0) return `メタデータ（${apps.map((n) => `APP${n}`).join("・")}）が残っている`;
   return null;
 }
+
+/**
+ * JPEG から APP1〜APP15 のセグメントを取り除く（SOS より前だけ。APP0 の JFIF は残す）。
+ * ブラウザの再エンコードは色の情報（APP2、ICC プロファイル）を付けるが、公開側には APP1〜15 を残さない決まり（AGENTS.md §1-4）。
+ * JPEG として読めなければ null
+ */
+export function stripAppSegments(bytes: Uint8Array): Uint8Array | null {
+  void bytes;
+  throw new Error("not implemented");
+}
