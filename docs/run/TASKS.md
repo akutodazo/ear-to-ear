@@ -29,10 +29,13 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **合格条件**: main で `npm run check` が通る
 
 ## T02 `src/services/candidates.ts`（候補の圃場を近い順に出す）
-- **状態**: 予定
+- **状態**: 取り込み済み（11-03、PR #38 のマージで。人の確認と別のセッションのレビューは済み）
+- **次への申し送り（PR #38 のレビュー）**: `LatLng` は `candidates.ts` の中にある。T01 で撮影位置の型が要るときに `src/types/` へ移すかを決める（共有ファイル）。NaN の座標は T01 で null にする前提なので、T01 の RED に「0/0（NaN）は null」のテストがあることを確かめる
+- **運転の記録（試験1、11-03）**: ブランチ `run/1103-a`、START `eed9b9f` → GREEN `ecb262b` → REPORT `7583d66`。モデル Opus・自動モード・`/goal`。C1〜C5 はすべて合格（人も HEAD で C1・C3・C4・C5 を回し直して合格）。ずれ: C2〜C4 を1回のメッセージで続けて出した、C4 に `; echo` をつないだ（REPORT に自己申告あり。人が単独で回し直して終了コード 0 を確認）
 - **依存**: T00
 - **変えてよいファイル**: `src/services/candidates.ts` のみ（＋ `docs/run/REPORT.md`、止まったときは `docs/run/QUESTIONS.md`）
-- **テスト（凍結）**: `src/services/candidates.test.ts`。件数: RED のときに人が書く
+- **テスト（凍結）**: `src/services/candidates.test.ts`。**13 件**（`candidateFieldIds` 9・`distanceMeters` 4）。距離が同じなら番号の昇順。地球の半径は 6,371km
+- **関数**: `candidateFieldIds(position: LatLng | null, fields: readonly Field[], max = MAX_CANDIDATES): string[]`、`distanceMeters(from: LatLng, to: LatLng): number`（`LatLng` は candidates.ts の中で定義済み）
 - **RED で人が足すもの**: `src/types/`（`Field` は T00 で済み）、`src/config.ts` の `MAX_CANDIDATES`（T00 で済み）、空の実装 `throw new Error('not implemented')`、このパケット項目の件数
 - **合格条件（テストにする）**:
   - 撮影位置（lat, lng）と圃場一覧から、近い順に圃場の **番号だけ** を返す（距離は返さない。K6）
