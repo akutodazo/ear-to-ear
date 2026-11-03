@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { FICTIONAL_AREA, FIELD_ID_PATTERN } from "../config";
-import { distanceMeters } from "../services/candidates";
-import type { Field } from "../types";
+import { FICTIONAL_AREA, FIELD_ID_PATTERN } from "@/config";
+import { distanceMeters } from "@/services/candidates";
+import type { Field } from "@/types";
 import data from "./fields.json";
 
 // 架空の 12 圃場（T09、P15）。4列×3行を北西から横に番号を振る（11-03 本人決定）
