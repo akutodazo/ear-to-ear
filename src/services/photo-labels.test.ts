@@ -60,14 +60,18 @@ describe("assignmentLabel（新着の番号）", () => {
     );
   });
 
-  it("未確定で委員が番号を選んでいれば、候補より選んだ番号を出す", () => {
+  it("委員が選んだ番号は出さない（spec §7 の表示だけ。選んだ番号の出し方は決めていない）", () => {
     expect(
       assignmentLabel({ ...base, state: "unconfirmed", chosenFieldId: "A-05", candidateFieldIds: ["A-03"] }),
-    ).toBe("未確定（選択 A-05）");
+    ).toBe("未確定（推定 A-03）");
   });
 
-  it("未確定で候補も選択も無ければ「候補なし」", () => {
-    expect(assignmentLabel({ ...base, state: "unconfirmed" })).toBe("未確定（候補なし）");
+  it("未確定で候補が無ければ「未確定」だけ", () => {
+    expect(assignmentLabel({ ...base, state: "unconfirmed", chosenFieldId: "A-05" })).toBe("未確定");
+  });
+
+  it("確定なのに番号が無い記録は、矛盾として目立たせる", () => {
+    expect(assignmentLabel({ ...base, state: "confirmed", candidateFieldIds: ["A-03"] })).toBe("確定（番号なし）");
   });
 });
 
