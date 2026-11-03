@@ -4,7 +4,7 @@
  */
 import { MAX_UPLOAD_BYTES } from "../config";
 import type { UploadMeta } from "@/types";
-import type { JpegInfo } from "./jpeg-segments";
+import { scanJpegMarkers, type JpegInfo } from "./jpeg-segments";
 
 /** 本文の上限。画像の上限に、multipart の境界・見出しと meta（1024 文字の多バイト分）のゆとりを足す */
 export const UPLOAD_BODY_MAX_BYTES = MAX_UPLOAD_BYTES + 16 * 1024;
@@ -96,15 +96,10 @@ export function checkUploadParts(parts: readonly FormPart[]): UploadPartsResult 
   return { ok: true, image, meta };
 }
 
-/** 末尾の 2 バイトが EOI（FF D9）か */
-function endsWithEoi(bytes: Uint8Array): boolean {
-  const n = bytes.byteLength;
-  return n >= 2 && bytes[n - 2] === 0xff && bytes[n - 1] === 0xd9;
-}
-
 /**
  * 画像の検査。この順で最初の 1 つ: 大きすぎ → JPEG でない（inspect が投げる。種類は問わない）→ APP1〜15 →
- * 長辺が上限超 → 末尾が FF D9 でない（JPEG でない）
+ * 長辺が上限超 → 最初の EOI でちょうど終わらない（JPEG でない）。
+ * APP1〜15 は最初のスキャンの後ろ（2 枚目のスキャンの前）も見る。わざと隠したメタデータも通さない（PR #64 のレビュー #1）
  */
 export function checkUploadImage(
   bytes: Uint8Array,
@@ -119,9 +114,10 @@ export function checkUploadImage(
   } catch {
     return { ok: false, reason: "not_jpeg" };
   }
-  if (info.appSegments.length > 0) return { ok: false, reason: "metadata" };
+  const scan = scanJpegMarkers(bytes);
+  if (info.appSegments.length > 0 || scan.appSegments.length > 0) return { ok: false, reason: "metadata" };
   if (Math.max(info.width, info.height) > maxLongEdge) return { ok: false, reason: "bad_dimensions" };
-  if (!endsWithEoi(bytes)) return { ok: false, reason: "not_jpeg" };
+  if (!scan.endsAtEoi) return { ok: false, reason: "not_jpeg" };
   return { ok: true, width: info.width, height: info.height };
 }
 
