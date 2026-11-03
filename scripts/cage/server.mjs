@@ -1,15 +1,18 @@
 // 無人の Claude に渡す道具（#14）。依存なし、stdio の改行区切り JSON-RPC。使い方は docs/dev/cage.md
 import { execFileSync } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir, userInfo } from "node:os";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
 import { checkCommitMessage, checkPurity, checkWrite, cleanPath } from "./policy.mjs";
 
 const ROOT = process.env.CAGE_ROOT;
-const REPORT = "docs/run/REPORT.md";
+// REPORT はパケットごと（docs/run/REPORT-Txx.md、PR #56）
+const reportPath = (task) => `docs/run/REPORT-${task}.md`;
+const IS_REPORT = /^docs\/run\/REPORT(-T\d+)?\.md$/;
 const QUESTIONS = "docs/run/QUESTIONS.md";
-// REPORT は report だけが書く。QUESTIONS は止まるときに書き、コミットはしない（AGENTS.md §5）
-const COMMITTABLE = process.env.CAGE_ALLOW.split(",").filter((p) => p !== REPORT && p !== QUESTIONS);
+// REPORT は report だけが書く（どの番号も）。QUESTIONS は止まるときに書き、コミットはしない（AGENTS.md §5）
+const COMMITTABLE = process.env.CAGE_ALLOW.split(",").filter((p) => !IS_REPORT.test(cleanPath(p)) && p !== QUESTIONS);
 const ALLOW = new Set([...COMMITTABLE, QUESTIONS]);
 const LOG = process.env.CAGE_LOG;
 const TEST_ARGS = JSON.parse(process.env.CAGE_TEST ?? '["node_modules/vitest/vitest.mjs","run"]');
@@ -22,6 +25,23 @@ const CHILD_ENV = Object.fromEntries(
     .filter((k) => process.env[k] !== undefined)
     .map((k) => [k, process.env[k]]),
 );
+
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** パスを / と \ のどちらで書いても、大文字小文字が違っても当たる */
+const pathPattern = (path) => new RegExp(path.split(/[\\/]/).map(escapeRegExp).join("[\\\\/]"), "gi");
+const USER = userInfo().username;
+
+/**
+ * REPORT と返事から手元の情報を伏せる（PR #47 のレビュー #5）。色の制御文字も消す。
+ * 作業フォルダ → ホーム → ユーザー名の順（長いものから）。ユーザー名は折り返しで切れたパスの残りも拾う
+ */
+function mask(text) {
+  let out = text.replace(/\x1b\[[0-9;]*[A-Za-z]/g, "");
+  out = out.replace(pathPattern(ROOT), "<作業フォルダ>");
+  out = out.replace(pathPattern(homedir()), "<ホーム>");
+  if (USER.length >= 3) out = out.replace(new RegExp(escapeRegExp(USER), "gi"), "<ユーザー>");
+  return out;
+}
 
 const git = (...args) => execFileSync("git", args, { cwd: ROOT, encoding: "utf8" });
 const tracked = () => new Set(git("ls-files", "-z").split("\0").filter(Boolean));
@@ -76,16 +96,19 @@ const tools = {
     },
   },
   report: {
-    description: "検査を1回ずつ実行して REPORT.md に残し、コミットする",
+    description: "検査を1回ずつ実行して REPORT-Txx.md に残し、コミットする（手元のパスは伏せる）",
     schema: { task: { type: "string" } },
     run: ({ task }) => {
       if (!/^T\d+$/.test(task)) throw new Error("拒否: task は Txx の形");
       if (CHECKS.length === 0) throw new Error("拒否: 検査が0件（CAGE_CHECKS）");
-      const body = CHECKS.map((c) => `## ${c.name}\n\`\`\`\n${runChild(c.argv[0], c.argv.slice(1))}\n\`\`\`\n`).join("\n");
-      mkdirSync(join(ROOT, dirname(REPORT)), { recursive: true });
-      writeFileSync(join(ROOT, REPORT), `# ${task} REPORT（検査済み・人の確認待ち）\n\n${body}`);
-      git("add", "--", REPORT);
-      git("commit", "-m", `${task} REPORT`, "--", REPORT);
+      const body = mask(
+        CHECKS.map((c) => `## ${c.name}\n\`\`\`\n${runChild(c.argv[0], c.argv.slice(1))}\n\`\`\`\n`).join("\n"),
+      );
+      const report = reportPath(task);
+      mkdirSync(join(ROOT, dirname(report)), { recursive: true });
+      writeFileSync(join(ROOT, report), `# ${task} REPORT（検査済み・人の確認待ち）\n\n${body}`);
+      git("add", "--", report);
+      git("commit", "-m", `${task} REPORT`, "--", report);
       return body;
     },
   },
