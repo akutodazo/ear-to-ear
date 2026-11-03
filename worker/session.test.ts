@@ -328,6 +328,31 @@ describe("見えない動き（攻撃役の指摘）", () => {
     expect(rows(testDb)).toEqual([expect.objectContaining({ count: 3 })]);
   });
 
+  it("同時に 10 本の失敗が来ても、照合は 5 回まで（照合の前に枠を取る。2 回目のレビュー #1）", async () => {
+    const { deps, testDb, matchPassphrase } = setup();
+    const responses = await Promise.all(Array.from({ length: 10 }, () => login(deps, "wrong")));
+    const statuses = responses.map((r) => r.status).sort();
+    expect(statuses).toEqual([401, 401, 401, 401, 401, 429, 429, 429, 429, 429]);
+    expect(matchPassphrase).toHaveBeenCalledTimes(5);
+    expect(rows(testDb)).toEqual([expect.objectContaining({ count: 5 })]);
+  });
+
+  it("同時に来た正しい合言葉も枠を使うが、成功すれば数に残らない", async () => {
+    const { deps, testDb, matchPassphrase } = setup();
+    for (let i = 0; i < 3; i++) await login(deps, "wrong");
+    const responses = await Promise.all([
+      login(deps, MEMBER_INPUT),
+      login(deps, MEMBER_INPUT),
+      login(deps, "wrong"),
+      login(deps, "wrong"),
+    ]);
+    // 枠は残り 2。照合は 2 回までで、残りは 429
+    expect(matchPassphrase).toHaveBeenCalledTimes(3 + 2);
+    expect(responses.filter((r) => r.status === 429)).toHaveLength(2);
+    const failed = responses.filter((r) => r.status === 401).length;
+    expect(rows(testDb)).toEqual([expect.objectContaining({ count: 3 + failed })]);
+  });
+
   it("415 は 413 より先（text/plain で content-length が大きくても 415）", async () => {
     const { deps } = setup();
     const response = await handleRequest(
