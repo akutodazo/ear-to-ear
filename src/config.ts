@@ -27,6 +27,12 @@ export const STATUS_NOTE_MAX_CHARS = 200;
 export const FIELD_ID_PATTERN = /^[A-Z]-\d{2}$/;
 
 /**
+ * 架空の圃場を置く範囲（P15。北海道の沖合の海の上、約 1.7km 四方）。端を含む。
+ * 実在の農地と結び付けないため、圃場の一覧（src/data/fields.json）の座標はすべてこの中に置く（K10）。
+ */
+export const FICTIONAL_AREA = { latMin: 41.8, latMax: 41.815, lngMin: 144.5, lngMax: 144.52 } as const;
+
+/**
  * 判断の理由の選択肢（L1）。
  * 農協の判定の2つは必ず入れる（K16）。それ以外は父の答え（P21）が来るまでの仮の選択肢。
  */
