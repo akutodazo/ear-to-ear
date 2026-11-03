@@ -13,7 +13,7 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 | 4 | T17 安全検査の配線（`scripts/check-*`） | 本人（対話） | — |
 | 5 | T05 `session-token.ts` | 先輩 | — |
 | 6 | T01 `photo-meta.ts` | 本人 | 可 |
-| 7 | T04 `upload-meta.ts` | 先輩 | — |
+| 7 | T04 `upload-meta.ts` | 先輩 | 先輩の指示で無人（11-03） |
 | 8 | T11 `0001_init.sql` | 先輩（対話） | — |
 | 9 | T08 保存の失敗 | 先輩 | — |
 | 10 | T09・T10 架空圃場・合成写真 | 本人（対話） | — |
@@ -44,3 +44,24 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
   - 画面用の距離は別の関数で出す（この関数の戻り値には含めない）
   - 距離はハバーサイン（地球の半径は定数として `src/config.ts` に置かず、Service 内の定数でよい）
 - **参照**: docs/spec.md「流れ（L0）」3、「データ契約」`Field`・`UploadedPhoto.candidateFieldIds`
+
+## T04 `src/services/upload-meta.ts`（`POST /api/uploads` の meta の検証）
+- **状態**: RED済み（人）
+- **依存**: T02（取り込み済み）
+- **変えてよいファイル**: `src/services/upload-meta.ts` のみ（＋ `docs/run/REPORT.md`、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結）**: `src/services/upload-meta.test.ts`
+- **RED で人が足したもの**: `src/types/index.ts` の `UploadMeta`、`src/services/upload-meta.ts` の型・`UPLOAD_META_MAX_CHARS`・空の実装
+- **関数**: `parseUploadMeta(text: string, knownFieldIds: ReadonlySet<string>): UploadMetaResult`。例外を出さない
+- **理由のコード**（テストで凍結）: `too_long` `not_json` `not_object` `unknown_key` `missing_key` `bad_content_hash` `bad_taken_at` `bad_taken_at_source` `taken_at_mismatch` `bad_candidates` `too_many_candidates` `duplicate_candidate` `unknown_field` `bad_chosen_field`。検査はこの順で、最初に当たった理由を返す
+- **合格条件**:
+  - JSON.parse の前に長さを見る
+  - 最上位のキーは5つの許可リストだけ（K6）。`in` を使わず `Object.keys` で見る（`"constructor" in obj` は true になる）
+  - `contentHash` は16進64桁。大文字は受け付け、小文字に直して返す（11-03 先輩決定）
+  - `takenAt` は null か実在する `YYYY-MM-DD`。実在は `Date.UTC` の往復で確かめる（`new Date("2026-02-30")` は環境で揺れる）
+  - `none` なら `takenAt` は null、`xmp`・`exif` なら日付（11-03 先輩決定）
+  - 候補は文字列の配列で、空も可。`MAX_CANDIDATES` 以下、重複なし、全部既知。順は入力のまま
+  - `chosenFieldId` は省略か null なら null。文字列なら既知の番号。候補に無くてもよい（11-03 先輩決定）
+  - 返す `meta` は5つのキーだけの新しいオブジェクト。入力を spread しない
+- **書き方の注意（`scripts/cage/policy.mjs`）**: `Object.prototype` は書けない。`Object.hasOwn` か `Object.keys` を使う。import は `../config` と型だけ（`@/config` は vitest で解決できない）
+- **参照**: `docs/spec.md` §5・§6・§9、K6・K7
+- **担当**: 先輩。AGENTS.md §5 は無人運転を本人のパケットに限っているが、先輩の指示で MCP の檻の中で無人運転する（11-03）
