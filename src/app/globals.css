@@ -328,3 +328,9 @@ a:focus-visible {
   background: var(--brand-soft);
   color: var(--brand);
 }
+
+/* 待っている間（Issue #69）。押せないが、文字は薄くせずに読めるように */
+.button[aria-busy="true"]:disabled {
+  opacity: 1;
+  cursor: progress;
+}

@@ -11,9 +11,12 @@ export function PassphraseForm({
   message,
   lead = "送るには合言葉が要ります。入れると、そのまま送り直します。",
   submitLabel = "入って送る",
+  busy = false,
 }: {
   onSubmit: (passphrase: string) => void;
   message: string | null;
+  /** 合言葉を確かめている間。押せなくして「確かめています…」（Issue #69） */
+  busy?: boolean;
   lead?: string;
   submitLabel?: string;
 }) {
@@ -32,7 +35,7 @@ export function PassphraseForm({
       className="panel stack"
       onSubmit={(e) => {
         e.preventDefault();
-        onSubmit(value);
+        if (!busy) onSubmit(value);
       }}
     >
       <p>{lead}</p>
@@ -43,13 +46,14 @@ export function PassphraseForm({
           className="input"
           type="password"
           autoComplete="current-password"
+          disabled={busy}
           value={value}
           onChange={(e) => setValue(e.target.value)}
         />
       </label>
-      {message && <p className="note note-alert">{message}</p>}
-      <button type="submit" className="button button-primary">
-        {submitLabel}
+      {message && !busy && <p className="note note-alert">{message}</p>}
+      <button type="submit" className="button button-primary" disabled={busy} aria-busy={busy}>
+        {busy ? "確かめています…" : submitLabel}
       </button>
     </form>
   );

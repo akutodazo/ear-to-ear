@@ -61,7 +61,15 @@ export function PhotoCard({
             </label>
           </>
         )}
-        {item.message && <p className={item.status === "sent" ? "note note-ok" : "note note-alert"}>{item.message}</p>}
+        {item.message && (
+          <p
+            className={
+              item.status === "sent" ? "note note-ok" : item.status === "sending" ? "note" : "note note-alert"
+            }
+          >
+            {item.message}
+          </p>
+        )}
         {!locked && (
           <button type="button" className="button button-small" onClick={() => onRemove(item.key)}>
             外す

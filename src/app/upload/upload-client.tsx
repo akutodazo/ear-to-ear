@@ -48,7 +48,9 @@ export function UploadClient() {
       </ul>
 
       {/* 合言葉とまとめは一覧の下（送るボタンのすぐ上）に出し、出たら画面の中へ動かす */}
-      {upload.needsPassphrase && <PassphraseForm onSubmit={upload.login} message={upload.loginMessage} />}
+      {upload.needsPassphrase && (
+        <PassphraseForm onSubmit={upload.login} message={upload.loginMessage} busy={upload.loggingIn} />
+      )}
 
       {upload.summary && (
         <div ref={summaryRef} className="panel panel-ok stack">
@@ -67,10 +69,11 @@ export function UploadClient() {
           <button
             type="button"
             className="button button-primary button-block"
-            disabled={upload.sending}
+            disabled={upload.sending || upload.loggingIn}
+            aria-busy={upload.sending}
             onClick={upload.sendAll}
           >
-            {upload.sending ? "送っています…" : `送る（${upload.sendableCount}枚）`}
+            {upload.sending ? (upload.progressLabel ?? "送っています…") : `送る（${upload.sendableCount}枚）`}
           </button>
         </div>
       )}

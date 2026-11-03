@@ -40,6 +40,7 @@ export function RecentClient() {
           message={recent.loginMessage}
           lead="番号を決めるには、管理者の合言葉が要ります。"
           submitLabel="管理者として入る"
+          busy={recent.loggingIn}
         />
       )}
       {recent.message && <p className="note">{recent.message}</p>}

@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import fieldsData from "@/data/fields.json";
 import type { Field } from "@/types";
 import { candidateFieldIds, distanceMeters } from "@/services/candidates";
-import { sendSummaryLabel, uploadOutcomeLabel } from "@/services/photo-labels";
+import { sendSummaryLabel, sendingProgressLabel, uploadOutcomeLabel } from "@/services/photo-labels";
 import { buildUploadMeta } from "@/services/upload-request";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
 import type { IPhotoRepository, LoginOutcome } from "@/repositories/interfaces/i-photo-repository";
@@ -68,6 +68,10 @@ export function useUpload(repository?: IPhotoRepository) {
   const [sending, setSending] = useState(false);
   const [needsPassphrase, setNeedsPassphrase] = useState(false);
   const [loginMessage, setLoginMessage] = useState<string | null>(null);
+  /** 合言葉を確かめている間（Issue #69） */
+  const [loggingIn, setLoggingIn] = useState(false);
+  /** 送っている間の何枚目か（Issue #69） */
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   /** 最後の「送る」が合言葉で止まらずに終わった（まとめを出す） */
   const [finished, setFinished] = useState(false);
   const filesByKey = useRef(new Map<string, File>());
@@ -130,7 +134,7 @@ export function useUpload(repository?: IPhotoRepository) {
     async (item: UploadItem): Promise<"ok" | "unauthorized" | "failed"> => {
       const file = filesByKey.current.get(item.key);
       if (!file || !item.info) return "failed";
-      update(item.key, { status: "sending", message: null });
+      update(item.key, { status: "sending", message: "送っています…" });
       let prepared;
       try {
         prepared = await preparePhoto(file);
@@ -172,7 +176,9 @@ export function useUpload(repository?: IPhotoRepository) {
     setSending(true);
     setFinished(false);
     try {
-      for (const item of items.filter(isSendable)) {
+      const targets = items.filter(isSendable);
+      for (const [index, item] of targets.entries()) {
+        setProgress({ done: index, total: targets.length });
         if ((await sendOne(item)) === "unauthorized") {
           setNeedsPassphrase(true);
           return;
@@ -181,19 +187,27 @@ export function useUpload(repository?: IPhotoRepository) {
       setFinished(true);
     } finally {
       setSending(false);
+      setProgress(null);
     }
   }, [items, sending, sendOne]);
 
   const login = useCallback(
     async (passphrase: string) => {
-      const outcome = await repo.login(passphrase);
+      if (loggingIn) return;
+      setLoggingIn(true);
+      let outcome: LoginOutcome;
+      try {
+        outcome = await repo.login(passphrase);
+      } finally {
+        setLoggingIn(false);
+      }
       setLoginMessage(LOGIN_MESSAGES[outcome]);
       if (outcome !== "ok") return;
       setNeedsPassphrase(false);
       // 入れたら、押し直さなくても送り直す（委員の手間を増やさない。K1）
       await sendAll();
     },
-    [repo, sendAll],
+    [repo, sendAll, loggingIn],
   );
 
   /** 送った写真を片付けて、続けて選べるようにする */
@@ -231,5 +245,7 @@ export function useUpload(repository?: IPhotoRepository) {
     needsPassphrase,
     login,
     loginMessage,
+    loggingIn,
+    progressLabel: progress ? sendingProgressLabel(progress.done, progress.total) : null,
   };
 }

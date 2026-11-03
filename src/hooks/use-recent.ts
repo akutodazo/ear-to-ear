@@ -11,7 +11,12 @@ import type { Field, Role, UploadedPhoto } from "@/types";
 import { applyAssignment, assignOutcomeLabel } from "@/services/assignment";
 import { filterRecent, unconfirmedCountLabel } from "@/services/recent-view";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
-import type { IPhotoRepository, LoginOutcome, RecentOutcome } from "@/repositories/interfaces/i-photo-repository";
+import type {
+  IPhotoRepository,
+  LoginOutcome,
+  RecentOutcome,
+  RoleOutcome,
+} from "@/repositories/interfaces/i-photo-repository";
 
 const RECENT_LIMIT = 50;
 const fields: Field[] = fieldsData;
@@ -41,6 +46,8 @@ export function useRecent(repository?: IPhotoRepository) {
   const [role, setRole] = useState<Role | null | undefined>(undefined);
   const [needsPassphrase, setNeedsPassphrase] = useState(false);
   const [loginMessage, setLoginMessage] = useState<string | null>(null);
+  /** 合言葉を確かめている間（Issue #69） */
+  const [loggingIn, setLoggingIn] = useState(false);
   const [assignStatus, setAssignStatus] = useState<Record<string, AssignStatus>>({});
   /** 「未確定だけ見る」 */
   const [onlyUnconfirmed, setOnlyUnconfirmed] = useState(false);
@@ -87,12 +94,19 @@ export function useRecent(repository?: IPhotoRepository) {
 
   const login = useCallback(
     async (passphrase: string) => {
-      const outcome = await repo.login(passphrase);
-      if (outcome !== "ok") {
-        setLoginMessage(LOGIN_MESSAGES[outcome]);
-        return;
+      if (loggingIn) return;
+      setLoggingIn(true);
+      let current: RoleOutcome;
+      try {
+        const outcome = await repo.login(passphrase);
+        if (outcome !== "ok") {
+          setLoginMessage(LOGIN_MESSAGES[outcome]);
+          return;
+        }
+        current = await repo.getRole();
+      } finally {
+        setLoggingIn(false);
       }
-      const current = await repo.getRole();
       const nextRole = current.kind === "ok" ? current.role : null;
       setRole(nextRole);
       if (nextRole === "admin") {
@@ -104,7 +118,7 @@ export function useRecent(repository?: IPhotoRepository) {
         setLoginMessage("管理者の合言葉ではありません");
       }
     },
-    [repo],
+    [repo, loggingIn],
   );
 
   const assign = useCallback(
@@ -141,6 +155,7 @@ export function useRecent(repository?: IPhotoRepository) {
     role,
     needsPassphrase,
     loginMessage,
+    loggingIn,
     openLogin,
     login,
     assignStatus,
