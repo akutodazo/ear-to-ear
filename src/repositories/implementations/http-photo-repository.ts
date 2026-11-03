@@ -4,9 +4,11 @@
  */
 import type { UploadedPhoto, UploadMeta } from "@/types";
 import type {
+  AssignOutcome,
   IPhotoRepository,
   LoginOutcome,
   RecentOutcome,
+  RoleOutcome,
   UploadOutcome,
 } from "../interfaces/i-photo-repository";
 
@@ -83,6 +85,16 @@ export function createHttpPhotoRepository(fetchFn: FetchLike, baseUrl = ""): IPh
       } catch {
         return { kind: "error" };
       }
+    },
+
+    async getRole(): Promise<RoleOutcome> {
+      throw new Error("not implemented");
+    },
+
+    async assign(photoId: string, fieldId: string): Promise<AssignOutcome> {
+      void photoId;
+      void fieldId;
+      throw new Error("not implemented");
     },
   };
 }
