@@ -86,3 +86,18 @@ describe("一致しない", () => {
     expect(find(method, "/api/photos").kind).toBe("method-not-allowed");
   });
 });
+
+describe("固定の区切りは全部の文字で比べる（攻撃役の指摘）", () => {
+  it.each([
+    ["GET", "/api/phones"],
+    ["GET", "/api/hxxxxx"],
+    ["GET", "/api/photos/recenx"],
+    ["GET", "/api/photo-filex/abc"],
+    ["POST", "/api/sessiom"],
+    ["POST", "/api/uploadz"],
+    ["PATCH", "/api/photos/abc/assignmenx"],
+    ["PATCH", "/api/photoz/abc/assignment"],
+  ])("%s %s は not-found", (method, pathname) => {
+    expect(find(method, pathname)).toEqual({ kind: "not-found" });
+  });
+});
