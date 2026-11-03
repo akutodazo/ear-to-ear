@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { RECENT_LIMIT_DEFAULT, RECENT_LIMIT_MAX } from "@/config";
-import { parseRecentLimit, PHOTO_LIST_COLUMNS, photoFromRow, type PhotoListRow } from "./photo-query";
+import { parseFieldIdQuery, parseRecentLimit, PHOTO_LIST_COLUMNS, photoFromRow, type PhotoListRow } from "./photo-query";
 
 const ROW: PhotoListRow = {
   id: "p1",
@@ -182,5 +182,42 @@ describe("photoFromRow", () => {
     const row = Object.freeze({ ...ROW });
     expect(photoFromRow(row).id).toBe("p1");
     expect(row).toEqual(ROW);
+  });
+});
+
+describe("parseFieldIdQuery（T22）", () => {
+  const KNOWN: ReadonlySet<string> = new Set(["A-01", "A-02", "A-12"]);
+
+  it.each(["A-01", "A-02", "A-12"])("一覧にある %s はそのまま返す", (id) => {
+    expect(parseFieldIdQuery(id, KNOWN)).toBe(id);
+  });
+
+  it.each([
+    ["null", null],
+    ["空", ""],
+    ["一覧に無い番号", "A-13"],
+    ["小文字", "a-01"],
+    ["前の空白", " A-01"],
+    ["後ろの空白", "A-01 "],
+    ["区切りなし", "A01"],
+    ["前に 0 を足した", "A-001"],
+    ["2 つつないだ", "A-01,A-02"],
+    ["SQL らしい文字", "A-01' OR '1'='1"],
+    ["継承された名前 constructor", "constructor"],
+    ["継承された名前 __proto__", "__proto__"],
+    ["4000 文字の文字列", "A-01".repeat(1000)],
+  ])("%s は null", (_label, raw) => {
+    expect(parseFieldIdQuery(raw, KNOWN)).toBeNull();
+  });
+
+  it("一覧が空なら何でも null", () => {
+    expect(parseFieldIdQuery("A-01", new Set())).toBeNull();
+  });
+
+  it("一覧を変えない", () => {
+    const known = new Set(["A-01"]);
+    parseFieldIdQuery("A-02", known);
+    parseFieldIdQuery("A-01", known);
+    expect([...known]).toEqual(["A-01"]);
   });
 });
