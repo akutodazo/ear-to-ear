@@ -119,10 +119,14 @@ export function useUpload(repository?: IPhotoRepository) {
       try {
         prepared = await preparePhoto(file);
       } catch (error) {
+        // 委員向けの言葉にする（APP の番号などは出さない）
+        const messages = {
+          metadata: "写真の情報を消しきれなかったので、送りませんでした",
+          "too-large": "写真が大きすぎて送れませんでした",
+          unreadable: "写真を読めませんでした",
+        } as const;
         const message =
-          error instanceof PreparePhotoUnavailableError
-            ? "準備中: 写真の縮小がまだ無いので送れません"
-            : "写真を送る形にできませんでした";
+          error instanceof PreparePhotoUnavailableError ? messages[error.reason] : "写真を送る形にできませんでした";
         update(item.key, { status: "failed", message });
         return "failed";
       }

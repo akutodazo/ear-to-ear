@@ -1,8 +1,45 @@
-/* 屋外・手袋を想定: 文字は大きめ、ボタンは押しやすく（docs/spec.md 画面） */
+/*
+ * 屋外・手袋を想定: 文字は大きめ、ボタンは押しやすく（docs/spec.md 画面）。
+ * 色・余白は役割ごとの変数にまとめる（11-03 本人決定: pixiv の charcoal の「役割で分ける」考え方だけを参考にし、値は自分で決める。依存・コードの写しは無し）。
+ * ブランドの色は落ち着いた青（Claude のオレンジと対になる色）。麦の黄色はロゴと印だけに使う。
+ */
 :root {
   color-scheme: light;
-  --fg: #1f2a1f;
-  --bg: #fbfaf5;
+
+  /* 文字（濃い順） */
+  --text-1: #1f2429;
+  --text-2: #4a535c;
+  --text-3: #7d868f;
+  --text-on-brand: #ffffff;
+
+  /* 背景・面・線 */
+  --background-1: #ffffff;
+  --background-2: #f4f6f8;
+  --surface: #ffffff;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.24);
+
+  /* ブランドと状態 */
+  --brand: #1f6fb5;
+  --brand-hover: #195d98;
+  --brand-soft: #e8f1fa;
+  --wheat: #d9b44a;
+  --assertive: #d93a1e;
+  --success: #3f7a1e;
+  --warning-soft: #fff6dc;
+
+  /* 押せないとき・フォーカス */
+  --disabled-opacity: 0.32;
+  --focus-ring: 0 0 0 4px rgba(31, 111, 181, 0.32);
+
+  /* 余白・角の丸み（4・8・16・24・40 の段） */
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-16: 16px;
+  --space-24: 24px;
+  --space-40: 40px;
+  --radius-8: 8px;
+  --radius-16: 16px;
 }
 
 * {
@@ -15,15 +52,24 @@ body {
   overflow-x: hidden;
   margin: 0;
   padding: 0;
-  color: var(--fg);
-  background: var(--bg);
+  color: var(--text-1);
+  background: var(--background-2);
   font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
   font-size: 18px;
   line-height: 1.6;
 }
 
 main {
-  padding: 24px 16px;
+  padding: var(--space-24) var(--space-16);
+}
+
+a {
+  color: var(--brand);
+}
+
+h1 {
+  margin: var(--space-8) 0;
+  line-height: 1.3;
 }
 
 .page {
@@ -34,19 +80,19 @@ main {
 .stack {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-16);
 }
 
 .stack-tight {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-4);
 }
 
 .row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-16);
   flex-wrap: wrap;
 }
 
@@ -56,47 +102,71 @@ main {
   align-items: center;
   justify-content: center;
   min-height: 56px;
-  padding: 0 20px;
-  border: 2px solid var(--fg);
-  border-radius: 12px;
-  background: #fff;
-  color: var(--fg);
+  padding: 0 var(--space-24);
+  border: 2px solid var(--brand);
+  border-radius: var(--radius-16);
+  background: var(--surface);
+  color: var(--brand);
   font-size: 1.1rem;
-  font-weight: 600;
+  font-weight: 700;
   text-decoration: none;
   cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.button:hover {
+  background: var(--brand-soft);
 }
 
 .button-primary {
-  background: var(--fg);
-  color: var(--bg);
+  border-color: var(--brand);
+  background: var(--brand);
+  color: var(--text-on-brand);
+}
+
+.button-primary:hover {
+  background: var(--brand-hover);
 }
 
 .button-small {
   min-height: 44px;
+  padding: 0 var(--space-16);
+  border-color: var(--border-strong);
+  color: var(--text-2);
   font-size: 1rem;
   align-self: flex-start;
 }
 
-.button:disabled {
-  opacity: 0.5;
+.button:disabled,
+.button:has(input:disabled) {
+  opacity: var(--disabled-opacity);
   cursor: default;
+}
+
+/* キーボード・スイッチで選んでいる所を見せる */
+.button:focus-visible,
+.button:has(input:focus-visible),
+.input:focus-visible,
+a:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .input {
   min-height: 52px;
-  padding: 0 12px;
-  border: 2px solid #9aa39a;
-  border-radius: 10px;
+  padding: 0 var(--space-16);
+  border: 2px solid var(--border-strong);
+  border-radius: var(--radius-8);
+  background: var(--surface);
+  color: var(--text-1);
   font-size: 1.1rem;
-  background: #fff;
 }
 
 .panel {
-  padding: 16px;
-  border: 2px solid #c9b458;
-  border-radius: 12px;
-  background: #fffbe6;
+  padding: var(--space-16);
+  border-left: 4px solid var(--wheat);
+  border-radius: var(--radius-8);
+  background: var(--warning-soft);
 }
 
 .cards {
@@ -105,17 +175,17 @@ main {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-16);
 }
 
 .card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  gap: var(--space-8);
+  padding: var(--space-16);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-16);
+  background: var(--surface);
 }
 
 .card p {
@@ -127,8 +197,8 @@ main {
   width: 100%;
   aspect-ratio: 4 / 3;
   overflow: hidden;
-  border-radius: 8px;
-  background: #e8e6dc;
+  border-radius: var(--radius-8);
+  background: var(--background-2);
 }
 
 .thumb img {
@@ -141,11 +211,11 @@ main {
 }
 
 .note {
-  color: #4b554b;
+  color: var(--text-2);
   font-size: 0.95rem;
 }
 
 .note-ok {
-  color: #2f6b2f;
-  font-weight: 600;
+  color: var(--success);
+  font-weight: 700;
 }

@@ -52,7 +52,7 @@
 - Android の Chrome: スマホのカメラ写真の EXIF の位置はブラウザに渡る時点で 0/0 に消される。DJI の XMP の位置は残る
 - iPhone／iPad の Safari: 実機は未確認（P2）。iOS 17 以降は写真の選択画面の「オプション」で位置を渡すかを選べる。位置が届かない場合は普通にあると考え、「位置なし」として受け付け、番号は管理者が付ける
 - 読み取りは EXIF と XMP の両方。EXIF の位置が 0/0（NaN）や 0,0 なら「消されている」として null
-- 公開側に残してよいメタデータは無い。縮小・再エンコードで全部消し、Worker でも APP1〜APP15 が無いことを検査する
+- 公開側に残してよいメタデータは無い。縮小・再エンコードで全部消し、Worker でも APP1〜APP15 が無いことを検査する。**ただし Chrome の再エンコードは APP2（色の情報、ICC）を必ず付けるので、ブラウザで SOS より前の APP1〜15 を取り除き、残っていないことを確かめてから送る**（11-03、`src/services/prepared-photo.ts`）
 
 ## 5. データ契約
 型は `src/types/index.ts`、定数は `src/config.ts`（どちらも共有ファイル）。圃場番号は架空データで `A-01` の形。
@@ -148,7 +148,7 @@ CREATE TABLE settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);  -- 
 ## 8. 技術とフォルダ
 Next.js（App Router、`output: 'export'`）＋ Leaflet。デモと開発の地図は**地図タイルを出さず、架空の村（区画と道）を自分で描く**（P15）。本番で実在の圃場に使うときは設定で国土地理院の地図タイル（出典表記が必須）に切り替える／Cloudflare Workers（静的アセット＋API）、D1、R2／Vitest。層の決まりは AGENTS.md §4。
 
-主な Service: `photo-meta.ts`（XMP/EXIF）、`candidates.ts`（ハバーサインで近い順）、`jpeg-segments.ts`（APP1〜15 検出、SOF から幅・高さ）、`upload-meta.ts`（meta の検証）、`session-token.ts`（HMAC は注入）、`photo-groups.ts`（撮影日ごと）、`status-reason.ts`（理由と根拠の検証）、`handover-document.ts`（記録を引用用の要素に並べる）、`handover-citations.ts`（返事の引用を記録に対応付ける）、`usage-limit.ts`（回数の上限）、`line-signature.ts`（署名の検証。HMAC は注入）。
+主な Service: `photo-meta.ts`（XMP/EXIF）、`candidates.ts`（ハバーサインで近い順）、`jpeg-segments.ts`（APP1〜15 検出、SOF から幅・高さ）、`upload-meta.ts`（meta の検証）、`session-token.ts`（HMAC は注入）、`resize-plan.ts`（縮小の大きさ）、`prepared-photo.ts`（APP1〜15 を取り除き、送る前に確かめる）、`upload-request.ts`（送る meta を5項目に絞る）、`photo-groups.ts`（撮影日ごと）、`status-reason.ts`（理由と根拠の検証）、`handover-document.ts`（記録を引用用の要素に並べる）、`handover-citations.ts`（返事の引用を記録に対応付ける）、`usage-limit.ts`（回数の上限）、`line-signature.ts`（署名の検証。HMAC は注入）。
 
 ## 9. 合格条件
 | # | 条件 | 段 |
