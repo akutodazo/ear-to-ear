@@ -11,6 +11,7 @@ describe("経路の表（docs/spec.md §6 の L0）", () => {
       ["GET", "/api/photos/recent", "none"],
       ["GET", "/api/photo-files/:id", "none"],
       ["PATCH", "/api/photos/:id/assignment", "admin"],
+      ["GET", "/api/session", "member"],
     ]);
   });
 });

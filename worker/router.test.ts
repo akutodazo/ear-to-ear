@@ -13,6 +13,7 @@ describe("一致", () => {
   it.each([
     ["GET", "/api/health"],
     ["POST", "/api/session"],
+    ["GET", "/api/session"],
     ["POST", "/api/uploads"],
     ["GET", "/api/photos"],
     ["GET", "/api/photos/recent"],
@@ -68,7 +69,7 @@ describe("一致しない", () => {
   });
 
   it("パスは合うがメソッドが違うと method-not-allowed で、Allow に表のメソッド", () => {
-    expect(find("GET", "/api/session")).toEqual({ kind: "method-not-allowed", allow: ["POST"] });
+    expect(find("DELETE", "/api/session")).toEqual({ kind: "method-not-allowed", allow: ["POST", "GET"] });
   });
 
   it("複数のメソッドがあれば Allow は表の順", () => {
