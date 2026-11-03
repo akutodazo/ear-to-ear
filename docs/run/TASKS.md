@@ -157,7 +157,9 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **担当**: 先輩。`usage-limit.ts`（担当「後で決める」）は先輩が作る（11-03 先輩の決定、本人に確認する）
 
 ## T20 `POST /api/uploads`（縮小画像と meta を検査し、R2 と D1 に「未確定」で残す）
-- **状態**: RED・攻撃役まで（11-03）。無人運転はこの後
+- **状態**: 検査済み・人の確認待ち（11-03）
+- **運転の記録（試験5、MCP の檻）**: START `135955c` → GREEN `e7bd388` → REPORT `df9f232`。モデル Opus 5.5、`claude -p`、道具は檻の5つだけ、29手、$0.87。**C1〜C5 がすべて合格**。変更は許可した2ファイルだけ。QUESTIONS なし。REPORT の手元のパスは、push の前に REPORT のコミットそのものを伏せた版に入れ直した。TASKS に無い判断は1つ（二重と分かった直後に読み直して先の行が無ければ例外にして 500。起きない場面の保険）
+- **人の確認**: 本体のチェックアウトで C2（3 ファイル）・C3（139 件）・C4（テスト全体 1105 件、lint エラー 0・警告 2）が合格。C1・C5 には、運転と関係の無い Git 管理外の 2 ファイル（`.agents/skills/role-brief/SKILL.md`・`.codex/hooks.json`、17:26 に本体のチェックアウトにできた）が出たので、触らずに残した。実装を 17 通りに壊して 15 通りが落ちる。残る 2 つのうち「余分な欄を許す」は下のループが同じ判定をするので動きが変わらない。「content-length の判定を画像の上限で行う」はテストの要求に content-length が無いので落ちなかった → 本当の content-length を付けた 3MB ちょうどのテストを足した（`ae64b9c`。全体 1106 件）。手元の `wrangler dev`（本物の `wrangler.jsonc`、使い捨ての値と D1・R2、テストと同じ形の使い捨ての JPEG）で、201・同じハッシュで 409（同じ id）・APP1 で 422 metadata・長辺 2000 で 422 bad_dimensions・余分な欄 lat で 422 bad_form・meta に distance で 422 unknown_key・3MB 超で 413・JSON で 415・Cookie なしで 401。D1 は未確定の 1 行（field_id null、候補は番号だけ）、R2 の画像は送ったものとバイトまで同じ。CPU time は手元では測れない（dev へのデプロイ後に本人が確かめる）
 - **Issue**: #60
 - **依存**: T03（`inspectJpeg`）、T04（`parseUploadMeta`）、T11（`uploaded_photos`）、T18（土台）、T19（session、`body.ts` の元）。T08「保存の失敗」はここに吸収した
 - **変えてよいファイル**: `src/services/upload-form.ts`・`worker/uploads.ts`（＋ REPORT、止まったときは `docs/run/QUESTIONS.md`）
