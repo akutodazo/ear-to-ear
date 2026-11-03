@@ -210,3 +210,13 @@ README に載せる表: 運転回数・人が触らない時間・手数・$・%
 - **夜番**: ワークフローはファイルを読めないので、lock は `night.mjs` が持つ。対象のコードは `night.mjs` がワークフローに埋め込み、夜のセッションには Read・Grep・Bash を渡さない。起動は `claude -p`（`--max-budget-usd` で縛る）。寸法は small（Find 4 体）と medium（Find 8 体、Opus の反証 3 件まで）
 - **ゲート**: QUESTIONS（ask）を終了コードより先に見る。G2 で GREEN が 1 つも無いときは `claude`（原因不明）として数え、2 本続いたら列車を止める
 - **未検証**: ワークフローの中の役が、夜のセッションの道具の制限を受け継ぐか。通知係の入れ子の起動（試運転で確かめる）
+
+### PR #88 のレビュー（`docs/reviews/pr-88-relay.md`）で変えたこと（11-04）
+- **置き場**: `%LOCALAPPDATA%\ear-train` をやめて `<ホーム>\dev\ear-train\ops` に。デスクトップアプリから起動したプロセスは `%LOCALAPPDATA%` が別の場所に振り替えられ、ターミナルから起動したものと置き場がずれる
+- **二重起動を断る**: 進行役は `running-<MMDD>.json`（プロセス番号）を置き、生きていれば 2 本目を起動しない。ask の通知は「止めるなら『止めて』」だけにし、返事で列車を起動しない
+- **STATUS は追記の列**（`status-<MMDD>.jsonl`）。watch は見ていない行をまとめて 1 通にする（続けて止まった 2 本を取りこぼさない）
+- **STOP は日付ごと**（`STOP-<MMDD>`）。前の日の STOP が次の日の列車を止めない
+- **原因不明の連続**は列車ごとに数える（新しい列車で数え直す）
+- **子を木ごと止める**（Windows の `taskkill /T /F`）。檻の server や `npm run check` が残らない
+- 凍結の一覧に `.github/`・`.gitattributes`・`wrangler.*`・`next.config.*`・`public/` を足した
+- 子に渡す環境変数は 10 個（檻の 7 個に `APPDATA`・`LOCALAPPDATA`・`USERNAME`。claude の認証の置き場を探すため）。§2 の「7 つ」はこれに読み替える
