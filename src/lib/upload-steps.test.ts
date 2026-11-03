@@ -22,6 +22,20 @@ function djiJpeg(lat: string, lng: string, created: string, tail = 0): File {
   return new File([bytes, new Uint8Array(tail)], "dji.jpg", { type: "image/jpeg" });
 }
 
+/** 中身 n バイトの APP2 を count 個並べた後に（最後の1つだけ lastSize バイト）、位置つきの XMP を置いた写真 */
+function withAppsBefore(count: number, size: number, lastSize = size): File {
+  const parts: number[][] = [];
+  for (let i = 0; i < count; i++) {
+    const n = i === count - 1 ? lastSize : size;
+    const length = n + 2;
+    parts.push([0xff, 0xe2, length >> 8, length & 0xff, ...new Array<number>(n).fill(0x41)]);
+  }
+  const xmp = djiJpeg("41.8075", "144.5076", "2026-07-21T10:15:30");
+  return new File([new Uint8Array([0xff, 0xd8]), ...parts.map((p) => new Uint8Array(p)), xmp.slice(2)], "late.jpg", {
+    type: "image/jpeg",
+  });
+}
+
 describe("readPhotoInfo（写真の情報を端末の中で読む。T01 の readPhotoMeta につなぐ）", () => {
   it("DJI の XMP から撮影位置と撮影日を読む", async () => {
     const info = await readPhotoInfo(djiJpeg("41.8075", "144.5076", "2026-07-21T10:15:30"));
@@ -32,10 +46,24 @@ describe("readPhotoInfo（写真の情報を端末の中で読む。T01 の read
     });
   });
 
-  it("写真の先頭だけを読む（後ろに大きな画像データが続いても同じ結果）", async () => {
+  it("後ろに大きな画像データが続いても同じ結果", async () => {
     const info = await readPhotoInfo(djiJpeg("41.8075", "144.5076", "2026-07-21T10:15:30", 4 * 1024 * 1024));
     expect(info.position).toEqual({ lat: 41.8075, lng: 144.5076 });
-    expect(PHOTO_INFO_HEAD_BYTES).toBeGreaterThanOrEqual(256 * 1024);
+  });
+
+  it("写真の先頭 PHOTO_INFO_HEAD_BYTES より後ろの APP1 は読まない（丸ごと読まない。PR #51 のレビュー #1）", async () => {
+    // 64KB 近い APP2 を並べて先頭を越えさせ、その後ろに位置つきの XMP を置く
+    const before = Math.ceil(PHOTO_INFO_HEAD_BYTES / 65537) + 1;
+    const info = await readPhotoInfo(withAppsBefore(before, 65533));
+    expect(info).toEqual({ position: null, takenAt: null, takenAtSource: "none" });
+  });
+
+  it("先頭の境目をまたぐ XMP は、例外を出さずに位置なし・日付不明（512KB より後ろは読めない弱点。PR #51 のレビュー #2）", async () => {
+    // APP2 の合計を先頭の少し手前までにして、XMP が境目をまたぐようにする
+    const full = Math.floor(PHOTO_INFO_HEAD_BYTES / 65537);
+    const rest = PHOTO_INFO_HEAD_BYTES - 2 - full * 65537 - 40;
+    const info = await readPhotoInfo(withAppsBefore(full + 1, 65533, rest - 4));
+    expect(info).toEqual({ position: null, takenAt: null, takenAtSource: "none" });
   });
 
   it("JPEG でなければ位置なし・日付不明（例外を出さない）", async () => {

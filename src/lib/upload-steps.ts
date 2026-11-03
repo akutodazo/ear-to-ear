@@ -38,7 +38,8 @@ export class PreparePhotoUnavailableError extends Error {
 
 /**
  * 写真の情報を読むときに読む先頭のバイト数。EXIF・XMP の APP1 は画像のデータ（SOS）より前にあり、
- * 1つ 64KB までなので、512KB あれば足りる。12MB の写真を丸ごと読まないため（PR #50 のレビュー #7）
+ * 1つ 64KB までなので、普通の写真では 512KB あれば足りる見込み（推定。APP の個数に上限は無い）。
+ * 足りないときは位置なし・日付不明になる。12MB の写真を丸ごと読まないため（PR #50 のレビュー #7）
  */
 export const PHOTO_INFO_HEAD_BYTES = 512 * 1024;
 
