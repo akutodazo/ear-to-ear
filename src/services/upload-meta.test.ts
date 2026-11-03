@@ -322,3 +322,9 @@ describe("文字列の項目の型（レビューの指摘）", () => {
     expect(reasonOf({ ...VALID, takenAt: ["2026-07-21"] })).toBe("bad_taken_at");
   });
 });
+
+describe("候補の検査の順（レビューの指摘）", () => {
+  it("型は件数より先", () => {
+    expect(reasonOf({ ...VALID, candidateFieldIds: [1, 2, 3, 4] })).toBe("bad_candidates");
+  });
+});
