@@ -1,0 +1,55 @@
+// Cloudflare Workers の設定（docs/spec.md §8・§11、docs/dev/cloudflare.md）。
+// Worker 1つで、静的な画面（out/）と API（/api/*）の両方を返す。
+// 上の段は手元（wrangler dev）用。D1・R2 は手元の模擬（.wrangler/、Git に入れない）を使う。
+// env.dev（実機確認、HTTPS）と env.demo（審査員用）は、D1・R2・Secret をそれぞれ別に持つ。
+// バインディング名は worker/env.ts との約束: DB・PHOTOS・ASSETS。Secret は MEMBER_PASSPHRASE・ADMIN_PASSPHRASE・SESSION_SECRET（ここには書かない）。
+// database_id は秘密ではない（Cloudflare のアカウントの中の識別子）。
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "harvest-share-local",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./out",
+    "binding": "ASSETS",
+    // /api/* だけ Worker を先に通す。それ以外は静的な画面をそのまま返す
+    "run_worker_first": ["/api/*"],
+    "not_found_handling": "404-page"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "harvest-share-dev",
+      "database_id": "18b89798-8806-43bf-afdd-c6baf576ead0",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "harvest-share-photos-dev" }],
+  "observability": { "enabled": true },
+  "env": {
+    "dev": {
+      "name": "harvest-share-dev",
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "harvest-share-dev",
+          "database_id": "18b89798-8806-43bf-afdd-c6baf576ead0",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "harvest-share-photos-dev" }]
+    },
+    "demo": {
+      "name": "harvest-share-demo",
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "harvest-share-demo",
+          "database_id": "e73d7225-b032-4cbd-a643-c18e27e2453e",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "harvest-share-photos-demo" }]
+    }
+  }
+}
