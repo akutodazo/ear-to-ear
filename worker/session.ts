@@ -17,11 +17,41 @@ function declaredTooLarge(header: string | null): boolean {
   return Number(header) > SESSION_BODY_MAX_CHARS;
 }
 
+/**
+ * 本文をバイトで上限まで読む。超えたら読むのをやめて null（content-length が無い・偽りでも、全部は読まない）。
+ * 区切りをまたぐ多バイト文字が壊れないよう、つないでから文字に直す
+ */
+async function readBodyLimited(request: Request, maxBytes: number): Promise<string | null> {
+  if (request.body === null) return "";
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
+
 export const postSession: Handler = async (request, { deps }) => {
   if (!isJsonContentType(request.headers.get("content-type"))) return errorResponse(415, "unsupported_media_type");
   if (declaredTooLarge(request.headers.get("content-length"))) return errorResponse(413, "payload_too_large");
 
-  const body = parseSessionBody(await request.text());
+  const text = await readBodyLimited(request, SESSION_BODY_MAX_CHARS);
+  if (text === null) return errorResponse(413, "payload_too_large");
+  const body = parseSessionBody(text);
   if (!body.ok) {
     return body.reason === "too_long" ? errorResponse(413, "payload_too_large") : errorResponse(400, "bad_request");
   }
