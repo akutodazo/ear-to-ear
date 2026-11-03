@@ -53,6 +53,20 @@ export async function sessionToken(role: Role, exp = NOW_SEC + 60, key = KEY): P
   return issueSessionToken({ device: `dev-${role}`, role, exp }, hmacWith(key));
 }
 
+/** JSON の本文を持つ要求。headers で Content-Type・CF-Connecting-IP などを足す・上書きする */
+export function jsonRequest(
+  method: string,
+  path: string,
+  body: string,
+  headers: Record<string, string> = {},
+): Request {
+  return new Request(`https://example.test${path}`, {
+    method,
+    headers: { "content-type": "application/json", ...headers },
+    body,
+  });
+}
+
 export function request(method: string, path: string, cookie?: string): Request {
   return new Request(`https://example.test${path}`, {
     method,

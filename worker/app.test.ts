@@ -64,10 +64,10 @@ describe("/api/", () => {
     expect((await call("GET", path)).status).toBe(404);
   });
 
-  it("メソッド違いは 405 と Allow", async () => {
-    const response = await call("GET", "/api/session");
+  it("メソッド違いは 405 と Allow（表の順）", async () => {
+    const response = await call("DELETE", "/api/session");
     expect(response.status).toBe(405);
-    expect(response.headers.get("allow")).toBe("POST");
+    expect(response.headers.get("allow")).toBe("POST, GET");
     expect(await response.json()).toStrictEqual({ error: "method_not_allowed" });
   });
 
@@ -164,7 +164,7 @@ describe("見えない動き（攻撃役の指摘）", () => {
   });
 
   it("405 にも共通ヘッダが付く", async () => {
-    const response = await call("GET", "/api/session");
+    const response = await call("DELETE", "/api/session");
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
   });
