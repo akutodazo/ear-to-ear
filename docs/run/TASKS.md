@@ -48,7 +48,7 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 ## T04 `src/services/upload-meta.ts`（`POST /api/uploads` の meta の検証）
 - **状態**: 検査済み・人の確認待ち（11-03）
 - **運転の記録（試験2、MCP の檻）**: START `19bafb5` → GREEN `955943a` → REPORT `af5e2f3`。モデル Opus 5.5、`claude -p`、道具は檻の5つだけ、12手、$0.51。変更は `upload-meta.ts` だけ
-- **止まった理由**: C4 の build が `next` を見つけられず不合格で、QUESTIONS を書いて止まった（決まりどおり）。原因は人の準備で、使い捨ての worktree の `node_modules` を Windows のリンク（junction）にしたため。Turbopack はリンクの外を読めない。本体のチェックアウトで C1・C3・C4・C5 を回し直して合格（テスト全体 438 件）。REPORT の C4 は当時の不合格のまま残している。QUESTIONS はコミットしていない
+- **止まった理由**: C4 の build が `next` を見つけられず不合格で、QUESTIONS を書いて止まった（決まりどおり）。原因は人の準備で、使い捨ての worktree の `node_modules` を Windows のリンク（junction）にしたため。Turbopack はリンクの外を読めない。本体のチェックアウトで C1・C3・C4・C5 を回し直して合格（テスト全体 438 件）。T04 の REPORT（C4 は当時の不合格のまま）は git の履歴の `af5e2f3` に残っている（今の `docs/run/REPORT.md` は T01 のもので上書きされた。PR #50 のレビュー #6）。QUESTIONS はコミットしていない
 - **次の運転への申し送り**: worktree では `npm ci` するか、C4 を人の確認に回す
 - **依存**: T02（取り込み済み）
 - **変えてよいファイル**: `src/services/upload-meta.ts` のみ（＋ `docs/run/REPORT.md`、止まったときは `docs/run/QUESTIONS.md`）
@@ -90,10 +90,11 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 
 ## T01 `src/services/photo-meta.ts`（写真の XMP と EXIF から撮影位置と撮影日を読む）
 - **状態**: 検査済み・人の確認待ち（11-03）。取り込みは PR のマージで
-- **運転の記録（試験2、11-03）**: ブランチ `run/1103-b`、START `5b7cb5f` → GREEN `520875b`（12:16）→ REPORT `6f3d478`（12:17）。モデル Opus・自動モード・`/goal`。C1〜C5 はすべて合格し、試験1のずれ（検査をまとめて出す・`; echo` をつなぐ）は出なかった。人も HEAD で C1・C3・C4・C5 を回し直して合格
+- **運転の記録（本人の無人運転の試験2、11-03。先輩の T04 の「試験2（MCP の檻）」とは別）**: ブランチ `run/1103-b`、START `5b7cb5f` → GREEN `520875b`（12:16）→ REPORT `6f3d478`（12:17）。モデル Opus・自動モード・`/goal`。C1〜C5 はすべて合格し、試験1のずれ（検査をまとめて出す・`; echo` をつなぐ）は出なかった。人も HEAD で C1・C3・C4・C5 を回し直して合格
 - **依存**: T00、T02（`LatLng` の型を借りる）
 - **変えてよいファイル**: `src/services/photo-meta.ts` のみ（＋ `docs/run/REPORT.md`、止まったときは `docs/run/QUESTIONS.md`）
-- **テスト（凍結）**: `src/services/photo-meta.test.ts`。**23 件**（XMP 6・EXIF 7・両方 3・取れないとき 7）。テストの写真はテストの中でバイト列を組み立てる
+- **テスト（凍結）**: `src/services/photo-meta.test.ts`。**23 件**（XMP 6・EXIF 7・両方 3・取れないとき 7）。テストの写真はテストの中でバイト列を組み立てる。運転の後、PR #50 のレビューを受けて人が 9 件足した（計 32 件。時差なしは日本時間・日付も XMP 優先・経度の範囲・実在しない日付・SOS の後ろ・EXIF の片方だけ壊れた・参照なし・細工した XMP の速さ）
+- **次への申し送り（PR #50 のレビュー #7）**: `/upload` の `readPhotoInfo` につなぐとき、`PhotoMeta.position` を送る meta に入れない（K6）ことをテストで確かめる。読むのはファイルの先頭（APP1 が入る範囲）だけで足りるかを検討する
 - **関数**: `readPhotoMeta(bytes: Uint8Array): PhotoMeta`（`{ position: LatLng | null; takenAt: string | null; takenAtSource: TakenAtSource }`）
 - **合格条件（11-03 本人決定を含む）**:
   - JPEG の APP1 の XMP（`http://ns.adobe.com/xap/1.0/` で始まる）と EXIF（`Exif` で始まる、TIFF の II／MM）を読む。SOS か EOI まで、セグメントの見出しだけをたどる
