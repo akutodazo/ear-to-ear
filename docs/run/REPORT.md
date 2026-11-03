@@ -14,7 +14,7 @@ src/services/upload-meta.ts
 ## C3
 ```
 
-[1m[30m[46m RUN [49m[39m[22m [36mv5.0.5 [39m[90mC:/Users/funro/AppData/Local/Temp/claude/C--Users-funro-dev-github-ear-to-ear/459f2058-d3bb-40fe-975f-ac72e2554aca/scratchpad/t04-run[39m
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.5 [39m[90m<作業フォルダ>/t04-run[39m
 
  [32m✓[39m src/services/upload-meta.test.ts [2m([22m[2m106 tests[22m[2m)[22m[32m 21[2mms[22m[39m
 
@@ -206,7 +206,7 @@ Generating route types...
 > vitest run
 
 
-[1m[30m[46m RUN [49m[39m[22m [36mv5.0.5 [39m[90mC:/Users/funro/AppData/Local/Temp/claude/C--Users-funro-dev-github-ear-to-ear/459f2058-d3bb-40fe-975f-ac72e2554aca/scratchpad/t04-run[39m
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.5 [39m[90m<作業フォルダ>/t04-run[39m
 
  [32m✓[39m worker/migrations.test.ts [2m([22m[2m48 tests[22m[2m)[22m[32m 75[2mms[22m[39m
  [32m✓[39m src/services/upload-meta.test.ts [2m([22m[2m106 tests[22m[2m)[22m[32m 29[2mms[22m[39m
