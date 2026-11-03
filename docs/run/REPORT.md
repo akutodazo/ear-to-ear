@@ -19,7 +19,7 @@ worker/routes.ts
 ## C3 vitest run（T18 のテスト）
 ```
 
-[1m[30m[46m RUN [49m[39m[22m [36mv5.0.5 [39m[90mC:/Users/funro/AppData/Local/Temp/claude/C--Users-funro-dev-github-ear-to-ear/459f2058-d3bb-40fe-975f-ac72e2554aca/scratchpad/t18-run[39m
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.5 [39m[90m<作業フォルダ>/t18-run[39m
 
  [32m✓[39m worker/cookies-days.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 13[2mms[22m[39m
  [32m✓[39m worker/routes.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 48[2mms[22m[39m
@@ -54,10 +54,10 @@ check:safety: OK（名前・デモの JPEG・圃場の座標・秘密らしい�
 > eslint
 
 
-C:\Users\funro\AppData\Local\Temp\claude\C--Users-funro-dev-github-ear-to-ear\459f2058-d3bb-40fe-975f-ac72e2554aca\scratchpad\t18-run\src\services\upload-meta.test.ts
+C:\Users\<ユーザー>\AppData\Local\Temp\claude\<作業フォルダ>\<セッション>\scratchpad\t18-run\src\services\upload-meta.test.ts
   25:18  warning  '_removed' is assigned a value but never used  @typescript-eslint/no-unused-vars
 
-C:\Users\funro\AppData\Local\Temp\claude\C--Users-funro-dev-github-ear-to-ear\459f2058-d3bb-40fe-975f-ac72e2554aca\scratchpad\t18-run\worker\index.ts
+C:\Users\<ユーザー>\AppData\Local\Temp\claude\<作業フォルダ>\<セッション>\scratchpad\t18-run\worker\index.ts
   9:1  warning  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
 
 ✖ 2 problems (0 errors, 2 warnings)
@@ -73,7 +73,7 @@ Generating route types...
 > vitest run
 
 
-[1m[30m[46m RUN [49m[39m[22m [36mv5.0.5 [39m[90mC:/Users/funro/AppData/Local/Temp/claude/C--Users-funro-dev-github-ear-to-ear/459f2058-d3bb-40fe-975f-ac72e2554aca/scratchpad/t18-run[39m
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.5 [39m[90m<作業フォルダ>/t18-run[39m
 
  [32m✓[39m worker/migrations.test.ts [2m([22m[2m49 tests[22m[2m)[22m[32m 99[2mms[22m[39m
  [32m✓[39m src/services/session-token.test.ts [2m([22m[2m56 tests[22m[2m)[22m[32m 30[2mms[22m[39m
