@@ -48,7 +48,7 @@ describe("列", () => {
     [
       "uploaded_photos",
       [
-        "id", "field_id", "state", "candidate_field_ids", "taken_at", "taken_at_source",
+        "id", "field_id", "chosen_field_id", "state", "candidate_field_ids", "taken_at", "taken_at_source",
         "content_hash", "r2_key", "width", "height", "bytes", "uploader_device",
         "uploaded_at", "updated_at",
       ],
@@ -64,7 +64,7 @@ describe("列", () => {
   });
 
   it.each([
-    ["uploaded_photos", ["field_id", "taken_at"]],
+    ["uploaded_photos", ["field_id", "chosen_field_id", "taken_at"]],
     ["photo_assignments", ["from_field_id"]],
     ["field_status_events", ["note", "revoked_at"]],
     ["usage_counters", []],
@@ -146,6 +146,17 @@ describe("uploaded_photos の値", () => {
     ["taken_at_source", { taken_at_source: "gps" }],
   ])("%s が不正なら拒否", (_name, overrides) => {
     expect(() => insertPhoto(overrides)).toThrow(/CHECK constraint failed/);
+  });
+});
+
+describe("委員が選んだ番号", () => {
+  it("確定済みの番号とは別に持つ", () => {
+    insertPhoto({ chosen_field_id: "A-03" });
+    expect(db.prepare("SELECT field_id, chosen_field_id, state FROM uploaded_photos").get()).toEqual({
+      field_id: null,
+      chosen_field_id: "A-03",
+      state: "unconfirmed",
+    });
   });
 });
 

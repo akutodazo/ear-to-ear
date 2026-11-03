@@ -63,6 +63,7 @@
 CREATE TABLE uploaded_photos (
   id TEXT PRIMARY KEY NOT NULL,              -- SQLite の TEXT の主キーは NOT NULL を書かないと NULL が入る
   field_id TEXT,
+  chosen_field_id TEXT,                       -- 委員が選んだ番号。確定ではない（確定は field_id）
   state TEXT NOT NULL CHECK (state IN ('unconfirmed','confirmed')),
   candidate_field_ids TEXT NOT NULL,          -- JSON 配列（番号だけ。距離は持たない）
   taken_at TEXT,
@@ -125,6 +126,7 @@ CREATE TABLE settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);  -- 
 | `POST /api/photos/:id/suggest` | admin | `{candidateFieldIds}`（人が選んだ2〜3圃場） | 200 `{suggestions:[{fieldId, reason}]}` | 401／422／429／502 | L5 |
 
 - meta: `{contentHash(64桁16進), takenAt|null, takenAtSource, candidateFieldIds(最大3, 存在する圃場, 重複なし), chosenFieldId?}`。**距離・座標の項目があれば 422**（K6）。chosenFieldId があっても state は unconfirmed
+- meta の細かい決まり（11-03 先輩決定、T04）: 文字列は 1024 文字まで。項目は5つの許可リストだけ。`contentHash` の大文字は小文字に直して受ける。`takenAt` は null か実在する `YYYY-MM-DD`。`takenAtSource` が `none` なら `takenAt` は null、`xmp`・`exif` なら日付。`chosenFieldId` は候補に無くても既知の番号なら受ける
 - 合言葉: Secret `MEMBER_PASSPHRASE`・`ADMIN_PASSPHRASE`・`SESSION_SECRET`。照合は `crypto.subtle.timingSafeEqual`。Cookie は `base64url(JSON{device, role, exp}).base64url(HMAC-SHA256)`
 - 合言葉の試行回数: 失敗は IP のハッシュ（`SESSION_SECRET` と日付で塩）ごとに 10分に5回まで。超えたら 429。生の IP は保存しない
 - セッションは30日で失効。端末 ID はログインのたびに新しく作る
