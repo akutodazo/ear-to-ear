@@ -164,3 +164,30 @@ describe("必須の項目", () => {
     },
   );
 });
+
+describe("contentHash", () => {
+  it("大文字は小文字に直して返す（二重登録の判定を表記に左右させない）", () => {
+    const result = parse({ ...VALID, contentHash: "ABCDEF".padEnd(64, "0") });
+    expect(result).toStrictEqual({
+      ok: true,
+      meta: { ...VALID, contentHash: "abcdef".padEnd(64, "0") },
+    });
+  });
+
+  it("大文字と小文字が混ざっても小文字に直す", () => {
+    const result = parse({ ...VALID, contentHash: "aBcDeF".padEnd(64, "0") });
+    expect(result.ok && result.meta.contentHash).toBe("abcdef".padEnd(64, "0"));
+  });
+
+  it.each([
+    ["63 桁", "a".repeat(63)],
+    ["65 桁", "a".repeat(65)],
+    ["16 進でない", "g".repeat(64)],
+    ["末尾に改行", `${"a".repeat(64)}\n`],
+    ["空文字", ""],
+    ["数", 1],
+    ["null", null],
+  ])("%s は bad_content_hash", (_name, contentHash) => {
+    expect(reasonOf({ ...VALID, contentHash })).toBe("bad_content_hash");
+  });
+});
