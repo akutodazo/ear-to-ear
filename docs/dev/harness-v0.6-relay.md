@@ -1,6 +1,6 @@
 # ハーネス v0.6 案「檻リレーと夜番」（日中の自律運転＋夜の点検）
 
-状態: **案（11-03、先輩）。11/4 朝に本人と対面で §8 を決めてから組む**。v0.5（本人の手元）の上に足す。檻（`docs/dev/cage.md`）は変えない。
+状態: **案（11-03、先輩）。道具は 11-04 に `scripts/relay/` に組んだ（§11）。§8 の承認（Remote Control の ON は本人決定済み）は本人と対面で**。v0.5（本人の手元）の上に足す。檻（`docs/dev/cage.md`）は変えない。
 
 作り方の記録: Fable のワークフロー（読み手 3・設計 3・審判 1・反証 3 の 10 体、約 21 分）で案を出し、反証の「止める」を全部取り込んだ。このワークフロー 1 回で週次の使用量が **全モデル 14→18%、Fable 10→18%** 動いた（事実、`get_usage`）。これが夜番の寸法の出発点（§6）。
 
@@ -194,3 +194,19 @@ Fable は夜番に使わない（詰まったときの相談の枠を残す）�
 6. 予算は「前夜 + 14%」の累積上限と起動前ゲートで守る
 
 README に載せる表: 運転回数・人が触らない時間・手数・$・%・止まった率・夜番の指摘のうち RED になった件数（`docs/claude-usage.md` の「足りないもの」を実績の表へ移す）。
+
+## 11. 組んだもの（11-04、Issue #86）
+| ファイル | 中身 |
+|---|---|
+| `scripts/relay/relay-lib.ts`（＋テスト） | 待ち行列の検査（凍結・共有・秘密を allow に書かせない）、C1〜C5、起動前ゲート、終了後ゲート G0〜G7、費用の読み取り、伏せ字、通知の本文、引数 |
+| `scripts/relay/run-day.mjs`・`paths.mjs` | 進行役。`--prepare` で worktree（`<ホーム>\dev\ear-train\Txx`、`npm ci`、push 無効）、列車、`--skip Txx` |
+| `scripts/relay/watch.mjs`・`stop.mjs`・`usage.mjs` | 通知係が使う。watch の最後の行は `NOTIFY <本文>`・`QUIET`・`STOP` |
+| `scripts/relay/night.mjs`・`night-review.workflow.template.mjs` | 夜番の準備（clone・対象の埋め込み・lock・起動コマンド）と回収 |
+| `scripts/relay/PACKET.txt`・`NOTIFIER.txt`・`NIGHT.txt` | 固定の指示文 |
+
+計画（§2〜§6）から変えたこと:
+- **手数の上限**: `--max-turns` が無い（2.1.299）ので、進行役が CAGE_LOG の行数を 5 秒ごとに見て、上限を超えたら殺す（`turns`）
+- **使用量**: 通知係が `get_usage` の値を `usage.mjs` で `usage.json` に書く（通知係に Write を渡さない）。前夜の値は人が朝に `usage.mjs --night-before N`。3 時間より古い値は読めないものとして止める
+- **夜番**: ワークフローはファイルを読めないので、lock は `night.mjs` が持つ。対象のコードは `night.mjs` がワークフローに埋め込み、夜のセッションには Read・Grep・Bash を渡さない。起動は `claude -p`（`--max-budget-usd` で縛る）。寸法は small（Find 4 体）と medium（Find 8 体、Opus の反証 3 件まで）
+- **ゲート**: QUESTIONS（ask）を終了コードより先に見る。G2 で GREEN が 1 つも無いときは `claude`（原因不明）として数え、2 本続いたら列車を止める
+- **未検証**: ワークフローの中の役が、夜のセッションの道具の制限を受け継ぐか。通知係の入れ子の起動（試運転で確かめる）
