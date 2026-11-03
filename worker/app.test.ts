@@ -135,3 +135,73 @@ describe("ハンドラの例外", () => {
     expect(response.headers.get("cache-control")).toBe("no-store");
   });
 });
+
+describe("見えない動き（攻撃役の指摘）", () => {
+  it("認証なしの経路は Cookie があっても hmac を呼ばない", async () => {
+    const hmac = vi.fn(fakeDeps().hmac);
+    const cookie = `session=${await sessionToken("member")}`;
+    await call("GET", "/api/photos/recent", cookie, fakeDeps({ hmac }));
+    expect(hmac).not.toHaveBeenCalled();
+  });
+
+  it("member の経路では hmac を 1 回呼ぶ", async () => {
+    const hmac = vi.fn(fakeDeps().hmac);
+    const cookie = `session=${await sessionToken("member")}`;
+    await call("POST", "/api/uploads", cookie, fakeDeps({ hmac }));
+    expect(hmac).toHaveBeenCalledTimes(1);
+  });
+
+  it("500 のときは console.error に残す", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const deps = fakeDeps({
+      assets: async () => {
+        throw new Error("boom");
+      },
+    });
+    await call("GET", "/", undefined, deps);
+    expect(error).toHaveBeenCalled();
+    error.mockRestore();
+  });
+
+  it("405 にも共通ヘッダが付く", async () => {
+    const response = await call("GET", "/api/session");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+  });
+
+  it("ハンドラに url・params・session・deps を渡す", async () => {
+    const routesModule = await import("./routes");
+    const route = routesModule.routes[6];
+    const deps = fakeDeps();
+    let seen: unknown;
+    const spy = vi.spyOn(route, "handler").mockImplementation(async (_request, ctx) => {
+      seen = ctx;
+      return new Response(null, { status: 204 });
+    });
+    const cookie = `session=${await sessionToken("admin")}`;
+    const response = await call("PATCH", "/api/photos/p-9/assignment?x=1", cookie, deps);
+    spy.mockRestore();
+    expect(response.status).toBe(204);
+    expect(seen).toMatchObject({
+      params: { id: "p-9" },
+      session: { device: "dev-admin", role: "admin" },
+      deps,
+    });
+    const ctx = seen as { url: URL };
+    expect(ctx.url.pathname).toBe("/api/photos/p-9/assignment");
+    expect(ctx.url.searchParams.get("x")).toBe("1");
+  });
+
+  it("認証なしの経路のハンドラには session: null を渡す", async () => {
+    const routesModule = await import("./routes");
+    const route = routesModule.routes[4];
+    let seen: unknown;
+    const spy = vi.spyOn(route, "handler").mockImplementation(async (_request, ctx) => {
+      seen = ctx;
+      return new Response(null, { status: 204 });
+    });
+    await call("GET", "/api/photos/recent", `session=${await sessionToken("admin")}`);
+    spy.mockRestore();
+    expect(seen).toMatchObject({ session: null, params: {} });
+  });
+});
