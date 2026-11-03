@@ -44,6 +44,7 @@ export function fakeDeps(overrides: Partial<Deps> = {}): Deps {
     matchPassphrase: async () => null,
     nowMs: () => NOW_MS,
     newId: () => "00000000-0000-4000-8000-000000000001",
+    knownFieldIds: new Set(Array.from({ length: 12 }, (_, i) => `A-${String(i + 1).padStart(2, "0")}`)),
     ...overrides,
   };
 }
@@ -71,5 +72,82 @@ export function request(method: string, path: string, cookie?: string): Request 
   return new Request(`https://example.test${path}`, {
     method,
     headers: cookie === undefined ? {} : { cookie },
+  });
+}
+
+/** テスト用の JPEG（画像ファイルはコミットしない。AGENTS.md §1-5）。scanBytes で大きさを水増しする */
+export function tinyJpeg(
+  options: { width?: number; height?: number; apps?: number[]; scanBytes?: number; tail?: number[] } = {},
+): Uint8Array<ArrayBuffer> {
+  const { width = 1600, height = 1200, apps = [], scanBytes = 2, tail = [0xff, 0xd9] } = options;
+  const segment = (marker: number, payload: number[]) => {
+    const length = payload.length + 2;
+    return [0xff, marker, length >> 8, length & 0xff, ...payload];
+  };
+  const head = [
+    0xff,
+    0xd8,
+    ...segment(0xe0, [0x4a, 0x46, 0x49, 0x46, 0x00]),
+    ...apps.flatMap((n) => segment(0xe0 + n, [0x45, 0x78, 0x69, 0x66, 0x00])),
+    ...segment(0xc0, [8, height >> 8, height & 0xff, width >> 8, width & 0xff, 1, 1, 0x11, 0]),
+    ...segment(0xda, [1, 1, 0x00, 0x00, 0x3f, 0x00]),
+  ];
+  const bytes = new Uint8Array(head.length + scanBytes + tail.length);
+  bytes.set(head, 0);
+  // スキャンの中身は 0x12 で埋める（0xFF を含まない）
+  bytes.fill(0x12, head.length, head.length + scanBytes);
+  bytes.set(tail, head.length + scanBytes);
+  return bytes;
+}
+
+export interface MultipartPart {
+  name: string;
+  value: string | Uint8Array;
+  /** 付けるとファイルの欄になる。バイト列なら既定で "photo.jpg" */
+  filename?: string;
+  contentType?: string;
+}
+
+/** multipart/form-data の本文を生のバイト列で組む（余分な欄・meta をファイルで送る・境界なしを作れる） */
+export function multipartBody(parts: MultipartPart[], boundary = "test-boundary-7MA4YWxk"): Uint8Array<ArrayBuffer> {
+  const encoder = new TextEncoder();
+  const chunks: Uint8Array[] = [];
+  for (const part of parts) {
+    const isFile = part.filename !== undefined || part.value instanceof Uint8Array;
+    const filename = part.filename ?? "photo.jpg";
+    const disposition = isFile
+      ? `form-data; name="${part.name}"; filename="${filename}"`
+      : `form-data; name="${part.name}"`;
+    const type = part.contentType ?? (isFile ? "image/jpeg" : undefined);
+    const head = `--${boundary}\r\nContent-Disposition: ${disposition}\r\n${type ? `Content-Type: ${type}\r\n` : ""}\r\n`;
+    chunks.push(encoder.encode(head));
+    chunks.push(typeof part.value === "string" ? encoder.encode(part.value) : part.value);
+    chunks.push(encoder.encode("\r\n"));
+  }
+  chunks.push(encoder.encode(`--${boundary}--\r\n`));
+  const total = chunks.reduce((sum, c) => sum + c.byteLength, 0);
+  const body = new Uint8Array(total);
+  let offset = 0;
+  for (const c of chunks) {
+    body.set(c, offset);
+    offset += c.byteLength;
+  }
+  return body;
+}
+
+/** POST /api/uploads の要求。contentType を null にすると Content-Type を付けない */
+export function multipartRequest(
+  parts: MultipartPart[],
+  options: { boundary?: string; contentType?: string | null; cookie?: string; headers?: Record<string, string> } = {},
+): Request {
+  const boundary = options.boundary ?? "test-boundary-7MA4YWxk";
+  const headers: Record<string, string> = { ...options.headers };
+  const contentType = options.contentType === undefined ? `multipart/form-data; boundary=${boundary}` : options.contentType;
+  if (contentType !== null) headers["content-type"] = contentType;
+  if (options.cookie !== undefined) headers.cookie = options.cookie;
+  return new Request("https://example.test/api/uploads", {
+    method: "POST",
+    headers,
+    body: multipartBody(parts, boundary),
   });
 }

@@ -5,6 +5,7 @@
 import type { Route } from "./deps";
 import { errorResponse, json } from "./http";
 import { getSession, postSession } from "./session";
+import { postUploads } from "./uploads";
 
 /** 未実装の経路。501 */
 export async function notImplemented(): Promise<Response> {
@@ -19,7 +20,7 @@ export async function health(): Promise<Response> {
 export const routes: readonly Route[] = [
   { method: "GET", pattern: "/api/health", auth: "none", handler: health },
   { method: "POST", pattern: "/api/session", auth: "none", handler: postSession },
-  { method: "POST", pattern: "/api/uploads", auth: "member", handler: notImplemented },
+  { method: "POST", pattern: "/api/uploads", auth: "member", handler: postUploads },
   { method: "GET", pattern: "/api/photos", auth: "none", handler: notImplemented },
   { method: "GET", pattern: "/api/photos/recent", auth: "none", handler: notImplemented },
   { method: "GET", pattern: "/api/photo-files/:id", auth: "none", handler: notImplemented },

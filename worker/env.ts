@@ -3,6 +3,7 @@
  * crypto.subtle・crypto.randomUUID・Date.now に触るのはここだけ。
  * バインディング名は wrangler.jsonc（本人が作る）との約束: DB・PHOTOS・ASSETS。
  */
+import fields from "@/data/fields.json";
 import type { Role } from "@/types";
 import type { BucketPort, DbPort, Deps } from "./deps";
 
@@ -32,6 +33,9 @@ function encodeBase64url(bytes: Uint8Array): string {
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
 }
+
+/** 圃場の番号だけを持つ（座標は Worker の判定に使わない） */
+const knownFieldIds: ReadonlySet<string> = new Set(fields.map((field) => field.id));
 
 export function createDeps(env: Env): Deps {
   const secret = requireSecret(env.SESSION_SECRET, "SESSION_SECRET");
@@ -76,5 +80,6 @@ export function createDeps(env: Env): Deps {
     },
     nowMs: () => Date.now(),
     newId: () => crypto.randomUUID(),
+    knownFieldIds,
   };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inspectJpeg, InvalidJpegError } from "./jpeg-segments";
+import { inspectJpeg, InvalidJpegError, scanJpegMarkers } from "./jpeg-segments";
 
 // 画像ファイルはコミットしない（AGENTS.md）。テストの JPEG はここでバイト列を組み立てる
 const SOI = [0xff, 0xd8];
@@ -185,5 +185,73 @@ describe("幅・高さが 0", () => {
     expect(() => inspectJpeg(jpeg(sof(0xc0, width, height), SCAN))).toThrow(
       InvalidJpegError,
     );
+  });
+});
+
+// 最初のスキャンの後ろまでたどる（PR #64 のレビュー #1: SOS の後ろに隠した APP1 と、EOI の後ろの付け足し）
+describe("scanJpegMarkers", () => {
+  const DHT_WITH_FF_E1 = segment(0xc4, [0x10, 0xff, 0xe1, 0x00, 0x05]);
+  const APP1 = segment(0xe1, [0x45, 0x78, 0x69, 0x66, 0x00]);
+  /** 2 枚目のスキャン（EOI を含まない） */
+  const SCAN2 = [...SOS, 0x56, 0x78];
+
+  it("ふつうの JPEG は APP なし、EOI で終わる", () => {
+    expect(scanJpegMarkers(jpeg(APP0, SOF0, SCAN))).toStrictEqual({ appSegments: [], endsAtEoi: true });
+  });
+
+  it("SOS より前の APP も数える", () => {
+    expect(scanJpegMarkers(jpeg(APP0, APP1, SOF0, SCAN))).toStrictEqual({ appSegments: [1], endsAtEoi: true });
+  });
+
+  it("2 枚目のスキャンの前の APP1 を見つける", () => {
+    const bytes = jpeg(SOF0, SOS, [0x12, 0x34], APP1, SCAN2, EOI);
+    expect(scanJpegMarkers(bytes)).toStrictEqual({ appSegments: [1], endsAtEoi: true });
+    // inspectJpeg は最初の SOS で止まるので見えない
+    expect(inspectJpeg(bytes).appSegments).toEqual([]);
+  });
+
+  it("スキャンの間の DHT の中身に FF E1 があっても APP と数えない（長さで飛ばす）", () => {
+    const bytes = jpeg(SOF0, SOS, [0x12, 0x34], DHT_WITH_FF_E1, SCAN2, EOI);
+    expect(scanJpegMarkers(bytes)).toStrictEqual({ appSegments: [], endsAtEoi: true });
+  });
+
+  it("SOS より前の DQT・DHT の中身の FF E1 も数えない", () => {
+    expect(scanJpegMarkers(jpeg(DHT_WITH_FF_E1, SOF0, SCAN))).toStrictEqual({ appSegments: [], endsAtEoi: true });
+  });
+
+  it("スキャンの中の FF 00（詰め物）と RST（FF D0〜D7）は飛ばす", () => {
+    const bytes = jpeg(SOF0, SOS, [0x12, 0xff, 0x00, 0xe1, 0xff, 0xd3, 0x34, 0xff, 0xd7, 0x56], EOI);
+    expect(scanJpegMarkers(bytes)).toStrictEqual({ appSegments: [], endsAtEoi: true });
+  });
+
+  it("マーカーの前の FF の詰め物は飛ばす", () => {
+    const bytes = jpeg(SOF0, SOS, [0x12, 0xff], APP1, SCAN2, EOI);
+    expect(scanJpegMarkers(bytes)).toStrictEqual({ appSegments: [1], endsAtEoi: true });
+  });
+
+  it("EOI の後ろにバイトがあれば endsAtEoi は false（後ろに APP1 を足して FF D9 で終えても）", () => {
+    expect(scanJpegMarkers(jpeg(SOF0, SCAN, [0x00])).endsAtEoi).toBe(false);
+    expect(scanJpegMarkers(jpeg(SOF0, SCAN, APP1, EOI)).endsAtEoi).toBe(false);
+  });
+
+  it("EOI が無い・途中で切れている・長さが合わないなら endsAtEoi は false（例外は出さない）", () => {
+    expect(scanJpegMarkers(jpeg(SOF0, SOS, [0x12, 0x34])).endsAtEoi).toBe(false);
+    expect(scanJpegMarkers(jpeg(SOF0, SOS, [0x12, 0xff])).endsAtEoi).toBe(false);
+    expect(scanJpegMarkers(jpeg(SOF0, [0xff, 0xc4, 0x00, 0x40, 0x01])).endsAtEoi).toBe(false);
+    expect(scanJpegMarkers(new Uint8Array(0)).endsAtEoi).toBe(false);
+  });
+
+  it("スキャンの前に RST などの単独のマーカーがあれば endsAtEoi は false", () => {
+    expect(scanJpegMarkers(jpeg([0xff, 0xd0], SOF0, SCAN)).endsAtEoi).toBe(false);
+  });
+
+  it("3MB のスキャンもたどれる（indexOf で FF を探す）", () => {
+    const big = new Uint8Array(3 * 1024 * 1024).fill(0x12);
+    const head = jpeg(SOF0, SOS);
+    const bytes = new Uint8Array(head.length + big.length + 2);
+    bytes.set(head, 0);
+    bytes.set(big, head.length);
+    bytes.set([0xff, 0xd9], head.length + big.length);
+    expect(scanJpegMarkers(bytes)).toStrictEqual({ appSegments: [], endsAtEoi: true });
   });
 });

@@ -156,3 +156,28 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
   - 例外は握らない（500 は `app.ts`）。合言葉・IP を D1 にも console にも残さない
 - **書き方の注意（`scripts/cage/policy.mjs`）**: `Date.now()`・`new Date()`（引数なし）は使わない（時刻は `deps.nowMs`）。`new Date(ms).toISOString()` は使ってよい。秒に直すのは `auth.ts` の `nowSec`。import は Service が `../config`、worker が `@/config`・`@/services/...`・`./...`
 - **担当**: 先輩。`usage-limit.ts`（担当「後で決める」）は先輩が作る（11-03 先輩の決定、本人に確認する）
+
+## T20 `POST /api/uploads`（縮小画像と meta を検査し、R2 と D1 に「未確定」で残す）
+- **状態**: 検査済み・人の確認待ち（11-03）
+- **運転の記録（試験5、MCP の檻）**: START `135955c` → GREEN `e7bd388` → REPORT `df9f232`。モデル Opus 5.5、`claude -p`、道具は檻の5つだけ、29手、$0.87。**C1〜C5 がすべて合格**。変更は許可した2ファイルだけ。QUESTIONS なし。REPORT の手元のパスは、push の前に REPORT のコミットそのものを伏せた版に入れ直した。TASKS に無い判断は1つ（二重と分かった直後に読み直して先の行が無ければ例外にして 500。起きない場面の保険）
+- **人の確認**: 本体のチェックアウトで C2（3 ファイル）・C3（139 件）・C4（テスト全体 1105 件、lint エラー 0・警告 2）が合格。C1・C5 には、運転と関係の無い Git 管理外の 2 ファイル（`.agents/skills/role-brief/SKILL.md`・`.codex/hooks.json`、17:26 に本体のチェックアウトにできた）が出たので、触らずに残した。実装を 17 通りに壊して 15 通りが落ちる。残る 2 つのうち「余分な欄を許す」は下のループが同じ判定をするので動きが変わらない。「content-length の判定を画像の上限で行う」はテストの要求に content-length が無いので落ちなかった → 本当の content-length を付けた 3MB ちょうどのテストを足した（`ae64b9c`。全体 1106 件）。手元の `wrangler dev`（本物の `wrangler.jsonc`、使い捨ての値と D1・R2、テストと同じ形の使い捨ての JPEG）で、201・同じハッシュで 409（同じ id）・APP1 で 422 metadata・長辺 2000 で 422 bad_dimensions・余分な欄 lat で 422 bad_form・meta に distance で 422 unknown_key・3MB 超で 413・JSON で 415・Cookie なしで 401。D1 は未確定の 1 行（field_id null、候補は番号だけ）、R2 の画像は送ったものとバイトまで同じ。CPU time は手元では測れない（dev へのデプロイ後に本人が確かめる）
+- **レビューの後（PR #64 のレビュー #1、人が対話で RED → GREEN）**: `inspectJpeg` は最初の SOS で止まるので、2 枚目のスキャンの前に隠した APP1 と、EOI の後ろに足して FF D9 で終えたものが通っていた。`jpeg-segments.ts` に `scanJpegMarkers`（最初のスキャンの後ろまでセグメントをたどる。中身は長さで飛ばし、スキャンの中は indexOf で FF を探して詰め物と RST を飛ばす。例外は出さない）を足し、`checkUploadImage` が後ろの APP1〜15 を metadata、最初の EOI でちょうど終わらないものを not_jpeg にする（順は変えない）。テストを 18 件足した。壊して確かめると 7 通りとも落ちる。手元の `wrangler dev` で、隠した 2 つは 422（metadata・not_jpeg）、ふつうの画像は 201。3MB のスキャンをたどる時間は手元の Node で中央値 1.9ms（推測では Worker の合計は 5〜8ms。dev で確かめる）
+- **Issue**: #60
+- **依存**: T03（`inspectJpeg`）、T04（`parseUploadMeta`）、T11（`uploaded_photos`）、T18（土台）、T19（session、`body.ts` の元）。T08「保存の失敗」はここに吸収した
+- **変えてよいファイル**: `src/services/upload-form.ts`・`worker/uploads.ts`（＋ REPORT、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結）**: `src/services/upload-form.test.ts`（52 件）・`worker/uploads.test.ts`（41 件）・`worker/uploads-config.test.ts`（2 件）、計 **95 件**、`worker/app.test.ts` の直し（`POST /api/uploads` を 501 から 415 に）
+- **人が RED で置いたもの（凍結）**: 2 ファイルの型・定数と空の実装、`worker/body.ts`（session から切り出し、`Uint8Array<ArrayBuffer>` を返す）とそのテスト、`session.ts` の直し、`routes.ts` の配線、`http.ts` の `"unprocessable"`、`Deps.knownFieldIds`（`env.ts` で `fields.json` から）、`test-bucket.ts`（偽の R2）、`test-helpers.ts` の `tinyJpeg`・`multipartBody`・`multipartRequest`
+- **RED の確かめ**: 新しいテストの 87 件のうち 84 件と、`app.test.ts` の直した 2 件が失敗（not implemented と 500）。仮の実装で worker と Service の 352 件がすべて通り、檻の純粋関数の検査も通ることを確かめてから空に戻した
+- **攻撃役（Sonnet、檻の中、21 手、$0.40）**: 87 件を全部通す手抜きが書けた（長辺の上限の引数を捨てて config を直接読む、末尾の最後の 1 バイトだけ見る、INSERT のエラー文に UNIQUE を含めば 409、`Object.values` で値を並べる、multipart の先頭一致）。8 件を足して 95 件にし、手抜きは 6 件落ちるようになった。正しい実装で worker と Service の 360 件が通る
+- **設計**: Claude Fable 5.1（別のセッション、読み取りだけ、83 手、$6.43）。要判断 14 件は先輩がすべて推奨どおりに決めた（11-03、#60 のコメント）
+- **合格条件**:
+  - 順番: 401（`app.ts`）→ 415（media type が `multipart/form-data` でない）→ 413（`content-length` が `UPLOAD_BODY_MAX_BYTES` 超。本文を読まない）→ `readBodyLimited` で上限まで読む（超えたら 413）→ `new Response(本文, { headers: { "content-type": 元の値 } }).formData()`（投げたら 415。`request.formData()` は使わない）→ 欄（`checkUploadParts`、422 `bad_form`）→ 画像（`checkUploadImage`、`too_large` は 413、他は 422）→ meta（`parseUploadMeta(meta, deps.knownFieldIds)`、`too_long` も 422）→ 二重を SELECT（あれば 409 `{ id }`）→ R2 → D1
+  - 422 の本文は `{ error: "unprocessable", reason }` だけ。reason は固定のコード（`bad_form`・`too_large` 以外の画像の理由・T04 の理由）で、入力の値を入れない。409 と 201 の本文は `{ id }` だけ
+  - 画像の拒否は 4 つ: `MAX_UPLOAD_BYTES` 超、APP1〜15、長辺が `THUMBNAIL_LONG_EDGE_PX` 超、末尾が `FF D9` でない。`inspect` が投げたら種類を問わず `not_jpeg`
+  - `contentHash` は形だけ見て信じる（T04）。Worker でハッシュを計算しない
+  - R2 のキーは `uploads/<id>.jpg`、`contentType` は `image/jpeg`、id は `deps.newId()` を 1 回。時刻は `new Date(deps.nowMs()).toISOString()`
+  - D1 は `PHOTO_COLUMNS` と `photoRowValues` から組んだ 1 文の `INSERT … ON CONFLICT(content_hash) DO NOTHING RETURNING id`。null なら置いた画像を消して 409 `{ id }`（既にある行の id）。エラー文は照合しない。INSERT が投げたら置いた画像を消して投げ直す（500）。片付けの delete が投げたら `console.error` に R2 のキーを残して元の例外を投げる
+  - `chosenFieldId` があっても `state` は `unconfirmed`、`field_id` は null。`uploader_device` は Cookie の端末 ID
+  - ファイル名・欄の Content-Type は読まない。`console` は片付けの失敗のときだけ
+- **書き方の注意（`scripts/cage/policy.mjs`）**: `Date.now()`・`new Date()`（引数なし）・`crypto` は使わない。`instanceof File` を使わず `typeof value === "string"` で分ける。import は Service が `../config`・`@/types`・`./jpeg-segments`、worker が `@/config`・`@/services/...`・`./...`
+- **担当**: 先輩

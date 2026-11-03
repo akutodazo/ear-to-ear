@@ -163,3 +163,10 @@ describe("バインディング", () => {
     expect(await response.text()).toBe("asset");
   });
 });
+
+describe("knownFieldIds", () => {
+  it("src/data/fields.json の番号だけ（A-01〜A-12）", () => {
+    const ids = createDeps(fakeEnv()).knownFieldIds;
+    expect([...ids].sort()).toEqual(Array.from({ length: 12 }, (_, i) => `A-${String(i + 1).padStart(2, "0")}`));
+  });
+});
