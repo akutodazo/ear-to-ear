@@ -64,6 +64,10 @@ describe("isMultipartContentType", () => {
     ["別の multipart", "multipart/mixed; boundary=abc"],
     ["似た名前", "multipart/form-datax; boundary=abc"],
     ["JPEG そのもの", "image/jpeg"],
+    // 攻撃役の指摘: 先頭一致だけでは通ってしまう
+    ["後ろに続く名前", "multipart/form-data-x; boundary=abc"],
+    ["後ろに /", "multipart/form-data/; boundary=abc"],
+    ["パラメータの中にだけある", "text/plain; x=multipart/form-data"],
   ])("%s は multipart でない", (_name, header) => {
     expect(isMultipartContentType(header)).toBe(false);
   });
@@ -187,6 +191,20 @@ describe("checkUploadImage", () => {
     expect(check(jpeg({ tail }))).toStrictEqual({ ok: false, reason: "not_jpeg" });
   });
 
+  it("長辺の上限は引数の maxLongEdge を使う（攻撃役の指摘: config を直接読んでも通っていた）", () => {
+    expect(checkUploadImage(jpeg({ width: 800, height: 600 }), inspectJpeg, MAX_UPLOAD_BYTES, 800).ok).toBe(true);
+    expect(checkUploadImage(jpeg({ width: 801, height: 600 }), inspectJpeg, MAX_UPLOAD_BYTES, 800)).toStrictEqual({
+      ok: false,
+      reason: "bad_dimensions",
+    });
+    expect(checkUploadImage(jpeg({ width: 2000, height: 600 }), inspectJpeg, MAX_UPLOAD_BYTES, 2000).ok).toBe(true);
+  });
+
+  it("末尾は 2 バイトとも見る（最後が D9 でも、その前が FF でなければ not_jpeg。攻撃役の指摘）", () => {
+    expect(check(jpeg({ tail: [0xd9] }))).toStrictEqual({ ok: false, reason: "not_jpeg" });
+    expect(check(jpeg({ tail: [0x00, 0xd9] }))).toStrictEqual({ ok: false, reason: "not_jpeg" });
+  });
+
   it("順番: APP があって末尾も壊れていれば metadata、大きさも越えていれば metadata が先", () => {
     expect(check(jpeg({ apps: [1], tail: [] }))).toStrictEqual({ ok: false, reason: "metadata" });
     expect(check(jpeg({ apps: [1], width: 4000 }))).toStrictEqual({ ok: false, reason: "metadata" });
@@ -265,6 +283,12 @@ describe("photoRow と PHOTO_COLUMNS", () => {
   it("photoRowValues は PHOTO_COLUMNS の並びの値", () => {
     const row = photoRow(input);
     expect(photoRowValues(row)).toEqual(PHOTO_COLUMNS.map((column) => row[column]));
+  });
+
+  it("photoRowValues は行のキーの並びに頼らず PHOTO_COLUMNS の順で返す（攻撃役の指摘）", () => {
+    const row = photoRow(input);
+    const reversed = Object.fromEntries(Object.entries(row).reverse()) as typeof row;
+    expect(photoRowValues(reversed)).toEqual(PHOTO_COLUMNS.map((column) => row[column]));
   });
 
   it("座標・距離らしい列は無い（K6）", () => {
