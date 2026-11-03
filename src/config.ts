@@ -20,6 +20,10 @@ export const SESSION_DAYS = 30;
 export const LOGIN_WINDOW_MINUTES = 10;
 export const LOGIN_MAX_ATTEMPTS_PER_WINDOW = 5;
 
+/** 新着の一覧（GET /api/photos/recent）の件数。limit が無い・不正なら既定、超えれば上限に丸める（T21） */
+export const RECENT_LIMIT_DEFAULT = 50;
+export const RECENT_LIMIT_MAX = 200;
+
 /** 判断のメモの上限（文字） */
 export const STATUS_NOTE_MAX_CHARS = 200;
 

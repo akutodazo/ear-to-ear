@@ -38,19 +38,19 @@ describe("/api/", () => {
   });
 
   it("認証なしの経路は 501 と共通ヘッダ", async () => {
-    const response = await call("GET", "/api/photos/recent");
+    const response = await call("GET", "/api/photos");
     expect(response.status).toBe(501);
     expect(await response.json()).toStrictEqual({ error: "not_implemented" });
     expect(response.headers.get("cache-control")).toBe("no-store");
   });
 
   it("認証なしの経路は壊れた Cookie を読まない（401 にならない）", async () => {
-    const response = await call("GET", "/api/photos/recent", "session=broken");
+    const response = await call("GET", "/api/photos", "session=broken");
     expect(response.status).toBe(501);
   });
 
   it("クエリ付きでも経路に一致する", async () => {
-    expect((await call("GET", "/api/photos/recent?limit=50")).status).toBe(501);
+    expect((await call("GET", "/api/photos?fieldId=A-01")).status).toBe(501);
   });
 
   it("無い経路は 404 { error: not_found }（Cookie が無くても認証より先）", async () => {
