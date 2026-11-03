@@ -191,3 +191,44 @@ describe("contentHash", () => {
     expect(reasonOf({ ...VALID, contentHash })).toBe("bad_content_hash");
   });
 });
+
+describe("takenAt", () => {
+  it.each([
+    ["ゼロ埋めなし", "2026-7-21"],
+    ["区切りが違う", "2026/07/21"],
+    ["日時つき", "2026-07-21T10:00:00+09:00"],
+    ["末尾に改行", "2026-07-21\n"],
+    ["実在しない日", "2026-02-30"],
+    ["閏年でない 2/29", "2026-02-29"],
+    ["13 月", "2026-13-01"],
+    ["0 日", "2026-07-00"],
+    ["数", 20260721],
+    ["空文字", ""],
+  ])("%s は bad_taken_at", (_name, takenAt) => {
+    expect(reasonOf({ ...VALID, takenAt })).toBe("bad_taken_at");
+  });
+
+  it("閏年の 2/29 は通る", () => {
+    expect(reasonOf({ ...VALID, takenAt: "2028-02-29" })).toBe("ok");
+  });
+});
+
+describe("takenAtSource", () => {
+  it.each([
+    ["不正な値", "gps"],
+    ["大文字", "XMP"],
+    ["空文字", ""],
+    ["null", null],
+    ["数", 1],
+  ])("%s は bad_taken_at_source", (_name, takenAtSource) => {
+    expect(reasonOf({ ...VALID, takenAtSource })).toBe("bad_taken_at_source");
+  });
+
+  it.each([
+    ["none なのに日付がある", { takenAtSource: "none", takenAt: "2026-07-21" }],
+    ["xmp なのに日付が無い", { takenAtSource: "xmp", takenAt: null }],
+    ["exif なのに日付が無い", { takenAtSource: "exif", takenAt: null }],
+  ])("%s は taken_at_mismatch", (_name, overrides) => {
+    expect(reasonOf({ ...VALID, ...overrides })).toBe("taken_at_mismatch");
+  });
+});
