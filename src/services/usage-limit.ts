@@ -20,32 +20,32 @@ export interface LoginWindow {
 
 /** UTC の日付 "YYYY-MM-DD"（hashIp の塩） */
 export function utcDay(nowMs: number): string {
-  void nowMs;
-  throw new Error("not implemented");
+  return new Date(nowMs).toISOString().slice(0, 10);
 }
 
 /** nowMs を含む固定の枠 */
 export function loginWindow(nowMs: number): LoginWindow {
-  void nowMs;
-  throw new Error("not implemented");
+  const startMs = Math.floor(nowMs / LOGIN_WINDOW_MS) * LOGIN_WINDOW_MS;
+  const endMs = startMs + LOGIN_WINDOW_MS;
+  return {
+    slot: new Date(startMs).toISOString().slice(0, 16),
+    startMs,
+    endMs,
+    expiresAt: new Date(endMs).toISOString(),
+  };
 }
 
 /** usage_counters の key。`login:<IPのハッシュ>:<枠>` */
 export function loginCounterKey(ipHash: string, slot: string): string {
-  void ipHash;
-  void slot;
-  throw new Error("not implemented");
+  return `login:${ipHash}:${slot}`;
 }
 
 /** 枠の失敗の数が上限に達しているか（達していれば 429） */
 export function isLoginLimited(count: number): boolean {
-  void count;
-  throw new Error("not implemented");
+  return count >= LOGIN_MAX_ATTEMPTS_PER_WINDOW;
 }
 
 /** Retry-After の秒。枠の終わりまでを切り上げ、最小 1 */
 export function retryAfterSec(window: LoginWindow, nowMs: number): number {
-  void window;
-  void nowMs;
-  throw new Error("not implemented");
+  return Math.max(1, Math.ceil((window.endMs - nowMs) / 1000));
 }
