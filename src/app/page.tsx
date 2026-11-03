@@ -1,9 +1,18 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
-    <main>
+    <main className="page">
       <h1>ear-to-ear</h1>
       <p>穂から穂へ、写真と判断をつなぐ</p>
-      <p>小麦収穫委員会の写真共有。いまは準備中です（L0）。</p>
+      <nav className="stack">
+        <Link className="button button-primary" href="/upload">
+          写真を送る
+        </Link>
+        <Link className="button" href="/recent">
+          新着を見る
+        </Link>
+      </nav>
     </main>
   );
 }

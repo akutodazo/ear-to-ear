@@ -25,3 +25,127 @@ body {
 main {
   padding: 24px 16px;
 }
+
+.page {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.stack-tight {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* 手袋でも押せる大きさ（最低 56px） */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  padding: 0 20px;
+  border: 2px solid var(--fg);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--fg);
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button-primary {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.button-small {
+  min-height: 44px;
+  font-size: 1rem;
+  align-self: flex-start;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.input {
+  min-height: 52px;
+  padding: 0 12px;
+  border: 2px solid #9aa39a;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  background: #fff;
+}
+
+.panel {
+  padding: 16px;
+  border: 2px solid #c9b458;
+  border-radius: 12px;
+  background: #fffbe6;
+}
+
+.cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.card p {
+  margin: 0;
+}
+
+.thumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #e8e6dc;
+}
+
+.thumb img {
+  object-fit: cover;
+}
+
+.label {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.note {
+  color: #4b554b;
+  font-size: 0.95rem;
+}
+
+.note-ok {
+  color: #2f6b2f;
+  font-weight: 600;
+}
