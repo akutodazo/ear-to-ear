@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- ear-to-ear のアイコン: 落ち着いた青の地に、麦の穂（麦の黄色は印だけに使う。11-03 配色） -->
+  <rect width="512" height="512" rx="112" fill="#1f6fb5"/>
+  <g fill="#d9b44a">
+    <path d="M250 420 L262 420 L262 150 L250 150 Z"/>
+    <ellipse cx="256" cy="112" rx="22" ry="44"/>
+    <g id="pair">
+      <ellipse cx="222" cy="170" rx="20" ry="42" transform="rotate(-28 222 170)"/>
+      <ellipse cx="290" cy="170" rx="20" ry="42" transform="rotate(28 290 170)"/>
+    </g>
+    <use href="#pair" y="62"/>
+    <use href="#pair" y="124"/>
+    <use href="#pair" y="186"/>
+  </g>
+</svg>
