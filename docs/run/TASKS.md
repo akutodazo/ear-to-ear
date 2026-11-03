@@ -46,7 +46,10 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **参照**: docs/spec.md「流れ（L0）」3、「データ契約」`Field`・`UploadedPhoto.candidateFieldIds`
 
 ## T04 `src/services/upload-meta.ts`（`POST /api/uploads` の meta の検証）
-- **状態**: RED済み（人）
+- **状態**: 検査済み・人の確認待ち（11-03）
+- **運転の記録（試験2、MCP の檻）**: START `19bafb5` → GREEN `955943a` → REPORT `af5e2f3`。モデル Opus 5.5、`claude -p`、道具は檻の5つだけ、12手、$0.51。変更は `upload-meta.ts` だけ
+- **止まった理由**: C4 の build が `next` を見つけられず不合格で、QUESTIONS を書いて止まった（決まりどおり）。原因は人の準備で、使い捨ての worktree の `node_modules` を Windows のリンク（junction）にしたため。Turbopack はリンクの外を読めない。本体のチェックアウトで C1・C3・C4・C5 を回し直して合格（テスト全体 438 件）。REPORT の C4 は当時の不合格のまま残している。QUESTIONS はコミットしていない
+- **次の運転への申し送り**: worktree では `npm ci` するか、C4 を人の確認に回す
 - **依存**: T02（取り込み済み）
 - **変えてよいファイル**: `src/services/upload-meta.ts` のみ（＋ `docs/run/REPORT.md`、止まったときは `docs/run/QUESTIONS.md`）
 - **テスト（凍結）**: `src/services/upload-meta.test.ts`
