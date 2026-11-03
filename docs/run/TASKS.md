@@ -29,7 +29,8 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **合格条件**: main で `npm run check` が通る
 
 ## T02 `src/services/candidates.ts`（候補の圃場を近い順に出す）
-- **状態**: RED済み（人、11-02）
+- **状態**: 人の確認済み（11-03）。取り込みは PR のマージで
+- **運転の記録（試験1、11-03）**: ブランチ `run/1103-a`、START `eed9b9f` → GREEN `ecb262b` → REPORT `7583d66`。モデル Opus・自動モード・`/goal`。C1〜C5 はすべて合格（人も HEAD で C1・C3・C4・C5 を回し直して合格）。ずれ: C2〜C4 を1回のメッセージで続けて出した、C4 に `; echo` をつないだ（REPORT に自己申告あり。人が単独で回し直して終了コード 0 を確認）
 - **依存**: T00
 - **変えてよいファイル**: `src/services/candidates.ts` のみ（＋ `docs/run/REPORT.md`、止まったときは `docs/run/QUESTIONS.md`）
 - **テスト（凍結）**: `src/services/candidates.test.ts`。**13 件**（`candidateFieldIds` 9・`distanceMeters` 4）。距離が同じなら番号の昇順。地球の半径は 6,371km
