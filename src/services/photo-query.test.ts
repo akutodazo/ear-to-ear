@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RECENT_LIMIT_DEFAULT, RECENT_LIMIT_MAX } from "../config";
+import { RECENT_LIMIT_DEFAULT, RECENT_LIMIT_MAX } from "@/config";
 import { parseRecentLimit, PHOTO_LIST_COLUMNS, photoFromRow, type PhotoListRow } from "./photo-query";
 
 const ROW: PhotoListRow = {

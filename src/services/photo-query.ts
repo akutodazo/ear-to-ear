@@ -2,7 +2,7 @@
  * 写真の一覧の読み出し（GET /api/photos/recent、docs/spec.md §6）。行 → 画面の形（UploadedPhoto）。
  * 返す列は PHOTO_LIST_COLUMNS だけ。写真のハッシュ・R2 のキーは返さない（docs/privacy.md）。
  */
-import { RECENT_LIMIT_DEFAULT, RECENT_LIMIT_MAX } from "../config";
+import { RECENT_LIMIT_DEFAULT, RECENT_LIMIT_MAX } from "@/config";
 import type { UploadedPhoto } from "@/types";
 
 /** SELECT する列の並び（photoFromRow のキーの順と同じ）。content_hash・r2_key・bytes・updated_at は入れない */
