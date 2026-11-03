@@ -32,12 +32,31 @@ export interface StatusEventRow {
   revoked_at: string | null;
 }
 
+/** 正の整数の 10 進（先頭の 0・符号・空白・ほかの数字の書き方は認めない） */
+const ID_PATTERN = /^[1-9]\d*$/;
+
 /**
  * :id の値（DELETE /api/status-events/:id）。正の整数の 10 進（/^[1-9]\d*$/）で
  * Number.MAX_SAFE_INTEGER 以下なら数、それ以外は null。例外は出さない
  */
 export function parseStatusEventId(raw: string): number | null {
-  throw new Error("not implemented");
+  if (!ID_PATTERN.test(raw)) return null;
+  const n = Number(raw);
+  return n <= Number.MAX_SAFE_INTEGER ? n : null;
+}
+
+/** JSON の列を文字列の配列に戻す。違えば列の名前の例外（中身はメッセージに入れない） */
+function parseStringArray(text: string, column: string): string[] {
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    throw new Error(`${column} が JSON ではない`);
+  }
+  if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) {
+    throw new Error(`${column} が文字列の配列ではない`);
+  }
+  return value;
 }
 
 /**
@@ -45,5 +64,15 @@ export function parseStatusEventId(raw: string): number | null {
  * 例外のメッセージに列の中身を入れない
  */
 export function statusEventFromRow(row: StatusEventRow): StatusEvent {
-  throw new Error("not implemented");
+  return {
+    id: row.id,
+    fieldId: row.field_id,
+    status: row.status,
+    reasons: parseStringArray(row.reasons, "reasons"),
+    note: row.note,
+    refPhotoIds: parseStringArray(row.ref_photo_ids, "ref_photo_ids"),
+    actorDevice: row.actor_device,
+    at: row.at,
+    revokedAt: row.revoked_at,
+  };
 }
