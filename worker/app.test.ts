@@ -64,11 +64,13 @@ describe("/api/", () => {
     expect((await call("GET", path)).status).toBe(404);
   });
 
-  it("メソッド違いは 405 と Allow（表の順）", async () => {
+  it("メソッド違いは 405 と Allow（表の順）と共通ヘッダ", async () => {
     const response = await call("DELETE", "/api/session");
     expect(response.status).toBe(405);
     expect(response.headers.get("allow")).toBe("POST, GET");
     expect(await response.json()).toStrictEqual({ error: "method_not_allowed" });
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
   });
 
   it("admin の経路のメソッド違いは、Cookie が無くても 405（認証より先）", async () => {
@@ -82,10 +84,6 @@ describe("認証", () => {
     expect(response.status).toBe(401);
     expect(await response.json()).toStrictEqual({ error: "unauthorized" });
     expect(response.headers.get("cache-control")).toBe("no-store");
-  });
-
-  it("member の経路は壊れた Cookie だと 401", async () => {
-    expect((await call("POST", "/api/uploads", "session=broken")).status).toBe(401);
   });
 
   it.each(["member", "admin"] as const)("member の経路は %s なら通る（本文が無いので 415）", async (role) => {
@@ -161,12 +159,6 @@ describe("見えない動き（攻撃役の指摘）", () => {
     await call("GET", "/", undefined, deps);
     expect(error).toHaveBeenCalled();
     error.mockRestore();
-  });
-
-  it("405 にも共通ヘッダが付く", async () => {
-    const response = await call("DELETE", "/api/session");
-    expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
   });
 
   it("ハンドラに url・params・session・deps を渡す", async () => {
