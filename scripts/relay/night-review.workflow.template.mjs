@@ -69,6 +69,7 @@ let confirmed = []
 let found = 0
 let droppedFindings = 0
 let droppedChunks = 0
+let failure = null
 
 try {
   if (T.files.length > 0) {
@@ -124,11 +125,17 @@ try {
     })
     confirmed = judged.filter(Boolean)
   }
+} catch (e) {
+  // 予算切れなどで途中で止まっても、確定した分の報告を残す（設計 §6、PR #88 のレビュー #4）
+  failure = String(e && e.message ? e.message : e).slice(0, 200)
+  log(`途中で止まった: ${failure}`)
 } finally {
   phase('Write')
 }
 
-const table = `| 出た | 重なりを除いた後に落とした | 塊を落とした | 残った |\n|---|---|---|---|\n| ${found} | ${droppedFindings} | ${droppedChunks} | ${confirmed.length} |`
+const table = `| 出た | 重なりを除いた後に落とした | 塊を落とした | 残った |\n|---|---|---|---|\n| ${found} | ${droppedFindings} | ${droppedChunks} | ${confirmed.length} |${failure ? `
+
+途中で止まった: ${failure}` : ''}`
 const report = await agent(
   `夜番の報告を Markdown で書く。先頭に「止める」を 3 行以内（無ければ「止めるものは無い」）。次に件数の表をそのまま貼る。次に各件を「file:line・主張・再現手順・票（CONFIRMED／PLAUSIBLE）・足すべきテストの名前」で。コードは書かない。最後に「人が確かめること」。${RULES}\n\n日付: ${T.date}\n対象: ${T.files.map((f) => f.path).join('、') || 'なし'}\n対象から外したファイル: ${T.dropped.join('、') || 'なし'}\n\n件数の表:\n${table}\n\n残った指摘（JSON）:\n${JSON.stringify(confirmed)}`,
   { label: 'write', phase: 'Write', model: 'sonnet', effort: 'low' },

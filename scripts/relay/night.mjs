@@ -60,14 +60,15 @@ if (mode === "--prepare" && (size === "small" || size === "medium") && process.a
     process.exit(2);
   }
   mkdirSync(dir, { recursive: true });
+  rmSync(clone, { recursive: true, force: true }); // 前の準備が途中で失敗した残り（レビュー #11）
   execFileSync("git", ["clone", "-q", "--depth", "1", "--branch", "main", "--single-branch", `file://${REPO.replaceAll("\\", "/")}`, clone]);
   rmSync(join(clone, "docs", "run"), { recursive: true, force: true });
   const t = targets(size);
   const template = readFileSync(join(REPO, "scripts", "relay", "night-review.workflow.template.mjs"), "utf8");
   const script = join(dir, `night-review-${today}.workflow.mjs`);
-  writeFileSync(script, template.replace("/*TARGETS*/ null", JSON.stringify(t)));
+  writeFileSync(script, template.replace("/*TARGETS*/ null", () => JSON.stringify(t))); // 文字列だと writeFileSync(script, template.replace("/*TARGETS*/ null", JSON.stringify(t))); などが効く（PR #88 のレビュー #5）
   writeFileSync(lock, new Date().toISOString());
-  const prompt = readFileSync(join(REPO, "scripts", "relay", "NIGHT.txt"), "utf8").replaceAll("<SCRIPT>", script.replaceAll("\\", "/"));
+  const prompt = readFileSync(join(REPO, "scripts", "relay", "NIGHT.txt"), "utf8").replaceAll("<SCRIPT>", () => script.replaceAll("\\", "/"));
   writeFileSync(join(dir, "PROMPT.txt"), prompt);
   const budget = size === "medium" ? "5" : "2";
   console.log(`対象 ${t.files.length} ファイル（外した ${t.dropped.length}）: ${t.files.map((f) => f.path).join(", ")}`);
