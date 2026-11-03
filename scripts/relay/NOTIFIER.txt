@@ -9,6 +9,6 @@
    - 「STOP」か終了コード 2 なら、何もせずに終わる
 5. 1 に戻る（get_usage → usage.mjs → watch）。STATUS の最後の state が train なら、通知を送ってから終わる
 
-人から「Txx を飛ばして続けて」と来たら、`node scripts/relay/run-day.mjs --today MMDD --skip Txx` を背景で起動して 3 に戻る（止まったものの再開ではなく、新しい列車）。
+人からの返事で列車を起動し直さない（二重起動の元）。止まったパケットは同じ日に再開しない。
 人から「止めて」と来たら `node scripts/relay/stop.mjs` を実行する。
 許可を求められる操作が必要になったら、実行せずに「止めて」と同じことをする。

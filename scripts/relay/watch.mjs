@@ -1,10 +1,10 @@
-// 通知係が背景で起動して待つ（ハーネス v0.6 §4）。STATUS.json の seq が増えたら、最後の 1 行と通知の本文を出して終わる。
+// 通知係が背景で起動して待つ（ハーネス v0.6 §4）。STATUS（追記の列）に見ていない行が出たら、まとめて通知の本文を出して終わる。
 // 待っている間は LLM を呼ばない。終了理由に関わらず最短 60 秒は待つ。起こした回数が多すぎたら STOP を書いて exit 2。
-//   出力の最後の行: 「NOTIFY <本文>」か「QUIET」。exit 0＝起きた、2＝止める（何もしない）、3＝時間切れ（watch を起動し直す）
+//   出力の最後の行: 「NOTIFY <本文>」か「QUIET」か「STOP」。exit 0＝起きた、2＝止める（何もしない）、3＝時間切れ（watch を起動し直す）
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { paths, readJson, todayMMDD } from "./paths.mjs";
-import { notifyText, tooManyWakes } from "./relay-lib.ts";
+import { joinNotices, ledgerTotal, notifyText, tooManyWakes, unseenStatus } from "./relay-lib.ts";
 
 if (process.argv.length > 2) {
   console.error("引数は取らない");
@@ -16,10 +16,12 @@ const write = (path, text) => {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, text);
 };
+const lines = (path) => (existsSync(path) ? readFileSync(path, "utf8").split("\n") : []);
 
 const wakes = (readJson(p.wakes, { n: 0 }).n ?? 0) + 1;
 write(p.wakes, JSON.stringify({ n: wakes }));
-const packets = Array.isArray(readJson(p.queue, {}).packets) ? readJson(p.queue, {}).packets.length : 0;
+const queue = readJson(p.queue, {});
+const packets = Array.isArray(queue.packets) ? queue.packets.length : 0;
 if (tooManyWakes(wakes, packets)) {
   write(p.stop, `watch: 起こした回数が上限を超えた（${wakes}）\n`);
   console.log("STOP");
@@ -36,33 +38,24 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 for (;;) {
   await sleep(5_000);
-  let status = null;
-  try {
-    status = JSON.parse(readFileSync(p.status, "utf8"));
-  } catch {
-    status = null;
-  }
-  const elapsed = Date.now() - t0;
-  if (status && typeof status.seq === "number" && status.seq > seen && elapsed >= 60_000) {
-    write(p.seen, JSON.stringify({ seq: status.seq }));
-    let summary;
-    if (status.state === "train") {
-      const state = readJson(p.state, { packets: {} });
-      const entries = Object.values(state.packets ?? {});
-      const ledger = existsSync(p.ledger) ? readFileSync(p.ledger, "utf8").split("\n").filter(Boolean) : [];
-      summary = {
-        green: entries.filter((e) => e.state === "green").length,
-        ask: entries.filter((e) => e.state === "ask").length,
-        stopped: entries.filter((e) => e.state === "stopped").length,
-        usd: ledger.reduce((s, l) => s + (Number(JSON.parse(l).costUsd) || 0), 0),
-      };
-    }
-    const text = notifyText(status, summary);
-    console.log(JSON.stringify(status));
+  const { lastSeq, entries } = unseenStatus(lines(p.status), seen);
+  if (entries.length > 0 && Date.now() - t0 >= 60_000) {
+    write(p.seen, JSON.stringify({ seq: lastSeq }));
+    const state = readJson(p.state, { packets: {} });
+    const all = Object.values(state.packets ?? {});
+    const summary = {
+      green: all.filter((e) => e.state === "green").length,
+      ask: all.filter((e) => e.state === "ask").length,
+      stopped: all.filter((e) => e.state === "stopped").length,
+      usd: ledgerTotal(lines(p.ledger), typeof queue.maxBudgetUsd === "number" ? queue.maxBudgetUsd : 0),
+    };
+    const texts = entries.map((e) => notifyText(e, e.state === "train" ? summary : undefined)).filter((t) => t !== null);
+    const text = joinNotices(texts);
+    for (const e of entries) console.log(JSON.stringify(e));
     console.log(text === null ? "QUIET" : `NOTIFY ${text}`);
     process.exit(0);
   }
-  if (elapsed > 5 * 3600_000) {
+  if (Date.now() - t0 > 5 * 3600_000) {
     console.log("QUIET");
     process.exit(3);
   }
