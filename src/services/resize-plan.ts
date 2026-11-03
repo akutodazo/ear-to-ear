@@ -9,8 +9,11 @@ export function resizedSize(
   height: number,
   longEdge: number = THUMBNAIL_LONG_EDGE_PX,
 ): { width: number; height: number } {
-  void width;
-  void height;
-  void longEdge;
-  throw new Error("not implemented");
+  const longest = Math.max(width, height);
+  if (longest <= longEdge) return { width, height };
+  const scale = longEdge / longest;
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
+  };
 }
