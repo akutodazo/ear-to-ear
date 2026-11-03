@@ -19,7 +19,8 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 | 10 | T09・T10 架空圃場・合成写真 | 本人（対話） | — |
 | 11 | T06 `photo-groups.ts`（L1） | 本人 | 可 |
 | 12 | T12 `status-reason.ts`（L1） | 本人 | 可 |
-| 13〜 | T07・T13・T14・T15・T16（L6・L8） | L0 の後に決める | — |
+| 13 | T18 Worker の土台 | 先輩 | 先輩の指示で無人（11-03） |
+| 14〜 | T07・T13・T14・T15・T16（L6・L8） | L0 の後に決める | — |
 
 ---
 
@@ -106,3 +107,25 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
   - **読めない・壊れた・JPEG でないときは例外を出さず**、位置なし・日付不明（`none`）
 - **RED の確かめ**: 23 件すべて not implemented で失敗。仮の実装で 23 件が通ることを確かめてから空に戻した
 - **参照**: docs/spec.md §4「写真の位置情報（分かっている事実）」、§9 のテスト表 photo-meta
+
+## T18 Worker の土台（`worker/`。ルーター・共通の応答・認証の土台）
+- **状態**: 検査済み・人の確認待ち（11-03）
+- **運転の記録（試験3、MCP の檻）**: START `05810ce` → GREEN `24c8480` → REPORT `0111080`。モデル Opus 5.5、`claude -p`、道具は檻の5つだけ、28手、$0.53。**C1〜C5 がすべて合格**（檻の中の初めての全合格。worktree で `npm ci` した）。変更は許可した6ファイルだけ。REPORT の手元のパスは人が伏せた（`9151a1e`）
+- **人の確認**: 本体のチェックアウトで C1・C3（114 件）・C4（テスト全体 677 件）・C5 が合格。実装を9通りに壊して8通りが落ちる（残る1通りは `Allow` の重複で、表に同じ組が無い限り起きない）。手元の `wrangler dev`（workerd、使い捨ての設定）で health 200・静的アセット・501・401・405・404 と共通ヘッダを確認。人が書いた `env.ts` が workerd で動き、bundle が `@/` を解決することも確かめた。`timingSafeEqual` はまだ通っていない（次の session のパケットで確かめる）
+- **攻撃役（Sonnet、檻の中）**: 94 件を全部通す手抜きが書けた（区切りを長さと先頭1文字で比べる、Cookie の日数の直書き など）。20 件を足して 114 件にし、手抜きは 12 件落ちるようになった。$0.19
+- **依存**: T05（取り込み済み）
+- **変えてよいファイル**: `worker/app.ts`・`router.ts`・`http.ts`・`cookies.ts`・`auth.ts`・`routes.ts`（＋ `docs/run/REPORT.md`、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結）**: `worker/router.test.ts`・`cookies.test.ts`・`cookies-days.test.ts`・`auth.test.ts`・`http.test.ts`・`routes.test.ts`・`app.test.ts`。**114 件**
+- **人が RED で置いたもの（凍結）**: `worker/deps.ts`（型）、`worker/env.ts`（`crypto`・`env` に触る唯一の場所）、`worker/index.ts`（入口）、`worker/test-helpers.ts`、`vitest.config.ts` の `@` の別名、6 ファイルの空の実装、`routes.ts` の経路の表
+- **設計**: Claude Fable 5.1（別のセッション、読み取りだけ、$4.96）。要判断は先輩が決めた（11-03）: D1 のバインディング名は `DB`、Cookie 名は `session`、vitest に `@` の別名、`/api/health` を作る（200 `{ ok: true }` だけ）、末尾スラッシュは 404、未実装の経路は 501、HEAD・OPTIONS は 405
+- **合格条件**:
+  - `/api` と `/api/` で始まらないパスは `deps.assets` の応答をそのまま返す（ヘッダも触らない）
+  - 経路は区切りごとの完全一致と `:name`。正規化しない。404 と 405（`Allow` は表の順、`, ` 区切り）は認証より先
+  - `auth: "none"` の経路は Cookie を読まない（hmac を呼ばない）。member は 401、admin は 401 と 403
+  - 失敗の本文は `{ error }` だけ。未捕捉の例外は 500 `{ error: "internal" }` で `console.error` に残す
+  - API の応答には、無いときだけ `Cache-Control: no-store` と `X-Content-Type-Options: nosniff`
+  - Cookie の `Max-Age` は `SESSION_DAYS` から計算する
+  - `nowMs` はミリ秒。秒に直すのは `auth.ts` だけ
+- **書き方の注意（`scripts/cage/policy.mjs`）**: `Response.json()` は使わず `new Response(JSON.stringify(...))`。`Date.now()`・`crypto` を檻の側で呼ばない（必ず `deps`）。import は `./deps`（型）・`./...`・`@/services/session-token`・`@/config` だけ
+- **担当**: 先輩。先輩の指示で MCP の檻の中で無人運転する（11-03）
+- **申し送り（本人へ）**: `wrangler.jsonc` は本人の側で作る。バインディング名 `DB`・`PHOTOS`・`ASSETS`、Secret `MEMBER_PASSPHRASE`・`ADMIN_PASSPHRASE`・`SESSION_SECRET`。設計の推奨は assets の `run_worker_first: ["/api/*"]`（推測を含む）。画面が自分の役割を知る方法（`X-Role` のヘッダ／200 `{role}`／`GET /api/session`）は次のパケットの前に決める

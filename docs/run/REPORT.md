@@ -1,37 +1,45 @@
-# T01 REPORT（検査済み・人の確認待ち）
+# T18 REPORT（検査済み・人の確認待ち）
 
-- ブランチ: run/1103-b、START 5b7cb5f → GREEN 520875b
-- 変えたファイル: src/services/photo-meta.ts のみ
-- モデル: Opus 5.5（/goal）
-- 各検査は1回ずつ、他のコマンドとつながずに実行。下の出力は会話の出力をそのまま写したもの。C4 の終了コードはツールの表示で 0（エラーの表示なし）
-
-## C1 `git status --porcelain --untracked-files=all`
-```
-(出力なし)
+## C1 git status --porcelain --untracked-files=all
 ```
 
-## C2 `git diff --name-only 5b7cb5f5af55abcdbc67ad3b1bae0e78d0d68873..HEAD`
-```
-src/services/photo-meta.ts
 ```
 
-## C3 `npx vitest run src/services/photo-meta.test.ts`
+## C2 git diff --name-only 05810ce..HEAD
 ```
-(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
-  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
-Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+worker/app.ts
+worker/auth.ts
+worker/cookies.ts
+worker/http.ts
+worker/router.ts
+worker/routes.ts
 
- RUN  v5.0.5 C:/Users/tanaka/projects/ear-to-ear
-
-
- Test Files  1 passed (1)
-      Tests  23 passed (23)
-   Start at  12:16:23
-   Duration  199ms (import 38%, tests 28%, transform 21%, worker 13%)
 ```
 
-## C4 `npm run check`
+## C3 vitest run（T18 のテスト）
 ```
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.5 [39m[90m<作業フォルダ>/t18-run[39m
+
+ [32m✓[39m worker/cookies-days.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m worker/routes.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+ [32m✓[39m worker/http.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 57[2mms[22m[39m
+ [32m✓[39m worker/cookies.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m worker/router.test.ts [2m([22m[2m32 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m worker/auth.test.ts [2m([22m[2m23 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+ [32m✓[39m worker/app.test.ts [2m([22m[2m29 tests[22m[2m)[22m[32m 64[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m7 passed[39m[22m[90m (7)[39m
+[2m      Tests [22m [1m[32m114 passed[39m[22m[90m (114)[39m
+[2m   Start at [22m 11:40:05
+[2m   Duration [22m 407ms[2m (tests 43%, import 33%, transform 14%, worker 9%)[22m
+
+
+```
+
+## C4 npm run check
+```
+
 > ear-to-ear@0.1.0 check
 > npm run check:safety && npm run lint && npm run typecheck && npm run test && npm run build
 
@@ -39,21 +47,20 @@ Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
 > ear-to-ear@0.1.0 check:safety
 > node scripts/check-safety.mjs
 
-(node:4856) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/tanaka/projects/ear-to-ear/scripts/safety-rules.ts is not specified and it doesn't parse as CommonJS.
-Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-To eliminate this warning, add "type": "module" to \?\C:\Users\tanaka\projects\ear-to-ear\package.json.
-(Use `node --trace-warnings ...` to show where the warning was created)
-check:safety: 120 ファイルを確認
+check:safety: 127 ファイルを確認
 check:safety: OK（名前・デモの JPEG・圃場の座標・秘密らしい文字列）
 
 > ear-to-ear@0.1.0 lint
 > eslint
 
 
-C:\Users\tanaka\projects\ear-to-ear\src\services\upload-meta.test.ts
+C:\Users\<ユーザー>\AppData\Local\Temp\claude\<作業フォルダ>\<セッション>\scratchpad\t18-run\src\services\upload-meta.test.ts
   25:18  warning  '_removed' is assigned a value but never used  @typescript-eslint/no-unused-vars
 
-✖ 1 problem (0 errors, 1 warning)
+C:\Users\<ユーザー>\AppData\Local\Temp\claude\<作業フォルダ>\<セッション>\scratchpad\t18-run\worker\index.ts
+  9:1  warning  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+✖ 2 problems (0 errors, 2 warnings)
 
 
 > ear-to-ear@0.1.0 typecheck
@@ -65,149 +72,106 @@ Generating route types...
 > ear-to-ear@0.1.0 test
 > vitest run
 
-(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
-  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
-Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
 
- RUN  v5.0.5 C:/Users/tanaka/projects/ear-to-ear
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.5 [39m[90m<作業フォルダ>/t18-run[39m
 
-warning: in the working copy of 'src/add.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.test.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'AGENTS.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'NOTES.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/config.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/services/a.test.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/services/a.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/types/index.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.test.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'AGENTS.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'NOTES.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/config.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/services/a.test.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/services/a.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/types/index.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.test.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'AGENTS.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'NOTES.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/config.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/services/a.test.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/services/a.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/types/index.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.test.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'AGENTS.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'NOTES.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/config.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/services/a.test.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/services/a.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/types/index.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.test.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'AGENTS.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'NOTES.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/config.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/services/a.test.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/services/a.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/types/index.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.test.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'AGENTS.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'NOTES.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/config.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/services/a.test.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/services/a.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/types/index.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.test.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'AGENTS.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'NOTES.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/config.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/services/a.test.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/services/a.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/types/index.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.test.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'AGENTS.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'NOTES.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/config.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/services/a.test.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/services/a.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/types/index.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.test.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'AGENTS.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'NOTES.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/config.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/services/a.test.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/services/a.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/types/index.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.test.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.test.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'AGENTS.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'NOTES.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/config.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/services/a.test.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/services/a.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/types/index.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.test.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'AGENTS.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'NOTES.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/config.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/services/a.test.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/services/a.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/types/index.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.test.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'AGENTS.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'NOTES.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/config.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/services/a.test.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/services/a.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/types/index.ts', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.test.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.test.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.test.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.test.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.test.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.test.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.test.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.mjs', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/add.test.mjs', LF will be replaced by CRLF the next time Git touches it
+ [32m✓[39m worker/migrations.test.ts [2m([22m[2m49 tests[22m[2m)[22m[32m 99[2mms[22m[39m
+ [32m✓[39m src/services/session-token.test.ts [2m([22m[2m56 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+ [32m✓[39m src/services/upload-meta.test.ts [2m([22m[2m110 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32m✓[39m scripts/safety-rules.test.ts [2m([22m[2m64 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+ [32m✓[39m worker/http.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 70[2mms[22m[39m
+ [32m✓[39m src/services/jpeg-segments.test.ts [2m([22m[2m54 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32m✓[39m worker/app.test.ts [2m([22m[2m29 tests[22m[2m)[22m[32m 101[2mms[22m[39m
+ [32m✓[39m src/services/photo-labels.test.ts [2m([22m[2m23 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m src/services/candidates.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m src/repositories/implementations/http-photo-repository.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 80[2mms[22m[39m
+ [32m✓[39m src/data/fields.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m worker/routes.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 60[2mms[22m[39m
+ [32m✓[39m worker/router.test.ts [2m([22m[2m32 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m worker/auth.test.ts [2m([22m[2m23 tests[22m[2m)[22m[32m 69[2mms[22m[39m
+ [32m✓[39m src/services/upload-request.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m scripts/experiments/stop-report-lib.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m worker/cookies-days.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m src/config.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m worker/cookies.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m scripts/cage/policy.test.ts [2m([22m[2m76 tests[22m[2m)[22m[32m 96[2mms[22m[39m
+ [32m✓[39m scripts/roles/stub-impl.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 40[2mms[22m[39m
+ [32m✓[39m scripts/experiments/rule-ab-lib.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 2137[2mms[22m[39m
+   [32m✓[39m 条件 [2m(3)[22m
+     [33m[2m✓[22m[39m 2通りの違いは決まりのファイルの有無だけ[33m 958[2mms[22m[39m
+     [33m[2m✓[22m[39m 決まりの無い方は .claude も CLAUDE.md も置かない[33m 726[2mms[22m[39m
+     [33m[2m✓[22m[39m 用意した直後はコミット済みで差分が無い[33m 447[2mms[22m[39m
+ [32m✓[39m scripts/hooks/ask-before-edit.test.ts [2m([22m[2m22 tests[22m[2m)[22m[33m 2094[2mms[22m[39m
+ [32m✓[39m scripts/roles/build-brief.test.ts [2m([22m[2m12 tests[22m[2m)[22m[33m 10936[2mms[22m[39m
+   [32m✓[39m 攻撃役 [2m(3)[22m
+     [33m[2m✓[22m[39m テスト・空の実装・型・設定だけが渡る[33m 1352[2mms[22m[39m
+     [33m[2m✓[22m[39m 本物の実装は渡らない[33m 1063[2mms[22m[39m
+     [33m[2m✓[22m[39m Git 管理外のファイルは渡せない[33m 811[2mms[22m[39m
+   [32m✓[39m 来年の委員役・人の役 [2m(2)[22m
+     [33m[2m✓[22m[39m 来年の委員役にはメモだけが渡る[33m 783[2mms[22m[39m
+     [33m[2m✓[22m[39m 人の役には QUESTIONS だけが渡る[33m 779[2mms[22m[39m
+   [32m✓[39m レビュー役 [2m(2)[22m
+     [33m[2m✓[22m[39m リポジトリの複製と、PR の番号だけの文面が渡る[33m 1074[2mms[22m[39m
+     [33m[2m✓[22m[39m PR の番号でない値は受け付けない[33m 763[2mms[22m[39m
+   [32m✓[39m 余計な情報 [2m(5)[22m
+     [33m[2m✓[22m[39m 知らない引数で経緯を足せない[33m 773[2mms[22m[39m
+     [33m[2m✓[22m[39m attacker の文面に NOTES.md の経緯が入らない[33m 975[2mms[22m[39m
+     [33m[2m✓[22m[39m reviewer の文面に NOTES.md の経緯が入らない[33m 1048[2mms[22m[39m
+     [33m[2m✓[22m[39m 知らない役は受け付けない[33m 748[2mms[22m[39m
+     [33m[2m✓[22m[39m 空でないフォルダには作らない[33m 765[2mms[22m[39m
+ [32m✓[39m scripts/cage/server.test.ts [2m([22m[2m21 tests[22m[2m)[22m[33m 19120[2mms[22m[39m
+   [32m✓[39m 道具 [2m(1)[22m
+     [33m[2m✓[22m[39m 5つだけを見せる[33m 1065[2mms[22m[39m
+   [32m✓[39m 正常系 [2m(1)[22m
+     [33m[2m✓[22m[39m 読む → 書く → テスト → コミットができ、変更は許可リストだけ[33m 1265[2mms[22m[39m
+   [32m✓[39m 拒否 [2m(8)[22m
+     [33m[2m✓[22m[39m 秘密を読む[33m 824[2mms[22m[39m
+     [33m[2m✓[22m[39m 外を読む[33m 812[2mms[22m[39m
+     [33m[2m✓[22m[39m テストを書き換える[33m 774[2mms[22m[39m
+     [33m[2m✓[22m[39m 迂回して書き換える[33m 765[2mms[22m[39m
+     [33m[2m✓[22m[39m 大文字で迂回[33m 769[2mms[22m[39m
+     [33m[2m✓[22m[39m git のフック[33m 784[2mms[22m[39m
+     [33m[2m✓[22m[39m 形式違いのコミット[33m 784[2mms[22m[39m
+     [33m[2m✓[22m[39m 知らない道具[33m 769[2mms[22m[39m
+   [32m✓[39m run_tests の抜け穴 [2m(3)[22m
+     [33m[2m✓[22m[39m 実装に秘密を読むコードを書こうとすると、書く前に拒否する[33m 721[2mms[22m[39m
+     [33m[2m✓[22m[39m テストの実行に檻の環境変数を渡さない[33m 796[2mms[22m[39m
+     [33m[2m✓[22m[39m コード以外のファイルは純粋関数の検査をしない[33m 728[2mms[22m[39m
+   [32m✓[39m report [2m(2)[22m
+     [33m[2m✓[22m[39m 検査を自分で実行して REPORT.md に残し、Txx REPORT でコミットする[33m 992[2mms[22m[39m
+     [33m[2m✓[22m[39m task の形が違うと拒否する[33m 745[2mms[22m[39m
+   [32m✓[39m レビューの指摘: 検査が空の report [2m(1)[22m
+     [33m[2m✓[22m[39m 検査が0件なら REPORT を作らない[33m 1083[2mms[22m[39m
+   [32m✓[39m レビューの指摘: 時間の上限 [2m(2)[22m
+     [33m[2m✓[22m[39m 止まらないテストを打ち切って FAILED を返す[33m 1552[2mms[22m[39m
+     [33m[2m✓[22m[39m 起動できない検査でも原因が見える[33m 1216[2mms[22m[39m
+   [32m✓[39m レビューの指摘: REPORT と QUESTIONS [2m(3)[22m
+     [33m[2m✓[22m[39m REPORT.md は write_file で書けない[33m 669[2mms[22m[39m
+     [33m[2m✓[22m[39m CAGE_ALLOW に REPORT.md があっても write_file で書けない[33m 1060[2mms[22m[39m
+     [33m[2m✓[22m[39m QUESTIONS.md は書けるが、commit_green には入らない[33m 942[2mms[22m[39m
 
- Test Files  22 passed (22)
-      Tests  613 passed (613)
-   Start at  12:16:35
-   Duration  13.04s (tests 91%, import 6%, transform 2%, worker 1%)
+[2m Test Files [22m [1m[32m25 passed[39m[22m[90m (25)[39m
+[2m      Tests [22m [1m[32m677 passed[39m[22m[90m (677)[39m
+[2m   Start at [22m 11:40:21
+[2m   Duration [22m 19.72s[2m (tests 88%, transform 7%, import 5%, worker 1%)[22m
 
 
 > ear-to-ear@0.1.0 build
 > next build
 
 ▲ Next.js 16.4.3 (Turbopack)
-✓ Running next.config.ts took 34ms
+✓ Running next.config.ts took 50ms
 
   Creating an optimized production build ...
-✓ Compiled successfully in 494ms
+✓ Compiled successfully in 2.2s
   Running TypeScript ...
-  Finished TypeScript in 2.6s ...
+  Finished TypeScript in 3.5s ...
   Collecting page data using 6 workers ...
   Generating static pages using 6 workers (0/5) ...
   Generating static pages using 6 workers (1/5) 
   Generating static pages using 6 workers (2/5) 
   Generating static pages using 6 workers (3/5) 
-✓ Generating static pages using 6 workers (5/5) in 878ms
+✓ Generating static pages using 6 workers (5/5) in 811ms
   Finalizing page optimization ...
 
 Route (app)
@@ -218,19 +182,11 @@ Route (app)
 
 
 ○  (Static)  prerendered as static content
+
+
 ```
 
-## C5 `git status --porcelain --untracked-files=all`
-```
-(出力なし)
+## C5 git status --porcelain --untracked-files=all
 ```
 
-## 判定
-C1 空／C2 は photo-meta.ts だけ／C3 23 件成功・失敗 0・飛ばし 0／C4 終了コード 0／C5 空。5つともそろった。**検査済み・人の確認待ち**。
-
-## 人に見てほしい点（弱点候補）
-1. C4 のテスト中に `warning: in the working copy of ... LF will be replaced by CRLF` が多数出る（`src/add.mjs`・`src/services/a.ts` などはこのリポジトリに無い名前）。別のテストが一時フォルダに git を作っている出力と推定。C5 は空なので作業ツリーには残っていない。REPORT ではこの繰り返しの行を会話の出力から並びどおりに書き起こした（色の制御文字は外した）
-2. EXIF の GPS で N/S・E/W の参照が無い・不正なときは位置を null にした（仕様に明記なし。「推測しない」に合わせた。テストは参照ありだけ）
-3. XMP の数は `+41.807` のような10進表記だけを受け付け、`1e2` などの指数表記は null（DJI の書き方にない前提）
-4. 時差は ±14:00 まで。範囲外や読めない `OffsetTimeOriginal` は日付を不明にした（日本時間とみなして推測しない）
-5. 同じ種類の APP1 が複数あれば、先に見つかった有効な値を使う。EXIF の位置と日付は片方が壊れていても、もう片方は使う
+```
