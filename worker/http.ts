@@ -8,6 +8,9 @@ export type ErrorCode =
   | "unauthorized"
   | "forbidden"
   | "not_implemented"
+  | "too_many_attempts"
+  | "payload_too_large"
+  | "unsupported_media_type"
   | "internal";
 
 /** Content-Type: application/json; charset=utf-8 */
