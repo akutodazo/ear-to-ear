@@ -87,3 +87,20 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **変えたファイル**: `src/data/fields.json`、`src/data/fields.test.ts`、`scripts/check-safety.mjs`（一覧が無ければ止める）
 - **テスト**: `src/data/fields.test.ts`。**9 件**
 - **合格条件（11-03 本人決定）**: 12 圃場、4列×3行、**北西から横に** A-01〜A-12、**行ごとに北地区・中地区・南地区**、**名前は地区の頭の字と列の番号**（例 北の1）。座標は `FICTIONAL_AREA` の中、隣の中心は 300〜500m（横 約 415m・縦 約 445m）
+
+## T01 `src/services/photo-meta.ts`（写真の XMP と EXIF から撮影位置と撮影日を読む）
+- **状態**: RED済み（人、11-03）。GREEN は無人運転の試験2
+- **依存**: T00、T02（`LatLng` の型を借りる）
+- **変えてよいファイル**: `src/services/photo-meta.ts` のみ（＋ `docs/run/REPORT.md`、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結）**: `src/services/photo-meta.test.ts`。**23 件**（XMP 6・EXIF 7・両方 3・取れないとき 7）。テストの写真はテストの中でバイト列を組み立てる
+- **関数**: `readPhotoMeta(bytes: Uint8Array): PhotoMeta`（`{ position: LatLng | null; takenAt: string | null; takenAtSource: TakenAtSource }`）
+- **合格条件（11-03 本人決定を含む）**:
+  - JPEG の APP1 の XMP（`http://ns.adobe.com/xap/1.0/` で始まる）と EXIF（`Exif` で始まる、TIFF の II／MM）を読む。SOS か EOI まで、セグメントの見出しだけをたどる
+  - XMP: `drone-dji:GpsLatitude`・`GpsLongitude`（綴り違いの `GpsLongtitude` も）・`xmp:CreateDate`。属性と要素の両方の書き方
+  - EXIF: GPS IFD の緯度・経度（度分秒の有理数と N/S・E/W）、Exif IFD の `DateTimeOriginal` と `OffsetTimeOriginal`
+  - **XMP を EXIF より優先**し、位置と日付は別々に選ぶ。`takenAtSource` は日付の出どころ
+  - 日付は日本時間の `YYYY-MM-DD`。時差が書かれていればそれで直し、無ければ日本時間とみなす
+  - 位置が null になるもの: 片方しか無い・NaN（0/0 を含む）・0,0・範囲外（|緯度| > 90、|経度| > 180）
+  - **読めない・壊れた・JPEG でないときは例外を出さず**、位置なし・日付不明（`none`）
+- **RED の確かめ**: 23 件すべて not implemented で失敗。仮の実装で 23 件が通ることを確かめてから空に戻した
+- **参照**: docs/spec.md §4「写真の位置情報（分かっている事実）」、§9 のテスト表 photo-meta
