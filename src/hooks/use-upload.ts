@@ -121,7 +121,7 @@ export function useUpload(repository?: IPhotoRepository) {
       } catch (error) {
         const message =
           error instanceof PreparePhotoUnavailableError
-            ? "準備中: 写真の縮小がまだ無いので送れません"
+            ? `この写真は送れませんでした（${error.message}）`
             : "写真を送る形にできませんでした";
         update(item.key, { status: "failed", message });
         return "failed";
