@@ -110,3 +110,48 @@ describe("JSON の形", () => {
     expect(UPLOAD_META_MAX_CHARS).toBe(1024);
   });
 });
+
+describe("許可していない項目（K6）", () => {
+  it.each([
+    "foo",
+    "lat",
+    "lng",
+    "latitude",
+    "longitude",
+    "position",
+    "gps",
+    "distance",
+    "distanceMeters",
+    "distances",
+    "d",
+    "距離",
+  ])("%s があれば unknown_key", (key) => {
+    expect(reasonOf({ ...VALID, [key]: 120 })).toBe("unknown_key");
+  });
+
+  it("値が null でも unknown_key", () => {
+    expect(reasonOf({ ...VALID, lat: null })).toBe("unknown_key");
+  });
+
+  it("大文字違いのキーも unknown_key", () => {
+    expect(reasonOf({ ...VALID, ContentHash: HASH })).toBe("unknown_key");
+  });
+
+  it("JSON の __proto__ も unknown_key", () => {
+    const text = `{"__proto__":{"lat":41.8},${JSON.stringify(VALID).slice(1)}`;
+    expect(parseUploadMeta(text, KNOWN)).toStrictEqual({ ok: false, reason: "unknown_key" });
+  });
+
+  it("toString のような Object の名前も unknown_key", () => {
+    const text = `{"toString":1,${JSON.stringify(VALID).slice(1)}`;
+    expect(parseUploadMeta(text, KNOWN)).toStrictEqual({ ok: false, reason: "unknown_key" });
+  });
+
+  it.each([
+    ["候補がオブジェクト", { ...VALID, candidateFieldIds: [{ id: "A-01", dist: 120 }] }],
+    ["候補が入れ子の配列", { ...VALID, candidateFieldIds: [["A-01", 120]] }],
+    ["候補が数", { ...VALID, candidateFieldIds: [120] }],
+  ])("%s は bad_candidates（入れ子で距離を送らせない）", (_name, body) => {
+    expect(reasonOf(body)).toBe("bad_candidates");
+  });
+});
