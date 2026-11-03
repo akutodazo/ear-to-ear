@@ -472,6 +472,7 @@ describe("POST /api/uploads 保存の失敗", () => {
       batch: (s) => testDb.db.batch(s),
     };
     expect((await upload({ ...deps, db })).status).toBe(500);
+    expect(bucket.calls.map((c) => c.op)).toEqual(["put", "delete"]);
     expect(bucket.objects.has(`uploads/${ID}.jpg`)).toBe(false);
   });
 
