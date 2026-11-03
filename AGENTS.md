@@ -56,6 +56,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 | 設定 | `src/config.ts` | 定数はここに1回だけ |
 
 - 命名は kebab-case、interface は `i-`、フックは `use-`。`any`・`@ts-ignore`・`eslint-disable` 禁止
+- **import は `@/` で書く**（同じフォルダは `./` でよい。tsconfig の paths と vitest の別名が同じ。11-03 本人決定）。ただし `scripts/` から Node で直接読む `src` のファイル（`src/config.ts`・`src/services/jpeg-segments.ts`）には import を書かない（Node は `@/` を解決しない）
 - Next.js は版で作法が変わる。**書く前に `node_modules/next/dist/docs/` の該当ガイドを読む**
 - 言葉を盛らない。推定は推定と書く。水分・収穫の可否を Claude に言わせない
 

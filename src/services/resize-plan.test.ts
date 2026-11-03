@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { THUMBNAIL_LONG_EDGE_PX } from "../config";
+import { THUMBNAIL_LONG_EDGE_PX } from "@/config";
 import { resizedSize } from "./resize-plan";
 
 describe("resizedSize（縮小の大きさ）", () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { MAX_CANDIDATES } from "../config";
-import type { Field } from "../types";
+import { MAX_CANDIDATES } from "@/config";
+import type { Field } from "@/types";
 import { candidateFieldIds, distanceMeters } from "./candidates";
 
 // 架空の圃場（P15 の沖合の四角の中）。テストのためだけの値

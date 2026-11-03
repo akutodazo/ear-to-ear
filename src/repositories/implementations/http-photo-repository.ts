@@ -10,7 +10,7 @@ import type {
   RecentOutcome,
   RoleOutcome,
   UploadOutcome,
-} from "../interfaces/i-photo-repository";
+} from "@/repositories/interfaces/i-photo-repository";
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
