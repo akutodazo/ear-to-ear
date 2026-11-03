@@ -5,6 +5,7 @@ import {
   candidateSummary,
   distanceLabel,
   sendSummaryLabel,
+  sendingProgressLabel,
   takenAtLabel,
   uploadOutcomeLabel,
 } from "./photo-labels";
@@ -122,5 +123,22 @@ describe("sendSummaryLabel（送り終わった後のまとめ）", () => {
 
   it("送った写真も送れなかった写真も無ければ null（まとめを出さない）", () => {
     expect(sendSummaryLabel({ sent: 0, failed: 0 })).toBeNull();
+  });
+});
+
+describe("sendingProgressLabel（送っている間の表示。Issue #69）", () => {
+  it.each([
+    [0, 3, "送っています…（1/3枚）"],
+    [2, 3, "送っています…（3/3枚）"],
+  ])("%i 枚済み・全 %i 枚は「%s」", (done, total, label) => {
+    expect(sendingProgressLabel(done, total)).toBe(label);
+  });
+
+  it("1枚だけなら枚数を出さない", () => {
+    expect(sendingProgressLabel(0, 1)).toBe("送っています…");
+  });
+
+  it("済みが全体を超えても、全体の枚数より大きくしない", () => {
+    expect(sendingProgressLabel(5, 3)).toBe("送っています…（3/3枚）");
   });
 });

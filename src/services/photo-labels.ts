@@ -38,6 +38,12 @@ export function sendSummaryLabel(counts: { sent: number; failed: number }): stri
   return parts.length === 0 ? null : parts.join("。");
 }
 
+/** 送っている間の表示（例 送っています…（2/3枚））。1枚だけなら枚数を出さない。Issue #69 */
+export function sendingProgressLabel(done: number, total: number): string {
+  if (total <= 1) return "送っています…";
+  return `送っています…（${Math.min(done + 1, total)}/${total}枚）`;
+}
+
 /** 撮影日の表示（例 2026年7月21日）。不明は「日付不明」（推測しない） */
 export function takenAtLabel(takenAt: string | null): string {
   if (takenAt === null) return "日付不明";
