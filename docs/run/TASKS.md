@@ -183,7 +183,9 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **担当**: 先輩
 
 ## T21 `GET /api/photos/recent` と `GET /api/photo-files/:id`（新着の一覧と画像の配信。認証なし）
-- **状態**: RED・攻撃役まで（11-03）。無人運転はこの後
+- **状態**: 検査済み・人の確認待ち（11-03）
+- **運転の記録（試験6、MCP の檻）**: START `1e4e8eb` → GREEN `2833e43` → REPORT `8f6f13c`。モデル Opus 5.5、`claude -p`、道具は檻の5つだけ、27手、$0.66。**C1〜C5 がすべて合格**。変更は許可した3ファイルだけ。QUESTIONS なし。**直した檻（#66）の初めての運転**: `report` が `docs/run/REPORT-T21.md` に書き、作業フォルダは `<作業フォルダ>` に伏せられ、ユーザー名・セッションのフォルダ・色の制御文字は 0 件。人が名前を変えたり、REPORT のコミットを作り直したりしなくてよかった
+- **人の確認**: 本体のチェックアウトで C2（4 ファイル）・C3（103 件）・C4（テスト全体 1184 件、lint エラー 0・警告 2）が合格。C1・C5 には運転と関係の無い Git 管理外の 2 ファイルが出た（T20 と同じもの）。実装を 14 通りに壊して 13 通りが落ちる。残る 1 つ（同じ時刻の並びの id DESC を外す）は、テストが入れた順で偶然そろっていたので、入れた順と id の順を逆にした（`10b5714`）。手元の `wrangler dev`（使い捨ての値と D1・R2）で、3 枚送って一覧は新しい順・11 項目・ハッシュと R2 のキーなし・no-store、limit=1 で 1 件・abc で既定・1&5 で 1 件、画像は 200・image/jpeg・content-length・private, max-age=86400 で送ったものとバイトまで同じ、無い画像は 404、POST は 405 Allow: GET、壊れた Cookie でも 200
 - **Issue**: #67
 - **依存**: T11（`uploaded_photos`）、T18（土台）、T20（`r2KeyFor`・R2 のキー）
 - **変えてよいファイル**: `src/services/photo-query.ts`・`worker/photos.ts`・`worker/photo-files.ts`（＋ `docs/run/REPORT-T21.md`、止まったときは `docs/run/QUESTIONS.md`）
