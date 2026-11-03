@@ -5,17 +5,18 @@
 
 export type InspectJpeg = (bytes: Uint8Array) => { appSegments: number[] };
 
-/** 送ってよければ null、だめなら理由 */
-export function checkPreparedJpeg(bytes: Uint8Array, inspect: InspectJpeg, maxBytes: number): string | null {
-  if (bytes.length > maxBytes) return "縮小しても大きすぎる";
-  let apps: number[];
-  try {
-    apps = inspect(bytes).appSegments;
-  } catch {
-    return "JPEG として読めない";
-  }
-  if (apps.length > 0) return `メタデータ（${apps.map((n) => `APP${n}`).join("・")}）が残っている`;
-  return null;
+/** 送ってよいかの結果。表示の文言は画面の側で決める */
+export type PreparedCheck =
+  | { kind: "ok" }
+  | { kind: "too-large" }
+  | { kind: "unreadable" }
+  | { kind: "metadata"; apps: number[] };
+
+export function checkPreparedJpeg(bytes: Uint8Array, inspect: InspectJpeg, maxBytes: number): PreparedCheck {
+  void bytes;
+  void inspect;
+  void maxBytes;
+  throw new Error("not implemented");
 }
 
 /**
@@ -48,4 +49,24 @@ export function stripAppSegments(bytes: Uint8Array): Uint8Array | null {
     i += 2 + length;
   }
   return null;
+}
+
+export type PrepareResult = { ok: true; bytes: Uint8Array } | { ok: false; reason: "too-large" | "unreadable" | "metadata" };
+
+/**
+ * 送る前の流れ: 画質を順に試して再エンコード → APP1〜15 を取り除く → 確かめる。
+ * 大きすぎるときだけ次の画質でやり直す。読めない・メタデータが残るときはすぐに止める。
+ * 再エンコード（ブラウザ）と JPEG の解析は引数で受け取る
+ */
+export async function prepareJpeg(
+  encode: (quality: number) => Promise<Uint8Array>,
+  qualities: readonly number[],
+  maxBytes: number,
+  inspect: InspectJpeg,
+): Promise<PrepareResult> {
+  void encode;
+  void qualities;
+  void maxBytes;
+  void inspect;
+  throw new Error("not implemented");
 }
