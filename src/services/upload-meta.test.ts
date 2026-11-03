@@ -260,3 +260,19 @@ describe("candidateFieldIds", () => {
     expect(reasonOf(body, new Set())).toBe("unknown_field");
   });
 });
+
+describe("暦の境界（攻撃役の指摘）", () => {
+  it.each(["2026-04-31", "2026-06-31", "2026-09-31", "2026-11-31", "1900-02-29", "2100-02-29"])(
+    "%s は bad_taken_at",
+    (takenAt) => {
+      expect(reasonOf({ ...VALID, takenAt })).toBe("bad_taken_at");
+    },
+  );
+
+  it.each(["2024-02-29", "2032-02-29", "2000-02-29", "2026-04-30", "2026-12-31", "2026-01-31"])(
+    "%s は通る",
+    (takenAt) => {
+      expect(reasonOf({ ...VALID, takenAt })).toBe("ok");
+    },
+  );
+});
