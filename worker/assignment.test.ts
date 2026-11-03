@@ -58,7 +58,9 @@ function photo(testDb: TestDb, id = "p1"): PhotoRow {
 function history(testDb: TestDb): HistoryRow[] {
   return testDb.raw
     .prepare("SELECT photo_id, from_field_id, to_field_id, actor_device, at FROM photo_assignments ORDER BY id")
-    .all() as unknown as HistoryRow[];
+    .all()
+    // node:sqlite の行は prototype が null なので、toStrictEqual で比べられるようふつうのオブジェクトに写す
+    .map((row) => ({ ...row })) as unknown as HistoryRow[];
 }
 
 function setup(): { deps: Deps; testDb: TestDb } {

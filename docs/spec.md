@@ -117,7 +117,7 @@ CREATE TABLE settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);  -- 
 | `GET /api/photos?fieldId=` | なし | — | 200 確定済み（撮影日の新しい順） | 400 | L0 |
 | `GET /api/photos/recent?limit=50` | なし | — | 200 未確定を含む新着 | — | L0 |
 | `GET /api/photo-files/:id` | なし | — | 200 画像 | 404 | L0 |
-| `PATCH /api/photos/:id/assignment` | admin | `{fieldId}` | 200（confirmed）＋履歴1行 | 401／403／404／422 | L0 |
+| `PATCH /api/photos/:id/assignment` | admin | `{fieldId}`（圃場の一覧にある番号だけ） | 200 更新した写真（新着と同じ 11 項目）＋履歴1行。確定済みと同じ番号なら何も変えずに 200（履歴なし） | 400（形の違う本文）／401／403／404／413／415／422（一覧に無い番号） | L0 |
 | `POST /api/fields/:id/status` | member 以上 | `{status, reasons[], note?, refPhotoIds[]}`（根拠はその圃場の確定済みの写真だけ） | 201 | 401／422 | L1 |
 | `DELETE /api/status-events/:id` | member 以上 | — | 200 | 401／404 | L1 |
 | `GET /api/fields/summary` | なし | — | 200 各圃場の有効な最新の判断・未確定の有無 | — | L1 |
@@ -159,9 +159,9 @@ Next.js（App Router、`output: 'export'`）＋ Leaflet。デモと開発の地�
 | 1 | 委員が「合言葉 → 選ぶ → 送る」で送れ、新着に「未確定（推定 ○○）」で出る（実機: Android・iPhone） | L0 | `lib/upload-steps`、`services/photo-labels`・`recent-view`、`repositories/…/http-photo-repository`、`worker/uploads`・`session` | PR #44・#51・#55・#58・#61・#62・#64・#70・#72、Issue #67（T21） | 自動＋実機（dev） | **一部**: 選ぶ・候補と撮影日の表示は Android と iPhone の実機で済、送る（同じ写真は 409）も dev の実機で済（`verification/2026-11-03-dev-mobile.md`）。新着に出るのは T21（#67）の後 |
 | 2 | 公開側の画像に APP1〜15 が無い。撮影位置が D1・R2・通信のどこにも無い | L0 | `services/jpeg-segments`・`prepared-photo`・`upload-meta`・`upload-request`、`lib/upload-steps`、`worker/uploads`、`scripts/safety-rules` | PR #6・#41・#48・#51・#64 | 自動＋画面（送る中身を内蔵ブラウザで確認、PR #57） | **一部**: 自動と画面は済。dev の R2・D1 の中身の確認は予定 |
 | 3 | 二端末: A が送った写真を、B が更新して見つけられる | L0 | — | Issue #67（T21） | 実機（二端末） | 予定 |
-| 4 | 訂正: 番号を変えると新着の表示が変わり、履歴が残る。B でも確認できる | L0・L1 | `services/assignment`、`repositories/…/http-photo-repository` | PR #55（画面）、`PATCH /api/photos/:id/assignment` はまだ 501 | 自動＋実機（二端末） | **一部**: 画面とテストは済。サーバーの中身と履歴は予定 |
-| 5 | 日付不明は「日付不明」のまま。二重送信は 409。番号を変えても二重にならない | L0 | `services/photo-meta`・`photo-labels`、`worker/uploads` | PR #50・#64・#72 | 自動＋実機（dev、合成写真 05・08） | **一部**: 日付不明と 409 は済。番号を変えても二重にならないは PATCH の後 |
-| 6 | 合言葉が無い端末は書き込めない（401）。委員の合言葉では確定・訂正できない（403） | L0 | `worker/auth`・`routes`・`session`、`services/session-token` | PR #24・#47・#58 | 自動＋実機（dev） | **一部**: 401・403 の判定は自動で済。管理者の合言葉で入れる・合言葉が要るときに入力が出るのは実機で済。確定・訂正の 403 の実機は PATCH の後 |
+| 4 | 訂正: 番号を変えると新着の表示が変わり、履歴が残る。B でも確認できる | L0・L1 | `services/assignment`・`assignment-request`、`repositories/…/http-photo-repository`、`worker/assignment` | PR #55（画面）、Issue #78（サーバー） | 自動＋手元の `wrangler dev`＋実機（二端末） | **一部**: 画面・サーバー・履歴は自動と手元の `wrangler dev` で済（送る → 新着 → 確定 → 読み直しても確定、履歴 2 行）。dev の二端末は予定 |
+| 5 | 日付不明は「日付不明」のまま。二重送信は 409。番号を変えても二重にならない | L0 | `services/photo-meta`・`photo-labels`、`worker/uploads` | PR #50・#64・#72 | 自動＋実機（dev、合成写真 05・08） | **一部**: 日付不明と 409 は済。番号を変えても写真は増えず、同じ番号なら履歴も増えない（Issue #78 のテスト）。dev の実機は予定 |
+| 6 | 合言葉が無い端末は書き込めない（401）。委員の合言葉では確定・訂正できない（403） | L0 | `worker/auth`・`routes`・`session`、`services/session-token` | PR #24・#47・#58 | 自動＋実機（dev） | **一部**: 401・403 の判定は自動で済。管理者の合言葉で入れる・合言葉が要るときに入力が出るのは実機で済。委員の Cookie での確定・訂正が 403 なのは手元の `wrangler dev` で済、dev の実機は予定 |
 | 7 | 撮影位置あり48枚（非公開の実写真。手元だけ）で、正解表の番号が候補3つに入る割合 | L0 | `services/candidates`（計算） | PR #38 | 手元の実写真（リポジトリに入れない） | 予定 |
 | 9 | 父の試用（架空データ）: 見つける比較（LINE のトーク vs このサイト、各3問）、送る・見つける・確定・判断の成否と助言回数。試用の後に提案し、引き出された声も記録 | L0〜L1 | — | — | 試用（P5） | 予定 |
 | 10 | リポジトリに実データ・秘密が無い（手元の検査＋CI＋提出前に履歴全体の検査） | L0 | `scripts/safety-rules`（`npm run check:safety`、CI） | PR #39・#42 | 自動（毎回）＋提出前の履歴全体 | **一部**: 手元と CI は済。提出前の履歴全体の検査は予定 |
