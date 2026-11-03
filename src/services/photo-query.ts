@@ -36,20 +36,47 @@ export interface PhotoListRow {
   uploader_device: string;
 }
 
+/** 正の整数の 10 進（先頭の 0・符号・空白・ほかの数字の書き方は認めない） */
+const LIMIT_PATTERN = /^[1-9]\d*$/;
+
 /** ?limit= の値。/^[1-9]\d*$/ でなければ fallback、max を超えれば max。例外は出さない */
 export function parseRecentLimit(
   raw: string | null,
   fallback: number = RECENT_LIMIT_DEFAULT,
   max: number = RECENT_LIMIT_MAX,
 ): number {
-  void raw;
-  void fallback;
-  void max;
-  throw new Error("not implemented");
+  if (raw === null || !LIMIT_PATTERN.test(raw)) return fallback;
+  const n = Number(raw);
+  return n > max ? max : n;
+}
+
+/** candidate_field_ids の JSON を文字列の配列に戻す。違えば例外（中身はメッセージに入れない） */
+function parseCandidates(text: string): string[] {
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    throw new Error("candidate_field_ids が JSON ではない");
+  }
+  if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) {
+    throw new Error("candidate_field_ids が文字列の配列ではない");
+  }
+  return value;
 }
 
 /** 1 行を UploadedPhoto に写す。candidate_field_ids が文字列の配列の JSON でなければ例外（500） */
 export function photoFromRow(row: PhotoListRow): UploadedPhoto {
-  void row;
-  throw new Error("not implemented");
+  return {
+    id: row.id,
+    fieldId: row.field_id,
+    chosenFieldId: row.chosen_field_id,
+    state: row.state,
+    candidateFieldIds: parseCandidates(row.candidate_field_ids),
+    takenAt: row.taken_at,
+    takenAtSource: row.taken_at_source,
+    width: row.width,
+    height: row.height,
+    uploadedAt: row.uploaded_at,
+    uploaderDevice: row.uploader_device,
+  };
 }
