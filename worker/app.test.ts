@@ -88,8 +88,8 @@ describe("認証", () => {
     expect((await call("POST", "/api/uploads", "session=broken")).status).toBe(401);
   });
 
-  it.each(["member", "admin"] as const)("member の経路は %s なら通る（501）", async (role) => {
-    expect((await call("POST", "/api/uploads", `session=${await sessionToken(role)}`)).status).toBe(501);
+  it.each(["member", "admin"] as const)("member の経路は %s なら通る（本文が無いので 415）", async (role) => {
+    expect((await call("POST", "/api/uploads", `session=${await sessionToken(role)}`)).status).toBe(415);
   });
 
   it("admin の経路は member だと 403", async () => {
