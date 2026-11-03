@@ -1,0 +1,1 @@
+夜番です。Workflow の道具を scriptPath "<SCRIPT>" で 1 回だけ実行してください。戻ってきた Markdown をそのまま Write で night-report.md に書き、「終了」とだけ答えて終わってください。再実行・追加の調査・ファイルの読み取り・コードの修正はしません。
