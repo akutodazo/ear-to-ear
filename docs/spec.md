@@ -63,6 +63,7 @@
 CREATE TABLE uploaded_photos (
   id TEXT PRIMARY KEY NOT NULL,              -- SQLite の TEXT の主キーは NOT NULL を書かないと NULL が入る
   field_id TEXT,
+  chosen_field_id TEXT,                       -- 委員が選んだ番号。確定ではない（確定は field_id）
   state TEXT NOT NULL CHECK (state IN ('unconfirmed','confirmed')),
   candidate_field_ids TEXT NOT NULL,          -- JSON 配列（番号だけ。距離は持たない）
   taken_at TEXT,
