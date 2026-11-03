@@ -154,8 +154,9 @@ describe("GET /api/photos/recent", () => {
     const { deps, testDb } = setup();
     insert(testDb, { id: "old", uploaded_at: "2026-11-01T00:00:00.000Z", taken_at: "2026-12-31", updated_at: "2099-01-01T00:00:00.000Z" });
     insert(testDb, { id: "new", uploaded_at: "2026-11-03T00:00:00.000Z", taken_at: "2026-01-01" });
-    insert(testDb, { id: "tie-a", uploaded_at: "2026-11-02T00:00:00.000Z" });
+    // 同じ時刻の 2 つは、id の順と入れた順を逆にする（入れた順で偶然そろわないように。人の確認で直した）
     insert(testDb, { id: "tie-b", uploaded_at: "2026-11-02T00:00:00.000Z" });
+    insert(testDb, { id: "tie-a", uploaded_at: "2026-11-02T00:00:00.000Z" });
     expect(await ids(await recent(deps))).toEqual(["new", "tie-b", "tie-a", "old"]);
   });
 
