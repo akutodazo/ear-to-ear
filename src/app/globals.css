@@ -268,3 +268,63 @@ a:focus-visible {
   height: 100%;
   color: var(--text-3);
 }
+
+/* 新着の1行（左に小さな写真、右に印・番号・日付） */
+.card-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: var(--space-8) var(--space-16);
+  align-items: center;
+}
+
+.card-row-full {
+  grid-column: 1 / -1;
+}
+
+.thumb-small {
+  width: 120px;
+}
+
+/* 未確定は左に麦色の線（麦の黄色は印だけに使う） */
+.card-pending {
+  border-left: 6px solid var(--wheat);
+}
+
+.card-alert {
+  border-left: 6px solid var(--assertive);
+}
+
+.badge {
+  display: inline-block;
+  padding: 0 var(--space-8);
+  border-radius: var(--radius-8);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.badge-pending {
+  background: var(--wheat);
+  color: var(--text-1);
+}
+
+.badge-done {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.badge-alert {
+  background: var(--assertive);
+  color: var(--text-on-brand);
+}
+
+/* 切り替え（押している間は塗る） */
+.button-toggle {
+  border-color: var(--border-strong);
+  color: var(--text-2);
+}
+
+.button-toggle-on {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand);
+}

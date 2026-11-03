@@ -15,19 +15,23 @@ type BadgePhoto = Pick<UploadedPhoto, "state" | "fieldId" | "candidateFieldIds">
 
 /** 印と番号（例 未確定・推定 A-06／確定・A-03） */
 export function assignmentBadge(photo: BadgePhoto): AssignmentBadge {
-  void photo;
-  throw new Error("not implemented");
+  if (photo.state === "confirmed") {
+    // 確定なのに番号が無いのはデータの矛盾。隠さずに目立たせる
+    return photo.fieldId === null
+      ? { tone: "alert", badge: "確定", text: "番号なし" }
+      : { tone: "done", badge: "確定", text: photo.fieldId };
+  }
+  const nearest = photo.candidateFieldIds[0];
+  return { tone: "pending", badge: "未確定", text: nearest === undefined ? "番号待ち" : `推定 ${nearest}` };
 }
 
 /** 「未確定だけ見る」が on なら未確定だけ（並びはそのまま） */
 export function filterRecent(photos: UploadedPhoto[], onlyUnconfirmed: boolean): UploadedPhoto[] {
-  void photos;
-  void onlyUnconfirmed;
-  throw new Error("not implemented");
+  return onlyUnconfirmed ? photos.filter((p) => p.state === "unconfirmed") : [...photos];
 }
 
 /** 未確定の枚数（例 未確定 3枚） */
 export function unconfirmedCountLabel(photos: Pick<UploadedPhoto, "state">[]): string {
-  void photos;
-  throw new Error("not implemented");
+  const count = photos.filter((p) => p.state === "unconfirmed").length;
+  return count === 0 ? "未確定の写真はありません" : `未確定 ${count}枚`;
 }
