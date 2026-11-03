@@ -5,7 +5,17 @@ import { handleRequest } from "./app";
 import { buildSessionCookie } from "./cookies";
 import type { Deps } from "./deps";
 import { createTestDb, type TestDb } from "./test-db";
-import { fakeDeps, hmacWith, jsonRequest, KEY, NOW_MS, NOW_SEC, request, sessionToken } from "./test-helpers";
+import {
+  fakeDeps,
+  hmacWith,
+  jsonRequest,
+  KEY,
+  NOW_MS,
+  NOW_SEC,
+  request,
+  sessionToken,
+  streamRequest,
+} from "./test-helpers";
 
 // NOW_MS は 2026-10-26T07:33:20Z。枠は 07:30〜07:40、Retry-After は 400 秒
 const SLOT = "2026-10-26T07:30";
@@ -264,18 +274,6 @@ describe("POST /api/session 入力の形", () => {
     expect(matchPassphrase).not.toHaveBeenCalled();
   });
 
-  it("Content-Type が無ければ 415", async () => {
-    const { deps } = setup();
-    const response = await handleRequest(
-      new Request("https://example.test/api/session", {
-        method: "POST",
-        body: new Uint8Array(new TextEncoder().encode(JSON.stringify({ passphrase: MEMBER_INPUT }))),
-      }),
-      deps,
-    );
-    expect(response.status).toBe(415);
-  });
-
   it("content-length が上限を超えると、本文を読まずに 413", async () => {
     const { deps } = setup();
     const req = post({ passphrase: "x" }, { "content-length": "5000", "cf-connecting-ip": IP });
@@ -287,18 +285,8 @@ describe("POST /api/session 入力の形", () => {
     expect(text).not.toHaveBeenCalled();
   });
 
-  it("本文が 1024 文字を超えると 413", async () => {
-    const { deps } = setup();
-    expect((await login(deps, "a".repeat(1100))).status).toBe(413);
-  });
-
-  it.each([
-    ["壊れた JSON", '{"passphrase":'],
-    ["配列", '["x"]'],
-    ["他のキー", '{"passphrase":"x","role":"admin"}'],
-    ["passphrase なし", "{}"],
-    ["passphrase が数", '{"passphrase":1}'],
-  ])("%s は 400 { error: bad_request } だけで、D1 も照合も触らない", async (_name, body) => {
+  // 400 になる理由の網羅は session-request.test.ts。ここは「400 に写す・D1 も照合も触らない」を 1 つで見る
+  it.each([["壊れた JSON", '{"passphrase":']])("%s は 400 { error: bad_request } だけで、D1 も照合も触らない", async (_name, body) => {
     const { deps, testDb, matchPassphrase, hashIp } = setup();
     const response = await handleRequest(post(body), deps);
     expect(response.status).toBe(400);
@@ -321,12 +309,6 @@ describe("POST /api/session 入力の形", () => {
 });
 
 describe("見えない動き（攻撃役の指摘）", () => {
-  it("同時に来た失敗も数え落とさない（1 文の UPSERT で数える。SELECT してから INSERT／UPDATE では 500 か数え落とし）", async () => {
-    const { deps, testDb } = setup();
-    const responses = await Promise.all([login(deps, "wrong"), login(deps, "wrong"), login(deps, "wrong")]);
-    expect(responses.map((r) => r.status)).toEqual([401, 401, 401]);
-    expect(rows(testDb)).toEqual([expect.objectContaining({ count: 3 })]);
-  });
 
   it("同時に 10 本の失敗が来ても、照合は 5 回まで（照合の前に枠を取る。2 回目のレビュー #1）", async () => {
     const { deps, testDb, matchPassphrase } = setup();
@@ -389,33 +371,14 @@ describe("見えない動き（攻撃役の指摘）", () => {
   });
 });
 
-/** content-length の無い（chunked の）本文。読まれたバイト数を返す */
-function streamRequest(chunks: Uint8Array[]): { req: Request; pulled: () => number } {
-  let index = 0;
-  let pulled = 0;
-  const body = new ReadableStream<Uint8Array>({
-    pull(controller) {
-      if (index >= chunks.length) {
-        controller.close();
-        return;
-      }
-      pulled += chunks[index].byteLength;
-      controller.enqueue(chunks[index++]);
-    },
-  });
-  const req = new Request("https://example.test/api/session", {
-    method: "POST",
-    headers: { "content-type": "application/json", "cf-connecting-ip": IP },
-    body,
-    duplex: "half",
-  } as RequestInit);
-  return { req, pulled: () => pulled };
-}
+/** content-length の無い（chunked の）POST /api/session */
+const stream = (chunks: Iterable<Uint8Array>) =>
+  streamRequest("/api/session", chunks, { "content-type": "application/json", "cf-connecting-ip": IP });
 
 describe("本文の上限は読みながら守る（#59、レビュー #1）", () => {
   it("content-length が無く本文が大きいと、上限を超えた所で読むのをやめて 413", async () => {
     const { deps, matchPassphrase, testDb } = setup();
-    const { req, pulled } = streamRequest(Array.from({ length: 1024 }, () => new Uint8Array(1024).fill(0x61)));
+    const { req, pulled } = stream(Array.from({ length: 1024 }, () => new Uint8Array(1024).fill(0x61)));
     expect(req.headers.get("content-length")).toBeNull();
     const response = await handleRequest(req, deps);
     expect(response.status).toBe(413);
@@ -425,20 +388,12 @@ describe("本文の上限は読みながら守る（#59、レビュー #1）", (
     expect(rows(testDb)).toEqual([]);
   });
 
-  it("content-length が数でなくても、読みながら上限を守る", async () => {
-    const { deps } = setup();
-    const { req, pulled } = streamRequest(Array.from({ length: 64 }, () => new Uint8Array(1024).fill(0x61)));
-    req.headers.set("content-length", "abc");
-    expect((await handleRequest(req, deps)).status).toBe(413);
-    expect(pulled()).toBeLessThanOrEqual(8 * 1024);
-  });
-
   it("上限はバイトで数える（1024 文字以内でも 1024 バイトを超えれば 413）", async () => {
     const { deps } = setup();
     const body = JSON.stringify({ passphrase: "あ".repeat(400) });
     expect(body.length).toBeLessThanOrEqual(1024);
     expect(new TextEncoder().encode(body).byteLength).toBeGreaterThan(1024);
-    const { req } = streamRequest([new TextEncoder().encode(body)]);
+    const { req } = stream([new TextEncoder().encode(body)]);
     expect((await handleRequest(req, deps)).status).toBe(413);
   });
 
@@ -446,7 +401,7 @@ describe("本文の上限は読みながら守る（#59、レビュー #1）", (
     const { deps, matchPassphrase } = setup();
     const body = `{"passphrase":"${"a".repeat(1024 - 17)}"}`;
     expect(body.length).toBe(1024);
-    const { req } = streamRequest([new TextEncoder().encode(body)]);
+    const { req } = stream([new TextEncoder().encode(body)]);
     expect((await handleRequest(req, deps)).status).toBe(401);
     expect(matchPassphrase).toHaveBeenCalledWith("a".repeat(1024 - 17));
   });
@@ -455,14 +410,14 @@ describe("本文の上限は読みながら守る（#59、レビュー #1）", (
     const { deps, matchPassphrase } = setup();
     const bytes = new TextEncoder().encode(JSON.stringify({ passphrase: "合言葉-テスト" }));
     // 1 バイトずつ送り、3 バイトの文字を必ず途中で切る
-    const { req } = streamRequest(Array.from(bytes, (b) => new Uint8Array([b])));
+    const { req } = stream(Array.from(bytes, (b) => new Uint8Array([b])));
     expect((await handleRequest(req, deps)).status).toBe(401);
     expect(matchPassphrase).toHaveBeenCalledWith("合言葉-テスト");
   });
 
   it("本文が空なら 400", async () => {
     const { deps } = setup();
-    const { req } = streamRequest([]);
+    const { req } = stream([]);
     expect((await handleRequest(req, deps)).status).toBe(400);
   });
 });

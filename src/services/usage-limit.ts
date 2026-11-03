@@ -2,7 +2,7 @@
  * 回数の上限（docs/spec.md §6）。いまは合言葉の失敗の枠だけ。Claude・LINE の回数は後で足す。
  * 時刻はミリ秒で受け取り、日付と枠は UTC（誰にも見せない値なので時差を持ち込まない）。
  */
-import { LOGIN_MAX_ATTEMPTS_PER_WINDOW, LOGIN_WINDOW_MINUTES } from "../config";
+import { LOGIN_WINDOW_MINUTES } from "../config";
 
 /** 合言葉の失敗を数える枠の長さ（ミリ秒） */
 export const LOGIN_WINDOW_MS = LOGIN_WINDOW_MINUTES * 60_000;
@@ -38,11 +38,6 @@ export function loginWindow(nowMs: number): LoginWindow {
 /** usage_counters の key。`login:<IPのハッシュ>:<枠>` */
 export function loginCounterKey(ipHash: string, slot: string): string {
   return `login:${ipHash}:${slot}`;
-}
-
-/** 枠の失敗の数が上限に達しているか（達していれば 429） */
-export function isLoginLimited(count: number): boolean {
-  return count >= LOGIN_MAX_ATTEMPTS_PER_WINDOW;
 }
 
 /** Retry-After の秒。枠の終わりまでを切り上げ、最小 1 */

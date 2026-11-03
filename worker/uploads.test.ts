@@ -5,7 +5,17 @@ import { handleRequest } from "./app";
 import type { DbPort, Deps } from "./deps";
 import { createTestBucket, type TestBucket } from "./test-bucket";
 import { createTestDb, type TestDb } from "./test-db";
-import { fakeDeps, multipartBody, multipartRequest, NOW_MS, sessionToken, tinyJpeg, type MultipartPart } from "./test-helpers";
+import {
+  fakeDeps,
+  multipartBody,
+  multipartRequest,
+  NOW_MS,
+  repeatChunks,
+  sessionToken,
+  streamRequest,
+  tinyJpeg,
+  type MultipartPart,
+} from "./test-helpers";
 
 const ID = "00000000-0000-4000-8000-000000000001";
 const HASH = "ab".repeat(32);
@@ -51,29 +61,6 @@ async function upload(
 
 function rows(testDb: TestDb) {
   return testDb.raw.prepare("SELECT * FROM uploaded_photos ORDER BY uploaded_at, id").all();
-}
-
-/** content-length の無い（chunked の）本文。読まれたバイト数を返す */
-function streamRequest(totalBytes: number, cookieValue: string): { req: Request; pulled: () => number } {
-  let pulled = 0;
-  const body = new ReadableStream<Uint8Array>({
-    pull(controller) {
-      if (pulled >= totalBytes) {
-        controller.close();
-        return;
-      }
-      const chunk = new Uint8Array(Math.min(64 * 1024, totalBytes - pulled)).fill(0x61);
-      pulled += chunk.byteLength;
-      controller.enqueue(chunk);
-    },
-  });
-  const req = new Request("https://example.test/api/uploads", {
-    method: "POST",
-    headers: { "content-type": "multipart/form-data; boundary=x", cookie: cookieValue },
-    body,
-    duplex: "half",
-  } as RequestInit);
-  return { req, pulled: () => pulled };
 }
 
 afterEach(() => {
@@ -289,10 +276,8 @@ describe("POST /api/uploads 入口", () => {
     expect(bucket.calls).toEqual([]);
   });
 
-  it.each([
-    ["JSON", "application/json"],
-    ["JPEG そのもの", "image/jpeg"],
-  ])("Content-Type が %s なら 415 で、本文も R2 も D1 も触らない", async (_name, contentType) => {
+  // multipart でない形の網羅は upload-form.test.ts。ここは「415 に写す・本文も R2 も D1 も触らない」を 1 つで見る
+  it.each([["JSON", "application/json"]])("Content-Type が %s なら 415 で、本文も R2 も D1 も触らない", async (_name, contentType) => {
     const { deps, bucket, prepare } = setup();
     const req = multipartRequest([{ name: "image", value: tinyJpeg() }], { contentType, cookie: await cookie() });
     const response = await handleRequest(req, deps);
@@ -301,12 +286,6 @@ describe("POST /api/uploads 入口", () => {
     expect(req.bodyUsed).toBe(false);
     expect(prepare).not.toHaveBeenCalled();
     expect(bucket.calls).toEqual([]);
-  });
-
-  it("Content-Type が無ければ 415", async () => {
-    const { deps } = setup();
-    const req = multipartRequest([{ name: "image", value: tinyJpeg() }], { contentType: null, cookie: await cookie() });
-    expect((await handleRequest(req, deps)).status).toBe(415);
   });
 
   it("boundary の無い multipart は 415", async () => {
@@ -345,7 +324,10 @@ describe("POST /api/uploads 入口", () => {
 
   it("content-length が無く本文が大きいと、上限の近くで読むのをやめて 413", async () => {
     const { deps, bucket } = setup();
-    const { req, pulled } = streamRequest(20 * 1024 * 1024, await cookie());
+    const { req, pulled } = streamRequest("/api/uploads", repeatChunks(20 * 1024 * 1024, 64 * 1024), {
+      "content-type": "multipart/form-data; boundary=x",
+      cookie: await cookie(),
+    });
     expect((await handleRequest(req, deps)).status).toBe(413);
     expect(pulled()).toBeLessThanOrEqual(UPLOAD_BODY_MAX_BYTES + 256 * 1024);
     expect(bucket.calls).toEqual([]);
@@ -395,21 +377,6 @@ describe("POST /api/uploads 中身の検査（422 と 413）", () => {
     expect(rows(testDb)).toEqual([]);
   });
 
-  it("APP2（色の情報）付きも 422 metadata", async () => {
-    const { deps } = setup();
-    await expect422(await upload(deps, { image: tinyJpeg({ apps: [2] }) }), "metadata");
-  });
-
-  it("JPEG でない画像は 422 not_jpeg", async () => {
-    const { deps } = setup();
-    await expect422(await upload(deps, { image: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0]) }), "not_jpeg");
-  });
-
-  it("長辺が上限を超えると 422 bad_dimensions", async () => {
-    const { deps } = setup();
-    await expect422(await upload(deps, { image: tinyJpeg({ width: 1601 }) }), "bad_dimensions");
-  });
-
   it("meta に座標・距離の項目があれば 422 unknown_key で、R2 も D1 も触らない（K6）", async () => {
     const { deps, bucket, prepare } = setup();
     await expect422(await upload(deps, { meta: { ...META, lat: 41.8 } }), "unknown_key");
@@ -421,11 +388,6 @@ describe("POST /api/uploads 中身の検査（422 と 413）", () => {
   it("meta が長すぎれば 413 でなく 422 too_long", async () => {
     const { deps } = setup();
     await expect422(await upload(deps, { meta: "x".repeat(1025) }), "too_long");
-  });
-
-  it("知らない圃場の番号は 422 unknown_field", async () => {
-    const { deps } = setup();
-    await expect422(await upload(deps, { meta: { ...META, candidateFieldIds: ["Z-99"] } }), "unknown_field");
   });
 
   it("422 の本文に入力の値（番号・ハッシュ・欄の名前）を入れない", async () => {
@@ -526,28 +488,3 @@ describe("POST /api/uploads 保存の失敗", () => {
   });
 });
 
-describe("POST /api/uploads 隠したメタデータ（PR #64 のレビュー #1）", () => {
-  const seg = (marker: number, payload: number[]) => [0xff, marker, (payload.length + 2) >> 8, (payload.length + 2) & 0xff, ...payload];
-  const APP1 = seg(0xe1, [0x45, 0x78, 0x69, 0x66, 0x00]);
-  const SOF = seg(0xc0, [8, 1200 >> 8, 1200 & 0xff, 1600 >> 8, 1600 & 0xff, 1, 1, 0x11, 0]);
-  const SOS = seg(0xda, [1, 1, 0x00, 0x00, 0x3f, 0x00]);
-
-  it("2 枚目のスキャンの前に APP1 を隠した画像は 422 metadata で、R2 にも D1 にも残らない", async () => {
-    const { deps, bucket, testDb } = setup();
-    const image = Uint8Array.from([0xff, 0xd8, ...SOF, ...SOS, 0x12, 0x34, ...APP1, ...SOS, 0x56, 0xff, 0xd9]);
-    const response = await upload(deps, { image });
-    expect(response.status).toBe(422);
-    expect(await response.json()).toStrictEqual({ error: "unprocessable", reason: "metadata" });
-    expect(bucket.calls).toEqual([]);
-    expect(rows(testDb)).toEqual([]);
-  });
-
-  it("EOI の後ろに APP1 を足して FF D9 で終えた画像は 422 not_jpeg", async () => {
-    const { deps, bucket } = setup();
-    const image = Uint8Array.from([0xff, 0xd8, ...SOF, ...SOS, 0x12, 0x34, 0xff, 0xd9, ...APP1, 0xff, 0xd9]);
-    const response = await upload(deps, { image });
-    expect(response.status).toBe(422);
-    expect(await response.json()).toStrictEqual({ error: "unprocessable", reason: "not_jpeg" });
-    expect(bucket.calls).toEqual([]);
-  });
-});

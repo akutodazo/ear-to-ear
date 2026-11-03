@@ -75,30 +75,8 @@ export function request(method: string, path: string, cookie?: string): Request 
   });
 }
 
-/** テスト用の JPEG（画像ファイルはコミットしない。AGENTS.md §1-5）。scanBytes で大きさを水増しする */
-export function tinyJpeg(
-  options: { width?: number; height?: number; apps?: number[]; scanBytes?: number; tail?: number[] } = {},
-): Uint8Array<ArrayBuffer> {
-  const { width = 1600, height = 1200, apps = [], scanBytes = 2, tail = [0xff, 0xd9] } = options;
-  const segment = (marker: number, payload: number[]) => {
-    const length = payload.length + 2;
-    return [0xff, marker, length >> 8, length & 0xff, ...payload];
-  };
-  const head = [
-    0xff,
-    0xd8,
-    ...segment(0xe0, [0x4a, 0x46, 0x49, 0x46, 0x00]),
-    ...apps.flatMap((n) => segment(0xe0 + n, [0x45, 0x78, 0x69, 0x66, 0x00])),
-    ...segment(0xc0, [8, height >> 8, height & 0xff, width >> 8, width & 0xff, 1, 1, 0x11, 0]),
-    ...segment(0xda, [1, 1, 0x00, 0x00, 0x3f, 0x00]),
-  ];
-  const bytes = new Uint8Array(head.length + scanBytes + tail.length);
-  bytes.set(head, 0);
-  // スキャンの中身は 0x12 で埋める（0xFF を含まない）
-  bytes.fill(0x12, head.length, head.length + scanBytes);
-  bytes.set(tail, head.length + scanBytes);
-  return bytes;
-}
+/** テスト用の JPEG は src/services/test-jpeg.ts に 1 つだけ置く */
+export { tinyJpeg } from "@/services/test-jpeg";
 
 export interface MultipartPart {
   name: string;
@@ -150,4 +128,42 @@ export function multipartRequest(
     headers,
     body: multipartBody(parts, boundary),
   });
+}
+
+/**
+ * content-length の無い（chunked の）本文の要求。chunks は読まれたときに 1 つずつ取り出す。
+ * pulled は読まれたバイト数（上限で読むのをやめたかを確かめる）
+ */
+export function streamRequest(
+  path: string,
+  chunks: Iterable<Uint8Array>,
+  headers: Record<string, string> = {},
+): { req: Request; pulled: () => number } {
+  const iterator = chunks[Symbol.iterator]();
+  let pulled = 0;
+  const body = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      const next = iterator.next();
+      if (next.done) {
+        controller.close();
+        return;
+      }
+      pulled += next.value.byteLength;
+      controller.enqueue(next.value);
+    },
+  });
+  const req = new Request(`https://example.test${path}`, {
+    method: "POST",
+    headers,
+    body,
+    duplex: "half",
+  } as RequestInit);
+  return { req, pulled: () => pulled };
+}
+
+/** totalBytes を chunkBytes ずつ "a" で埋めた本文（作るのは読まれたときだけ） */
+export function* repeatChunks(totalBytes: number, chunkBytes: number): Generator<Uint8Array> {
+  for (let sent = 0; sent < totalBytes; sent += chunkBytes) {
+    yield new Uint8Array(Math.min(chunkBytes, totalBytes - sent)).fill(0x61);
+  }
 }

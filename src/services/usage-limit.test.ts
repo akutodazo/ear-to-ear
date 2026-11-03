@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { LOGIN_MAX_ATTEMPTS_PER_WINDOW, LOGIN_WINDOW_MINUTES } from "../config";
+import { LOGIN_WINDOW_MINUTES } from "../config";
 import {
-  isLoginLimited,
   LOGIN_WINDOW_MS,
   loginCounterKey,
   loginWindow,
@@ -59,22 +58,6 @@ describe("loginWindow", () => {
 describe("loginCounterKey", () => {
   it("login:<IPのハッシュ>:<枠>", () => {
     expect(loginCounterKey("abc_-123", "2026-11-03T00:10")).toBe("login:abc_-123:2026-11-03T00:10");
-  });
-});
-
-describe("isLoginLimited", () => {
-  it.each([
-    [0, false],
-    [4, false],
-    [5, true],
-    [6, true],
-  ])("失敗が %i 回なら %s", (count, limited) => {
-    expect(isLoginLimited(count)).toBe(limited);
-  });
-
-  it("境界は config の上限", () => {
-    expect(isLoginLimited(LOGIN_MAX_ATTEMPTS_PER_WINDOW - 1)).toBe(false);
-    expect(isLoginLimited(LOGIN_MAX_ATTEMPTS_PER_WINDOW)).toBe(true);
   });
 });
 
