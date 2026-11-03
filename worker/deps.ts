@@ -49,6 +49,8 @@ export interface Deps {
   nowMs: () => number;
   /** UUID v4 */
   newId: () => string;
+  /** 架空の圃場の番号の一覧（src/data/fields.json）。meta の候補・選んだ番号を確かめる */
+  knownFieldIds: ReadonlySet<string>;
 }
 
 export type AuthLevel = "none" | "member" | "admin";
