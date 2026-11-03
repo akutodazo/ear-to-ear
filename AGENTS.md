@@ -67,4 +67,4 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - push・PR・`gh`・`wrangler`・`npm install`・Secret・デプロイをしない。ブランチを切り替えない。`git reset --hard`・`git stash`・`git checkout -- .`・ファイル削除で変更を消さない
 - GREEN をコミットした後、検査 C1〜C5 を**1回ずつ、他のコマンドとつなげずに**実行し、出力をそのまま会話と `REPORT-Txx.md` に貼って「Txx REPORT」でコミットする。「完了」ではなく「検査済み・人の確認待ち」と書く
 - **QUESTIONS に書くのは `git status --porcelain --untracked-files=all` の出力のファイル名の列だけ**。差分の中身・ファイルの中身は貼らない。対象外・秘密の疑いのある変更は add・コミット・元に戻し・削除をしない
-- （人）push の前に `REPORT-Txx.md` を読み、手元のパス・秘密が載っていないか確かめる。檻の `report` は今は `docs/run/REPORT.md` に書くので、人が確認のときに `REPORT-Txx.md` へ名前を変える（檻が直るまで）
+- （人）push の前に `REPORT-Txx.md` を読み、手元のパス・秘密が載っていないか確かめる。檻の `report` は `REPORT-Txx.md` に書き、作業フォルダ・ホーム・ユーザー名を伏せる（#65）

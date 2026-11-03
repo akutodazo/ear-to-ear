@@ -1,6 +1,6 @@
 # MCP の檻（無人の Claude に組み込みの道具を渡さない）
 
-Issue: akutodazo/ear-to-ear#14。**状態: 採用（11-03 本人決定）。Service だけのパケットは檻、画面・`src/lib`・ブラウザの API を使うものは `/goal`**（AGENTS.md §5、ハーネス v0.5）。`report` が書くファイルを `docs/run/REPORT-Txx.md` にするのは未対応（それまでは人が名前を変える）。
+Issue: akutodazo/ear-to-ear#14。**状態: 採用（11-03 本人決定）。Service だけのパケットは檻、画面・`src/lib`・ブラウザの API を使うものは `/goal`**（AGENTS.md §5、ハーネス v0.5）。`report` は `docs/run/REPORT-Txx.md`（パケットごと）に、手元のパスを伏せて書く（#65）。
 
 ## 何をするか
 無人の Claude から Bash・Edit・Read を外し、`scripts/cage/server.mjs` の5つの道具だけを渡す。deny で止めるのではなく、道具が無いので起きない。
@@ -13,7 +13,7 @@ Issue: akutodazo/ear-to-ear#14。**状態: 採用（11-03 本人決定）。Serv
 | `write_file` | 書く | 許可リストだけ。コードは純粋関数の検査（`scripts/cage/policy.mjs`）を通す |
 | `run_tests` | テストを実行 | 檻の環境変数・秘密を子プロセスに渡さない |
 | `commit_green` | コミット | `Txx GREEN: ` で始まる1行。許可リストのファイルだけ |
-| `report` | 検査の実行と REPORT.md のコミット | 判定役が会話ではなくファイルを見られるようにする（弱点 W1） |
+| `report` | 検査の実行と `REPORT-Txx.md` のコミット（作業フォルダ・ホーム・ユーザー名と色の制御文字を伏せる） | 判定役が会話ではなくファイルを見られるようにする（弱点 W1） |
 
 ## 起動
 ```bash
@@ -29,13 +29,13 @@ claude -p "<パケットの指示>" --tools "" --strict-mcp-config --mcp-config 
 | `CAGE_TEST` | `node` に渡す引数（JSON の配列）。既定は vitest の全件 |
 | `CAGE_CHECKS` | 検査の一覧（JSON、`[{"name":"C1","argv":[...]}]`）。C1〜C5 の中身は本人のハーネスにあるので、ここでは決めていない |
 
-`CAGE_ALLOW` に REPORT.md・QUESTIONS.md を入れなくてよい。REPORT.md は `report` だけが書き、`write_file` では書けない。QUESTIONS.md は常に書けるが、コミットはされない。
+`CAGE_ALLOW` に REPORT・QUESTIONS.md を入れなくてよい。REPORT（`REPORT.md`・`REPORT-Txx.md`）は `report` だけが書き、`CAGE_ALLOW` にあっても `write_file` では書けず、`commit_green` にも入らない。QUESTIONS.md は常に書けるが、コミットはされない。
 
 `CAGE_TIMEOUT_MS` で子プロセスの上限を変えられる（既定 120 秒）。`CAGE_CHECKS` の `argv` はシェルを通らないので、Windows では `npm` を直接書けない。`node` から書く。
 
 `server.mjs` は `CAGE_ROOT` の外に置く（Claude が書き換えられない場所）。`typescript` を解決するので、`node_modules` が見える場所（本体のチェックアウトや別の worktree）から動かす。
 
-push の前に、人が REPORT.md を読む。既知の抜けを通ったコードは、検査の出力から秘密を REPORT.md に載せられる。
+push の前に、人が `REPORT-Txx.md` を読む。伏せるのは手元のパスとユーザー名だけで、既知の抜けを通ったコードは、検査の出力から秘密を REPORT に載せられる。
 
 ## 実機の結果（11-02、Claude Code 2.1.299、Haiku、使い捨ての複製）
 | 確かめたこと | 結果 |
