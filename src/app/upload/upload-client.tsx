@@ -1,18 +1,25 @@
 "use client";
 
 /** /upload の配線: Presenter（useUpload）を呼び、部品に props で配る（AGENTS.md §4） */
+import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { useUpload } from "@/hooks/use-upload";
 import { PassphraseForm } from "@/components/upload/passphrase-form";
 import { PhotoCard } from "@/components/upload/photo-card";
 
 export function UploadClient() {
   const upload = useUpload();
+  const summaryRef = useRef<HTMLDivElement>(null);
+
+  // 送り終わったら、まとめを画面の中へ
+  useEffect(() => {
+    if (upload.summary) summaryRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [upload.summary]);
+
   return (
     <div className="stack">
-      {upload.needsPassphrase && <PassphraseForm onSubmit={upload.login} message={upload.loginMessage} />}
-
       <label className="button button-primary">
-        写真を選ぶ
+        {upload.items.length === 0 ? "写真を選ぶ" : "写真を足す"}
         <input
           type="file"
           accept="image/jpeg"
@@ -40,15 +47,32 @@ export function UploadClient() {
         ))}
       </ul>
 
-      {upload.items.length > 0 && (
-        <button
-          type="button"
-          className="button button-primary"
-          disabled={upload.sending || upload.sendableCount === 0}
-          onClick={upload.sendAll}
-        >
-          {upload.sending ? "送っています…" : `送る（${upload.sendableCount}枚）`}
-        </button>
+      {/* 合言葉とまとめは一覧の下（送るボタンのすぐ上）に出し、出たら画面の中へ動かす */}
+      {upload.needsPassphrase && <PassphraseForm onSubmit={upload.login} message={upload.loginMessage} />}
+
+      {upload.summary && (
+        <div ref={summaryRef} className="panel panel-ok stack">
+          <p className="label">{upload.summary}</p>
+          <Link className="button button-primary" href="/recent">
+            新着を見る
+          </Link>
+          <button type="button" className="button" onClick={upload.clearSent}>
+            続けて送る
+          </button>
+        </div>
+      )}
+
+      {(upload.sendableCount > 0 || upload.sending) && (
+        <div className="action-bar">
+          <button
+            type="button"
+            className="button button-primary button-block"
+            disabled={upload.sending}
+            onClick={upload.sendAll}
+          >
+            {upload.sending ? "送っています…" : `送る（${upload.sendableCount}枚）`}
+          </button>
+        </div>
       )}
     </div>
   );

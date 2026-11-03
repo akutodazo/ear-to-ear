@@ -9,15 +9,22 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import fieldsData from "@/data/fields.json";
 import type { Field } from "@/types";
 import { candidateFieldIds, distanceMeters } from "@/services/candidates";
-import { uploadOutcomeLabel } from "@/services/photo-labels";
+import { sendSummaryLabel, uploadOutcomeLabel } from "@/services/photo-labels";
 import { buildUploadMeta } from "@/services/upload-request";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
 import type { IPhotoRepository, LoginOutcome } from "@/repositories/interfaces/i-photo-repository";
-import { PreparePhotoUnavailableError, preparePhoto, readPhotoInfo, type PhotoInfo } from "@/lib/upload-steps";
+import {
+  PreparePhotoUnavailableError,
+  canOpenPhoto,
+  preparePhoto,
+  readPhotoInfo,
+  type PhotoInfo,
+} from "@/lib/upload-steps";
 
 const fields: Field[] = fieldsData;
 
-export type ItemStatus = "reading" | "ready" | "sending" | "sent" | "failed";
+/** unusable は画像として開けない写真（送る数に入れない） */
+export type ItemStatus = "reading" | "ready" | "sending" | "sent" | "failed" | "unusable";
 
 export interface UploadItem {
   key: string;
@@ -61,6 +68,8 @@ export function useUpload(repository?: IPhotoRepository) {
   const [sending, setSending] = useState(false);
   const [needsPassphrase, setNeedsPassphrase] = useState(false);
   const [loginMessage, setLoginMessage] = useState<string | null>(null);
+  /** 最後の「送る」が合言葉で止まらずに終わった（まとめを出す） */
+  const [finished, setFinished] = useState(false);
   const filesByKey = useRef(new Map<string, File>());
   const urlsByKey = useRef(new Map<string, string>());
 
@@ -75,6 +84,7 @@ export function useUpload(repository?: IPhotoRepository) {
 
   const addFiles = useCallback(
     (files: FileList | File[]) => {
+      setFinished(false);
       for (const file of Array.from(files)) {
         const key = `p${nextKey++}`;
         const previewUrl = URL.createObjectURL(file);
@@ -91,9 +101,15 @@ export function useUpload(repository?: IPhotoRepository) {
           message: null,
         };
         setItems((current) => [...current, item]);
-        readPhotoInfo(file).then(
-          (info) => update(key, { info, candidates: candidatesFor(info), status: "ready" }),
-          () => update(key, { status: "failed", message: "写真を読めませんでした。外してください" }),
+        Promise.all([readPhotoInfo(file), canOpenPhoto(file)]).then(
+          ([info, openable]) =>
+            update(
+              key,
+              openable
+                ? { info, candidates: candidatesFor(info), status: "ready" }
+                : { status: "unusable", message: "この写真は開けません。外してください" },
+            ),
+          () => update(key, { status: "unusable", message: "写真を読めませんでした。外してください" }),
         );
       }
     },
@@ -154,6 +170,7 @@ export function useUpload(repository?: IPhotoRepository) {
   const sendAll = useCallback(async () => {
     if (sending) return;
     setSending(true);
+    setFinished(false);
     try {
       for (const item of items.filter(isSendable)) {
         if ((await sendOne(item)) === "unauthorized") {
@@ -161,6 +178,7 @@ export function useUpload(repository?: IPhotoRepository) {
           return;
         }
       }
+      setFinished(true);
     } finally {
       setSending(false);
     }
@@ -178,7 +196,40 @@ export function useUpload(repository?: IPhotoRepository) {
     [repo, sendAll],
   );
 
-  const sendableCount = items.filter(isSendable).length;
+  /** 送った写真を片付けて、続けて選べるようにする */
+  const clearSent = useCallback(() => {
+    for (const item of items) {
+      if (item.status !== "sent") continue;
+      filesByKey.current.delete(item.key);
+      const url = urlsByKey.current.get(item.key);
+      if (url) URL.revokeObjectURL(url);
+      urlsByKey.current.delete(item.key);
+    }
+    setItems((current) => current.filter((item) => item.status !== "sent"));
+    setFinished(false);
+  }, [items]);
 
-  return { items, fields, sending, sendableCount, addFiles, choose, remove, sendAll, needsPassphrase, login, loginMessage };
+  const sendableCount = items.filter(isSendable).length;
+  const summary = finished
+    ? sendSummaryLabel({
+        sent: items.filter((i) => i.status === "sent").length,
+        failed: items.filter((i) => i.status === "failed").length,
+      })
+    : null;
+
+  return {
+    items,
+    fields,
+    sending,
+    sendableCount,
+    summary,
+    addFiles,
+    choose,
+    remove,
+    sendAll,
+    clearSent,
+    needsPassphrase,
+    login,
+    loginMessage,
+  };
 }

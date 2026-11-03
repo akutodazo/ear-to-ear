@@ -22,14 +22,20 @@ export function candidateLabel(fieldId: string, meters: number): string {
 export function candidateSummary(
   candidates: { fieldId: string; meters: number }[],
 ): { primary: string; others: string | null } | null {
-  void candidates;
-  throw new Error("not implemented");
+  const [first, ...rest] = candidates;
+  if (first === undefined) return null;
+  return {
+    primary: candidateLabel(first.fieldId, first.meters),
+    others: rest.length === 0 ? null : rest.map((c) => c.fieldId).join("・"),
+  };
 }
 
 /** 送り終わった後のまとめ（例 3枚送りました。1枚は送れませんでした）。どちらも 0 なら null */
 export function sendSummaryLabel(counts: { sent: number; failed: number }): string | null {
-  void counts;
-  throw new Error("not implemented");
+  const parts: string[] = [];
+  if (counts.sent > 0) parts.push(`${counts.sent}枚送りました`);
+  if (counts.failed > 0) parts.push(`${counts.failed}枚は送れませんでした`);
+  return parts.length === 0 ? null : parts.join("。");
 }
 
 /** 撮影日の表示（例 2026年7月21日）。不明は「日付不明」（推測しない） */
@@ -55,7 +61,7 @@ export function assignmentLabel(
 const OUTCOME_LABELS: Record<UploadOutcome["kind"], string> = {
   created: "送りました",
   duplicate: "同じ写真はもう送られています",
-  unauthorized: "合言葉を入れ直してください",
+  unauthorized: "送るには合言葉が要ります",
   "too-large": "写真が大きすぎて送れませんでした",
   rejected: "この写真は送れませんでした",
   "network-error": "つながりませんでした。電波のよい所でもう一度送ってください",
