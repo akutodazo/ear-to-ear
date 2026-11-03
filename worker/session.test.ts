@@ -364,6 +364,99 @@ describe("見えない動き（攻撃役の指摘）", () => {
   });
 });
 
+/** content-length の無い（chunked の）本文。読まれたバイト数を返す */
+function streamRequest(chunks: Uint8Array[]): { req: Request; pulled: () => number } {
+  let index = 0;
+  let pulled = 0;
+  const body = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (index >= chunks.length) {
+        controller.close();
+        return;
+      }
+      pulled += chunks[index].byteLength;
+      controller.enqueue(chunks[index++]);
+    },
+  });
+  const req = new Request("https://example.test/api/session", {
+    method: "POST",
+    headers: { "content-type": "application/json", "cf-connecting-ip": IP },
+    body,
+    duplex: "half",
+  } as RequestInit);
+  return { req, pulled: () => pulled };
+}
+
+describe("本文の上限は読みながら守る（#59、レビュー #1）", () => {
+  it("content-length が無く本文が大きいと、上限を超えた所で読むのをやめて 413", async () => {
+    const { deps, matchPassphrase, testDb } = setup();
+    const { req, pulled } = streamRequest(Array.from({ length: 1024 }, () => new Uint8Array(1024).fill(0x61)));
+    expect(req.headers.get("content-length")).toBeNull();
+    const response = await handleRequest(req, deps);
+    expect(response.status).toBe(413);
+    expect(await response.json()).toStrictEqual({ error: "payload_too_large" });
+    expect(pulled()).toBeLessThanOrEqual(8 * 1024);
+    expect(matchPassphrase).not.toHaveBeenCalled();
+    expect(rows(testDb)).toEqual([]);
+  });
+
+  it("content-length が数でなくても、読みながら上限を守る", async () => {
+    const { deps } = setup();
+    const { req, pulled } = streamRequest(Array.from({ length: 64 }, () => new Uint8Array(1024).fill(0x61)));
+    req.headers.set("content-length", "abc");
+    expect((await handleRequest(req, deps)).status).toBe(413);
+    expect(pulled()).toBeLessThanOrEqual(8 * 1024);
+  });
+
+  it("上限はバイトで数える（1024 文字以内でも 1024 バイトを超えれば 413）", async () => {
+    const { deps } = setup();
+    const body = JSON.stringify({ passphrase: "あ".repeat(400) });
+    expect(body.length).toBeLessThanOrEqual(1024);
+    expect(new TextEncoder().encode(body).byteLength).toBeGreaterThan(1024);
+    const { req } = streamRequest([new TextEncoder().encode(body)]);
+    expect((await handleRequest(req, deps)).status).toBe(413);
+  });
+
+  it("ちょうど 1024 バイトは読む", async () => {
+    const { deps, matchPassphrase } = setup();
+    const body = `{"passphrase":"${"a".repeat(1024 - 17)}"}`;
+    expect(body.length).toBe(1024);
+    const { req } = streamRequest([new TextEncoder().encode(body)]);
+    expect((await handleRequest(req, deps)).status).toBe(401);
+    expect(matchPassphrase).toHaveBeenCalledWith("a".repeat(1024 - 17));
+  });
+
+  it("小分けに届いた本文（多バイト文字が区切りをまたぐ）も、元の文字のまま照合に渡す", async () => {
+    const { deps, matchPassphrase } = setup();
+    const bytes = new TextEncoder().encode(JSON.stringify({ passphrase: "合言葉-テスト" }));
+    // 1 バイトずつ送り、3 バイトの文字を必ず途中で切る
+    const { req } = streamRequest(Array.from(bytes, (b) => new Uint8Array([b])));
+    expect((await handleRequest(req, deps)).status).toBe(401);
+    expect(matchPassphrase).toHaveBeenCalledWith("合言葉-テスト");
+  });
+
+  it("本文が空なら 400", async () => {
+    const { deps } = setup();
+    const { req } = streamRequest([]);
+    expect((await handleRequest(req, deps)).status).toBe(400);
+  });
+});
+
+describe("IPv6 は /64 ごとの枠（#59、レビュー #4）", () => {
+  it("同じ /64 の中でアドレスを変えても、同じ枠で数える", async () => {
+    const { deps, hashIp } = setup();
+    for (let i = 1; i <= 5; i++) await login(deps, "wrong", `2001:db8:1:2::${i}`);
+    expect(hashIp).toHaveBeenCalledWith("2001:db8:1:2::/64", DAY);
+    expect((await login(deps, MEMBER_INPUT, "2001:db8:1:2:ffff::9")).status).toBe(429);
+  });
+
+  it("別の /64 は別の枠", async () => {
+    const { deps } = setup();
+    for (let i = 1; i <= 5; i++) await login(deps, "wrong", `2001:db8:1:2::${i}`);
+    expect((await login(deps, "wrong", "2001:db8:1:3::1")).status).toBe(401);
+  });
+});
+
 describe("GET /api/session", () => {
   it("Cookie が無ければ 401", async () => {
     const { deps } = setup();
