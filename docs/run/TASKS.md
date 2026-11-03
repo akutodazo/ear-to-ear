@@ -183,13 +183,14 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **担当**: 先輩
 
 ## T21 `GET /api/photos/recent` と `GET /api/photo-files/:id`（新着の一覧と画像の配信。認証なし）
-- **状態**: RED（11-03）。攻撃役と無人運転はこの後
+- **状態**: RED・攻撃役まで（11-03）。無人運転はこの後
 - **Issue**: #67
 - **依存**: T11（`uploaded_photos`）、T18（土台）、T20（`r2KeyFor`・R2 のキー）
 - **変えてよいファイル**: `src/services/photo-query.ts`・`worker/photos.ts`・`worker/photo-files.ts`（＋ `docs/run/REPORT-T21.md`、止まったときは `docs/run/QUESTIONS.md`）
-- **テスト（凍結）**: `src/services/photo-query.test.ts`・`worker/photos.test.ts`・`worker/photos-config.test.ts`・`worker/photo-files.test.ts`（計 66 件）、`worker/app.test.ts` の付け替え（「認証なしの経路は 501」の 3 つを `GET /api/photos` に）
+- **テスト（凍結）**: `src/services/photo-query.test.ts`・`worker/photos.test.ts`・`worker/photos-config.test.ts`・`worker/photo-files.test.ts`（計 73 件）、`worker/app.test.ts` の付け替え（「認証なしの経路は 501」の 3 つを `GET /api/photos` に）
 - **人が RED で置いたもの（凍結）**: `src/config.ts` の `RECENT_LIMIT_DEFAULT = 50`・`RECENT_LIMIT_MAX = 200`（共有ファイル）、`photo-query.ts` の `PHOTO_LIST_COLUMNS`・`PhotoListRow` と空の関数、2 つのハンドラの空の実装と `PHOTO_FILE_CACHE_CONTROL`、`routes.ts` の配線、`docs/privacy.md` の「送った端末」の行（本人の承認待ち）
 - **RED の確かめ**: 新しい 66 件のうち 56 件が失敗。通る 10 件は、人が置いた定数・列の一覧と、空の実装でも成り立つ 405・500・`..` の 404。仮の実装で `src/services` と `worker` の 854 件がすべて通り、檻の純粋関数の検査も通ることを確かめてから空に戻した
+- **攻撃役（Sonnet、檻の中、17 手、$0.19）**: 66 件を全部通す手抜きが書けたが、使った手抜きは 1 つ（候補の列が文字列の配列かを先頭の要素だけで確かめる）。7 件を足して 73 件にし、手抜きは 3 件落ちる。正しい実装で 42 件（photo-query）が通る。入れなかった指摘: R2 のメタデータの contentType を見る（R2 の口が返さないので image/jpeg に決めてある）、本文をメモリに読まずに渡すこと・uploaded_at の形の違い（決めていない。uploads が 1 つの形で書く）
 - **設計**: Claude Fable 5.1（別のセッション、読み取りだけ、71 手、$4.93）。要判断は先輩が決めた（11-03、#67 のコメント）
 - **合格条件**:
   - 一覧: `limit` は `ctx.url.searchParams.get("limit")`（最初の値）を `parseRecentLimit` に通す（`/^[1-9]\d*$/` でなければ既定、上限を超えれば上限。400 にしない）。SQL は 1 文 `SELECT <PHOTO_LIST_COLUMNS> FROM uploaded_photos ORDER BY uploaded_at DESC, id DESC LIMIT ?`（`*` を使わない、件数は bind）→ `all()` の `results` を `photoFromRow` で写す → `json(200, …)`。JS で並べ替え・絞り込みをしない
