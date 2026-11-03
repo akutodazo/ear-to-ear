@@ -155,3 +155,24 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
   - 例外は握らない（500 は `app.ts`）。合言葉・IP を D1 にも console にも残さない
 - **書き方の注意（`scripts/cage/policy.mjs`）**: `Date.now()`・`new Date()`（引数なし）は使わない（時刻は `deps.nowMs`）。`new Date(ms).toISOString()` は使ってよい。秒に直すのは `auth.ts` の `nowSec`。import は Service が `../config`、worker が `@/config`・`@/services/...`・`./...`
 - **担当**: 先輩。`usage-limit.ts`（担当「後で決める」）は先輩が作る（11-03 先輩の決定、本人に確認する）
+
+## T20 `POST /api/uploads`（縮小画像と meta を検査し、R2 と D1 に「未確定」で残す）
+- **状態**: RED（11-03）。攻撃役と無人運転はこの後
+- **Issue**: #60
+- **依存**: T03（`inspectJpeg`）、T04（`parseUploadMeta`）、T11（`uploaded_photos`）、T18（土台）、T19（session、`body.ts` の元）。T08「保存の失敗」はここに吸収した
+- **変えてよいファイル**: `src/services/upload-form.ts`・`worker/uploads.ts`（＋ REPORT、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結）**: `src/services/upload-form.test.ts`（46 件）・`worker/uploads.test.ts`（39 件）・`worker/uploads-config.test.ts`（2 件）、`worker/app.test.ts` の直し（`POST /api/uploads` を 501 から 415 に）
+- **人が RED で置いたもの（凍結）**: 2 ファイルの型・定数と空の実装、`worker/body.ts`（session から切り出し、`Uint8Array<ArrayBuffer>` を返す）とそのテスト、`session.ts` の直し、`routes.ts` の配線、`http.ts` の `"unprocessable"`、`Deps.knownFieldIds`（`env.ts` で `fields.json` から）、`test-bucket.ts`（偽の R2）、`test-helpers.ts` の `tinyJpeg`・`multipartBody`・`multipartRequest`
+- **RED の確かめ**: 新しいテストの 87 件のうち 85 件と、`app.test.ts` の直した 2 件が失敗（not implemented と 500）。仮の実装で worker と Service の 352 件がすべて通り、檻の純粋関数の検査も通ることを確かめてから空に戻した
+- **設計**: Claude Fable 5.1（別のセッション、読み取りだけ、83 手、$6.43）。要判断 14 件は先輩がすべて推奨どおりに決めた（11-03、#60 のコメント）
+- **合格条件**:
+  - 順番: 401（`app.ts`）→ 415（media type が `multipart/form-data` でない）→ 413（`content-length` が `UPLOAD_BODY_MAX_BYTES` 超。本文を読まない）→ `readBodyLimited` で上限まで読む（超えたら 413）→ `new Response(本文, { headers: { "content-type": 元の値 } }).formData()`（投げたら 415。`request.formData()` は使わない）→ 欄（`checkUploadParts`、422 `bad_form`）→ 画像（`checkUploadImage`、`too_large` は 413、他は 422）→ meta（`parseUploadMeta(meta, deps.knownFieldIds)`、`too_long` も 422）→ 二重を SELECT（あれば 409 `{ id }`）→ R2 → D1
+  - 422 の本文は `{ error: "unprocessable", reason }` だけ。reason は固定のコード（`bad_form`・`too_large` 以外の画像の理由・T04 の理由）で、入力の値を入れない。409 と 201 の本文は `{ id }` だけ
+  - 画像の拒否は 4 つ: `MAX_UPLOAD_BYTES` 超、APP1〜15、長辺が `THUMBNAIL_LONG_EDGE_PX` 超、末尾が `FF D9` でない。`inspect` が投げたら種類を問わず `not_jpeg`
+  - `contentHash` は形だけ見て信じる（T04）。Worker でハッシュを計算しない
+  - R2 のキーは `uploads/<id>.jpg`、`contentType` は `image/jpeg`、id は `deps.newId()` を 1 回。時刻は `new Date(deps.nowMs()).toISOString()`
+  - D1 は `PHOTO_COLUMNS` と `photoRowValues` から組んだ 1 文の `INSERT … ON CONFLICT(content_hash) DO NOTHING RETURNING id`。null なら置いた画像を消して 409 `{ id }`（既にある行の id）。エラー文は照合しない。INSERT が投げたら置いた画像を消して投げ直す（500）。片付けの delete が投げたら `console.error` に R2 のキーを残して元の例外を投げる
+  - `chosenFieldId` があっても `state` は `unconfirmed`、`field_id` は null。`uploader_device` は Cookie の端末 ID
+  - ファイル名・欄の Content-Type は読まない。`console` は片付けの失敗のときだけ
+- **書き方の注意（`scripts/cage/policy.mjs`）**: `Date.now()`・`new Date()`（引数なし）・`crypto` は使わない。`instanceof File` を使わず `typeof value === "string"` で分ける。import は Service が `../config`・`@/types`・`./jpeg-segments`、worker が `@/config`・`@/services/...`・`./...`
+- **担当**: 先輩
