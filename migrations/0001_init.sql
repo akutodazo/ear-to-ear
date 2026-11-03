@@ -1,0 +1,35 @@
+-- D1 の表（docs/spec.md 5章）。L0〜L1
+CREATE TABLE uploaded_photos (
+  id TEXT PRIMARY KEY NOT NULL,              -- SQLite の TEXT の主キーは NOT NULL を書かないと NULL が入る
+  field_id TEXT,
+  state TEXT NOT NULL CHECK (state IN ('unconfirmed','confirmed')),
+  candidate_field_ids TEXT NOT NULL,          -- JSON 配列（番号だけ。距離は持たない）
+  taken_at TEXT,
+  taken_at_source TEXT NOT NULL CHECK (taken_at_source IN ('xmp','exif','none')),
+  content_hash TEXT NOT NULL UNIQUE,
+  r2_key TEXT NOT NULL,
+  width INTEGER NOT NULL, height INTEGER NOT NULL, bytes INTEGER NOT NULL,
+  uploader_device TEXT NOT NULL,
+  uploaded_at TEXT NOT NULL, updated_at TEXT NOT NULL
+);
+CREATE INDEX idx_photos_field ON uploaded_photos(field_id, taken_at);
+CREATE INDEX idx_photos_uploaded ON uploaded_photos(uploaded_at);
+CREATE TABLE photo_assignments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  photo_id TEXT NOT NULL REFERENCES uploaded_photos(id),
+  from_field_id TEXT, to_field_id TEXT NOT NULL,
+  actor_device TEXT NOT NULL, at TEXT NOT NULL
+);
+CREATE TABLE field_status_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  field_id TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('ready','done')),
+  reasons TEXT NOT NULL DEFAULT '[]',         -- JSON 配列（選択肢のコード）
+  note TEXT,
+  ref_photo_ids TEXT NOT NULL DEFAULT '[]',
+  actor_device TEXT NOT NULL, at TEXT NOT NULL, revoked_at TEXT
+);
+CREATE TABLE usage_counters (                 -- Claude の呼び出し回数・LINE の送信数・合言葉の失敗回数
+  key TEXT PRIMARY KEY NOT NULL,              -- 例 'claude:2026-11-05'、'line:2026-11'、'login:<IPのハッシュ>:<10分の枠>'
+  count INTEGER NOT NULL, expires_at TEXT NOT NULL
+);
