@@ -57,3 +57,25 @@ describe("applyCommonHeaders", () => {
     expect(await response.json()).toStrictEqual({ error: "unauthorized" });
   });
 });
+
+describe("共通ヘッダと本文の細部（攻撃役の指摘）", () => {
+  it("すでにある X-Content-Type-Options は上書きしない", () => {
+    const original = new Response("x", { headers: { "x-content-type-options": "custom" } });
+    expect(applyCommonHeaders(original).headers.get("x-content-type-options")).toBe("custom");
+  });
+
+  it.each([
+    ["null", null, "null"],
+    ["文字列", "abc", '"abc"'],
+    ["数", 0, "0"],
+  ])("json に %s を渡すと JSON の本文", async (_name, body, text) => {
+    expect(await json(200, body).text()).toBe(text);
+  });
+
+  it("reason が空文字でも載せる（渡したときだけ載る）", async () => {
+    expect(await errorResponse(422, "bad_request", { reason: "" }).json()).toStrictEqual({
+      error: "bad_request",
+      reason: "",
+    });
+  });
+});
