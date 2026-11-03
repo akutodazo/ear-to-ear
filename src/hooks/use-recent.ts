@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import fieldsData from "@/data/fields.json";
 import type { Field, Role, UploadedPhoto } from "@/types";
 import { applyAssignment, assignOutcomeLabel } from "@/services/assignment";
+import { filterRecent, unconfirmedCountLabel } from "@/services/recent-view";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
 import type { IPhotoRepository, LoginOutcome, RecentOutcome } from "@/repositories/interfaces/i-photo-repository";
 
@@ -41,6 +42,8 @@ export function useRecent(repository?: IPhotoRepository) {
   const [needsPassphrase, setNeedsPassphrase] = useState(false);
   const [loginMessage, setLoginMessage] = useState<string | null>(null);
   const [assignStatus, setAssignStatus] = useState<Record<string, AssignStatus>>({});
+  /** 「未確定だけ見る」 */
+  const [onlyUnconfirmed, setOnlyUnconfirmed] = useState(false);
 
   const apply = useCallback((outcome: RecentOutcome) => {
     setLoading(false);
@@ -123,8 +126,13 @@ export function useRecent(repository?: IPhotoRepository) {
     [repo],
   );
 
+  const toggleOnlyUnconfirmed = useCallback(() => setOnlyUnconfirmed((v) => !v), []);
+
   return {
-    photos,
+    photos: filterRecent(photos, onlyUnconfirmed),
+    unconfirmedLabel: unconfirmedCountLabel(photos),
+    onlyUnconfirmed,
+    toggleOnlyUnconfirmed,
     loading,
     message,
     fetchedAt,

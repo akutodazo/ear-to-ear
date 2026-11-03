@@ -1,7 +1,7 @@
 # パケットの一覧（無人運転用）
 
 無人運転（本人・先輩どちらも。`/goal` か MCP の檻、AGENTS.md §5）に渡す作業単位。
-**REPORT は 11-03 からパケットごと**（`docs/run/REPORT-Txx.md`）。取り込み済みの T01・T02・T04 の分は分けて置いた。下の項目の中の `docs/run/REPORT.md` は運転したときの名前。運転はパケットの番号で呼ぶ（「T01 の運転」）。
+**REPORT は 11-03 からパケットごと**（`docs/run/REPORT-Txx.md`）。取り込み済みの T01・T02・T04・T18・T19 の分は分けて置いた。下の項目の中の `docs/run/REPORT.md` は運転したときの名前。運転はパケットの番号で呼ぶ（「T01 の運転」）。
 状態は人が書き換える: 予定 → RED済み（人） → 運転中 → 検査済み・人の確認待ち → 取り込み済み／止まった。
 START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 
@@ -20,7 +20,8 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 | 10 | T09・T10 架空圃場・合成写真 | 本人（対話） | — |
 | 11 | T06 `photo-groups.ts`（L1） | 本人 | 可 |
 | 12 | T12 `status-reason.ts`（L1） | 本人 | 可 |
-| 13〜 | T07・T13・T14・T15・T16（L6・L8） | L0 の後に決める | — |
+| 13 | T18 Worker の土台 | 先輩 | 先輩の指示で無人（11-03） |
+| 14〜 | T07・T13・T14・T15・T16（L6・L8） | L0 の後に決める | — |
 
 ---
 
@@ -107,3 +108,51 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
   - **読めない・壊れた・JPEG でないときは例外を出さず**、位置なし・日付不明（`none`）
 - **RED の確かめ**: 23 件すべて not implemented で失敗。仮の実装で 23 件が通ることを確かめてから空に戻した
 - **参照**: docs/spec.md §4「写真の位置情報（分かっている事実）」、§9 のテスト表 photo-meta
+
+## T18 Worker の土台（`worker/`。ルーター・共通の応答・認証の土台）
+- **状態**: 検査済み・人の確認待ち（11-03）
+- **運転の記録（試験3、MCP の檻）**: START `05810ce` → GREEN `24c8480` → REPORT `0111080`。モデル Opus 5.5、`claude -p`、道具は檻の5つだけ、28手、$0.53。**C1〜C5 がすべて合格**（檻の中の初めての全合格。worktree で `npm ci` した）。変更は許可した6ファイルだけ。REPORT の手元のパスは人が伏せた（`9151a1e`）
+- **人の確認**: 本体のチェックアウトで C1・C3（114 件）・C4（テスト全体 677 件）・C5 が合格。実装を9通りに壊して8通りが落ちる（残る1通りは `Allow` の重複で、表に同じ組が無い限り起きない）。手元の `wrangler dev`（workerd、使い捨ての設定）で health 200・静的アセット・501・401・405・404 と共通ヘッダを確認。人が書いた `env.ts` が workerd で動き、bundle が `@/` を解決することも確かめた。`timingSafeEqual` はまだ通っていない（次の session のパケットで確かめる）
+- **攻撃役（Sonnet、檻の中）**: 94 件を全部通す手抜きが書けた（区切りを長さと先頭1文字で比べる、Cookie の日数の直書き など）。20 件を足して 114 件にし、手抜きは 12 件落ちるようになった。$0.19
+- **依存**: T05（取り込み済み）
+- **変えてよいファイル**: `worker/app.ts`・`router.ts`・`http.ts`・`cookies.ts`・`auth.ts`・`routes.ts`（＋ `docs/run/REPORT.md`、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結）**: `worker/router.test.ts`・`cookies.test.ts`・`cookies-days.test.ts`・`auth.test.ts`・`http.test.ts`・`routes.test.ts`・`app.test.ts`。**114 件**
+- **人が RED で置いたもの（凍結）**: `worker/deps.ts`（型）、`worker/env.ts`（`crypto`・`env` に触る唯一の場所）、`worker/index.ts`（入口）、`worker/test-helpers.ts`、`vitest.config.ts` の `@` の別名、6 ファイルの空の実装、`routes.ts` の経路の表
+- **設計**: Claude Fable 5.1（別のセッション、読み取りだけ、$4.96）。要判断は先輩が決めた（11-03）: D1 のバインディング名は `DB`、Cookie 名は `session`、vitest に `@` の別名、`/api/health` を作る（200 `{ ok: true }` だけ）、末尾スラッシュは 404、未実装の経路は 501、HEAD・OPTIONS は 405
+- **合格条件**:
+  - `/api` と `/api/` で始まらないパスは `deps.assets` の応答をそのまま返す（ヘッダも触らない）
+  - 経路は区切りごとの完全一致と `:name`。正規化しない。404 と 405（`Allow` は表の順、`, ` 区切り）は認証より先
+  - `auth: "none"` の経路は Cookie を読まない（hmac を呼ばない）。member は 401、admin は 401 と 403
+  - 失敗の本文は `{ error }` だけ。未捕捉の例外は 500 `{ error: "internal" }` で `console.error` に残す
+  - API の応答には、無いときだけ `Cache-Control: no-store` と `X-Content-Type-Options: nosniff`
+  - Cookie の `Max-Age` は `SESSION_DAYS` から計算する
+  - `nowMs` はミリ秒。秒に直すのは `auth.ts` だけ
+- **書き方の注意（`scripts/cage/policy.mjs`）**: `Response.json()` は使わず `new Response(JSON.stringify(...))`。`Date.now()`・`crypto` を檻の側で呼ばない（必ず `deps`）。import は `./deps`（型）・`./...`・`@/services/session-token`・`@/config` だけ
+- **担当**: 先輩。先輩の指示で MCP の檻の中で無人運転する（11-03）
+- **申し送り（本人へ）**: `wrangler.jsonc` は本人の側で作る。バインディング名 `DB`・`PHOTOS`・`ASSETS`、Secret `MEMBER_PASSPHRASE`・`ADMIN_PASSPHRASE`・`SESSION_SECRET`。設計の推奨は assets の `run_worker_first: ["/api/*"]`（推測を含む）。画面が自分の役割を知る方法（`X-Role` のヘッダ／200 `{role}`／`GET /api/session`）は次のパケットの前に決める
+
+## T19 `POST /api/session` と `GET /api/session`（合言葉 → Cookie、失敗は 10 分に 5 回まで、役割）
+- **状態**: 検査済み・人の確認待ち（11-03）
+- **運転の記録（試験4、MCP の檻）**: START `cd75d0d` → GREEN `e9cda9e` → REPORT `ef13a71`。モデル Opus 5.5、`claude -p`、道具は檻の5つだけ、26手、$0.63。**C1〜C5 がすべて合格**。変更は許可した3ファイルだけ。REPORT の手元のパスは、push の前に REPORT のコミットそのものを伏せた版に入れ直した（T18 のように途中のコミットに残らない）
+- **人の確認**: 本体のチェックアウトで C1・C3（173 件）・C4（テスト全体 923 件、lint エラー 0・警告 2）・C5 が合格。実装を 13 通りに壊して 13 通りとも落ちる（上限の境界・Retry-After の切り捨て・枠の単位・日本時間の日付・415 を飛ばす・X-Forwarded-For・429 でも照合・数えない・合言葉を削る・他のキーを許す・GET が端末 ID を返す・content-length を見ない・IP なしで空文字）。手元の `wrangler dev`（本物の `wrangler.jsonc`、使い捨ての値と D1）で 415・400・401×5・6 回目は正しい合言葉でも 429 と `Retry-After`・204 と Cookie・`GET` 200 `{"role":"admin"}`・Cookie なしの `GET` 401・`DELETE` 405 `Allow: POST, GET` を確認。D1 の key は 43 文字のハッシュで、生の IP は無い。手元では送り手が付けた `CF-Connecting-IP` がそのまま通った（本番は Cloudflare が付け直す。dev で確かめる）
+- **レビューの後（#59、人が対話で RED → GREEN）**: 別のセッションのレビュー（`docs/reviews/pr-58-session.md`）の指摘 1・4 を直した。本文は `request.text()` をやめて読みながらバイトで数え、1024 バイトを超えた所で読むのをやめて 413。IPv6 は上位 64 ビットにまとめて数える。テストを 15 件足した（全体 958 → 973）（上限はバイト・ちょうど 1024 バイト・多バイト文字が区切りをまたぐ・空の本文・同じ /64 と別の /64 など）。実装を 8 通りに壊して 8 通りとも落ちる。手元の `wrangler dev` で、5MB の chunked の本文は 0.14 秒で 413、同じ /64 の 6 回目は 429、別の /64 は 401。残り（本番の `CF-Connecting-IP` の確認・古い行の掃除）は #59 に
+- **2 回目のレビューの後（人が対話で RED → GREEN）**: 「数を読む → 照合 → 数える」の間に同じ枠の要求が入れるので、同時に送れば上限を越えて照合できた（偽の D1 で 10 本同時に 10 回照合）。照合の前に、上限未満のときだけ 1 を足して返す 1 文（UPSERT の WHERE と RETURNING）で枠を取り、行が返らなければ 429、一致したら batch で 1 戻して 0 の行を消す。テスト用の D1 の batch も、本物と同じく間に何も入らない形に直した。実装を 6 通りに壊して 6 通りとも落ちる。手元の `wrangler dev`（本物の D1 の模擬）で、同時に 20 本の失敗が 401 ×5・429 ×15 になり、成功で取った枠が戻ることを確認
+- **Issue**: #54
+- **依存**: T18（取り込み済み）、T11（`usage_counters`）、T05（`issueSessionToken`）
+- **変えてよいファイル**: `src/services/usage-limit.ts`・`src/services/session-request.ts`・`worker/session.ts`（＋ `docs/run/REPORT.md`、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結）**: `src/services/usage-limit.test.ts`・`usage-limit-config.test.ts`・`session-request.test.ts`・`worker/session.test.ts`・`session-config.test.ts`、T18 のテストの直し（`routes.test.ts`・`router.test.ts`・`app.test.ts`）。新しい 5 本で **108 件**
+- **人が RED で置いたもの（凍結）**: 3 ファイルの空の実装、`worker/routes.ts` の配線（`GET /api/session` は表の末尾）、`worker/http.ts` のエラーの種類 3 つ、`worker/auth.ts` の `nowSec`、`worker/test-db.ts`（`node:sqlite` の偽の D1）、`worker/test-helpers.ts` の `jsonRequest`
+- **RED の確かめ**: 新しい 3 本の 97 件のうち 93 件が失敗（not implemented と 500）。通る 4 件は、空の実装の定数・認証の 401・D1 を触らない・500 で漏らさない。仮の実装で 289 件（worker と 2 本）がすべて通り、檻の純粋関数の検査も通ることを確かめてから空に戻した
+- **攻撃役（Sonnet、檻の中、21 手、$0.24）**: 97 件を全部通す手抜きが書けた（枠・上限・日数の直書き、SELECT してから INSERT／UPDATE の2段の数え方、session が null でも `{}` を返す GET）。11 件を足して 108 件にし、手抜きは 6 件落ちるようになった。仕様の外として入れなかったもの: 古い行の掃除（このパケットではしない）、`CF-Connecting-IP` の空白や複数の値（Cloudflare が1つの IP を付ける）、Content-Type の崩れた形、同じキーの重複・BOM（`JSON.parse` に任せる）
+- **設計**: Claude Fable 5.1（別のセッション、読み取りだけ、53 手、$3.83）。要判断は先輩が決めた（11-03、#54 のコメント）
+- **合格条件**:
+  - 順番は 415（Content-Type が `application/json` でない）→ 413（`content-length` か本文が 1024 文字超。ヘッダで分かれば本文を読まない）→ 400（JSON でない・オブジェクトでない・他のキー・`passphrase` が無い・文字列でない）→ 枠の数を読む → 照合 → 401 か 204。415・413・400 では D1 も `hashIp` も照合も使わない
+  - IP は `CF-Connecting-IP` だけ。無い・空なら `"unknown"`。`X-Forwarded-For` は見ない。`hashIp(IP, UTC の日付)`
+  - 枠は UTC の固定 10 分。key は `login:<IPのハッシュ>:<YYYY-MM-DDTHH:MM>`、`expires_at` は枠の終わりの ISO
+  - 数えるのは不一致（401）だけ。空の合言葉も数える。UPSERT で 1 ずつ。成功しても数を戻さない
+  - 枠の数が 5 以上なら 429 `{ error: "too_many_attempts" }` と `Retry-After`（枠の終わりまでの秒、切り上げ、最小 1）。照合も書き込みもしない（正しい合言葉でも 429）
+  - 成功は 204、本文なし、`Set-Cookie` 1 本（`buildSessionCookie`）。端末 ID は毎回 `deps.newId()`、`exp` は `nowSec + SESSION_DAYS` 日。合言葉は削らずに照合へ
+  - `GET /api/session`（member 以上）は 200 `{ role }` だけ。D1 を触らない
+  - 例外は握らない（500 は `app.ts`）。合言葉・IP を D1 にも console にも残さない
+- **書き方の注意（`scripts/cage/policy.mjs`）**: `Date.now()`・`new Date()`（引数なし）は使わない（時刻は `deps.nowMs`）。`new Date(ms).toISOString()` は使ってよい。秒に直すのは `auth.ts` の `nowSec`。import は Service が `../config`、worker が `@/config`・`@/services/...`・`./...`
+- **担当**: 先輩。`usage-limit.ts`（担当「後で決める」）は先輩が作る（11-03 先輩の決定、本人に確認する）

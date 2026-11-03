@@ -1,7 +1,10 @@
 "use client";
 
-/** 合言葉の入力（送って「合言葉が要る」と返ったとき、管理者が入るときだけ出す）。props だけで受け取る */
-import { useState } from "react";
+/**
+ * 合言葉の入力（送って「合言葉が要る」と返ったとき、管理者が入るときだけ出す）。props だけで受け取る。
+ * 出たときに画面の中へ動かして入力欄にカーソルを置く（押した場所から離れた所に出ても気付けるように）
+ */
+import { useEffect, useRef, useState } from "react";
 
 export function PassphraseForm({
   onSubmit,
@@ -15,8 +18,17 @@ export function PassphraseForm({
   submitLabel?: string;
 }) {
   const [value, setValue] = useState("");
+  const formRef = useRef<HTMLFormElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    inputRef.current?.focus({ preventScroll: true });
+  }, []);
+
   return (
     <form
+      ref={formRef}
       className="panel stack"
       onSubmit={(e) => {
         e.preventDefault();
@@ -27,6 +39,7 @@ export function PassphraseForm({
       <label className="stack-tight">
         合言葉
         <input
+          ref={inputRef}
           className="input"
           type="password"
           autoComplete="current-password"
@@ -34,8 +47,8 @@ export function PassphraseForm({
           onChange={(e) => setValue(e.target.value)}
         />
       </label>
-      {message && <p className="note">{message}</p>}
-      <button type="submit" className="button">
+      {message && <p className="note note-alert">{message}</p>}
+      <button type="submit" className="button button-primary">
         {submitLabel}
       </button>
     </form>

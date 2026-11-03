@@ -49,7 +49,8 @@
 html,
 body {
   max-width: 100vw;
-  overflow-x: hidden;
+  /* hidden だと body がスクロールの箱になり、送るボタンの下への固定（sticky）が効かない */
+  overflow-x: clip;
   margin: 0;
   padding: 0;
   color: var(--text-1);
@@ -129,7 +130,7 @@ h1 {
 }
 
 .button-small {
-  min-height: 44px;
+  min-height: 56px;
   padding: 0 var(--space-16);
   border-color: var(--border-strong);
   color: var(--text-2);
@@ -218,4 +219,112 @@ a:focus-visible {
 .note-ok {
   color: var(--success);
   font-weight: 700;
+}
+
+/* 幅いっぱいのボタン */
+.button-block {
+  width: 100%;
+}
+
+/* 送るボタンは画面の下に固定（写真が多くても遠くならない） */
+.action-bar {
+  position: sticky;
+  bottom: 0;
+  margin: 0 calc(-1 * var(--space-16));
+  padding: var(--space-16);
+  background: linear-gradient(to bottom, transparent, var(--background-2) 24%);
+}
+
+/* 戻る道（手袋でも押せる高さ） */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 56px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* うまくいった・注意のまとめ */
+.panel-ok {
+  border-left-color: var(--success);
+  background: var(--surface);
+}
+
+.note-alert {
+  color: var(--assertive);
+  font-weight: 700;
+}
+
+/* 候補の「A-06（約50m）」を途中で折らない */
+.nowrap {
+  white-space: nowrap;
+}
+
+/* 開けない写真の代わり */
+.thumb-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-3);
+}
+
+/* 新着の1行（左に小さな写真、右に印・番号・日付） */
+.card-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: var(--space-8) var(--space-16);
+  align-items: center;
+}
+
+.card-row-full {
+  grid-column: 1 / -1;
+}
+
+.thumb-small {
+  width: 120px;
+}
+
+/* 未確定は左に麦色の線（麦の黄色は印だけに使う） */
+.card-pending {
+  border-left: 6px solid var(--wheat);
+}
+
+.card-alert {
+  border-left: 6px solid var(--assertive);
+}
+
+.badge {
+  display: inline-block;
+  padding: 0 var(--space-8);
+  border-radius: var(--radius-8);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.badge-pending {
+  background: var(--wheat);
+  color: var(--text-1);
+}
+
+.badge-done {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.badge-alert {
+  background: var(--assertive);
+  color: var(--text-on-brand);
+}
+
+/* 切り替え（押している間は塗る） */
+.button-toggle {
+  border-color: var(--border-strong);
+  color: var(--text-2);
+}
+
+.button-toggle-on {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand);
 }

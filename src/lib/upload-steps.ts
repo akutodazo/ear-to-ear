@@ -49,6 +49,17 @@ export async function readPhotoInfo(file: File): Promise<PhotoInfo> {
   return readPhotoMeta(head);
 }
 
+/** 画像として開けるか（壊れた写真は選んだときに分かるようにする。開けなければ送る数に入れない） */
+export async function canOpenPhoto(file: File): Promise<boolean> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    bitmap.close();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** 送る形にする: 元ファイルのハッシュ → 縮小・再エンコード → 取り除く → 確かめる（流れは prepareJpeg） */
 export async function preparePhoto(file: File): Promise<PreparedPhoto> {
   const contentHash = await sha256Hex(await file.arrayBuffer());

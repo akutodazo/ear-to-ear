@@ -9,9 +9,9 @@ export const metadata: Metadata = {
 export default function RecentPage() {
   return (
     <main className="page">
-      <p>
-        <Link href="/">← ear-to-ear</Link>
-      </p>
+      <Link className="back-link" href="/">
+        ← トップへ
+      </Link>
       <h1>新着</h1>
       <RecentClient />
     </main>
