@@ -207,10 +207,10 @@ describe("report の書き先と伏せ字", () => {
   it("作業フォルダ・ホームのパス・ユーザー名と色の制御文字を、REPORT にも返事にも出さない", async () => {
     const print = [
       "console.log(process.cwd())",
-      "console.log(process.cwd().replaceAll('\\', '/'))",
+      "console.log(process.cwd().replaceAll('\\\\', '/'))",
       "console.log(require('os').homedir())",
       "console.log('user=' + require('os').userInfo().username)",
-      "console.log('\x1b[32mgreen\x1b[39m')",
+      "console.log('\\x1b[32mgreen\\x1b[39m')",
     ].join(";");
     await start({ CAGE_CHECKS: JSON.stringify([{ name: "C1", argv: ["node", "-e", print] }]) });
     const r = await call("report", { task: "T99" });
@@ -231,6 +231,6 @@ describe("report の書き先と伏せ字", () => {
     await start({ CAGE_CHECKS: JSON.stringify([{ name: "C1", argv: ["node", "-e", print] }]) });
     await call("report", { task: "T99" });
     const report = readFileSync(join(root, "docs/run/REPORT-T99.md"), "utf8");
-    expect(report).toMatch(/<作業フォルダ>[\/]src[\/]add\.mjs/);
+    expect(report).toMatch(/<作業フォルダ>[\\/]src[\\/]add\.mjs/);
   });
 });
