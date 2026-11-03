@@ -78,7 +78,7 @@ export function request(method: string, path: string, cookie?: string): Request 
 /** テスト用の JPEG（画像ファイルはコミットしない。AGENTS.md §1-5）。scanBytes で大きさを水増しする */
 export function tinyJpeg(
   options: { width?: number; height?: number; apps?: number[]; scanBytes?: number; tail?: number[] } = {},
-): Uint8Array {
+): Uint8Array<ArrayBuffer> {
   const { width = 1600, height = 1200, apps = [], scanBytes = 2, tail = [0xff, 0xd9] } = options;
   const segment = (marker: number, payload: number[]) => {
     const length = payload.length + 2;
