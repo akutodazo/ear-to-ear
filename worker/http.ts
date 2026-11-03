@@ -11,6 +11,7 @@ export type ErrorCode =
   | "too_many_attempts"
   | "payload_too_large"
   | "unsupported_media_type"
+  | "unprocessable"
   | "internal";
 
 /** Content-Type: application/json; charset=utf-8 */
@@ -26,7 +27,7 @@ export function noContent(): Response {
   return new Response(null, { status: 204 });
 }
 
-/** { error: code }。reason は 422 で理由のコードを載せるときだけ */
+/** { error: code }。reason は 422（unprocessable）で理由のコードを載せるときだけ */
 export function errorResponse(status: number, code: ErrorCode, extra?: { reason?: string }): Response {
   const reason = extra?.reason;
   return json(status, reason === undefined ? { error: code } : { error: code, reason });
