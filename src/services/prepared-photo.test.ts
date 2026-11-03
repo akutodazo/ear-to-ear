@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_UPLOAD_BYTES } from "../config";
+import { MAX_UPLOAD_BYTES } from "@/config";
 import { checkPreparedJpeg, prepareJpeg, stripAppSegments } from "./prepared-photo";
 import { inspectJpeg } from "./jpeg-segments";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import fieldsData from "../data/fields.json";
+import fieldsData from "@/data/fields.json";
 import type { Field, UploadedPhoto } from "@/types";
 import type { AssignOutcome } from "@/repositories/interfaces/i-photo-repository";
 import {

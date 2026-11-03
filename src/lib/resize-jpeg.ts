@@ -2,7 +2,7 @@
  * ブラウザで写真を縮小し、JPEG に再エンコードする（docs/spec.md §4 の 3。ブラウザ専用）。
  * 再エンコードでメタデータ（EXIF・XMP の撮影位置を含む）はすべて消える（K6）。向き（EXIF の Orientation）は画素に反映してから消す。
  */
-import { resizedSize } from "../services/resize-plan";
+import { resizedSize } from "@/services/resize-plan";
 
 /** 再エンコードの画質（0〜1）。上限（MAX_UPLOAD_BYTES）を超えたら下げてやり直す */
 export const JPEG_QUALITIES = [0.85, 0.7, 0.55] as const;
