@@ -320,6 +320,50 @@ describe("POST /api/session 入力の形", () => {
   });
 });
 
+describe("見えない動き（攻撃役の指摘）", () => {
+  it("同時に来た失敗も数え落とさない（1 文の UPSERT で数える。SELECT してから INSERT／UPDATE では 500 か数え落とし）", async () => {
+    const { deps, testDb } = setup();
+    const responses = await Promise.all([login(deps, "wrong"), login(deps, "wrong"), login(deps, "wrong")]);
+    expect(responses.map((r) => r.status)).toEqual([401, 401, 401]);
+    expect(rows(testDb)).toEqual([expect.objectContaining({ count: 3 })]);
+  });
+
+  it("415 は 413 より先（text/plain で content-length が大きくても 415）", async () => {
+    const { deps } = setup();
+    const response = await handleRequest(
+      post({ passphrase: "x" }, { "content-type": "text/plain", "content-length": "5000", "cf-connecting-ip": IP }),
+      deps,
+    );
+    expect(response.status).toBe(415);
+  });
+
+  it.each(["abc", "0"])("content-length が %s なら、本文を読んで判定する（413 にしない）", async (length) => {
+    const { deps } = setup();
+    const req = post({ passphrase: "wrong" }, { "content-length": length, "cf-connecting-ip": IP });
+    expect(req.headers.get("content-length")).toBe(length);
+    expect((await handleRequest(req, deps)).status).toBe(401);
+  });
+
+  it("401 には Retry-After を付けない", async () => {
+    const { deps } = setup();
+    expect((await login(deps, "wrong")).headers.get("retry-after")).toBeNull();
+  });
+
+  it("204 には Content-Type を付けない", async () => {
+    const { deps } = setup();
+    expect((await login(deps, MEMBER_INPUT)).headers.get("content-type")).toBeNull();
+  });
+
+  it("getSession を session なしで直接呼ぶと例外（{} や undefined を返さない）", async () => {
+    const { getSession } = await import("./session");
+    const { deps } = setup();
+    const req = request("GET", "/api/session");
+    await expect(getSession(req, { url: new URL(req.url), params: {}, session: null, deps })).rejects.toThrow(
+      /session が無い/,
+    );
+  });
+});
+
 describe("GET /api/session", () => {
   it("Cookie が無ければ 401", async () => {
     const { deps } = setup();
