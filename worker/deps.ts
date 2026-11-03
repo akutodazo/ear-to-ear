@@ -35,11 +35,15 @@ export interface Deps {
   photos: BucketPort;
   /** /api/ の外を静的アセットに渡す */
   assets: (request: Request) => Promise<Response>;
-  /** SESSION_SECRET で閉じた HMAC-SHA256。Cookie の署名と検証だけに使う */
+  /**
+   * SESSION_SECRET で閉じた HMAC-SHA256。Cookie の署名と検証だけに使う。
+   * 同じ鍵を hashIp（"ip:"）と合言葉の照合（"pass:"）にも使うが、Cookie の署名の対象は
+   * base64url で ":" を含まないので、どの用途の値とも取り違えない
+   */
   hmac: Hmac;
   /** 合言葉の失敗回数の鍵。"ip:" + 日付 + ":" + IP を同じ鍵で HMAC して base64url（用途の印で Cookie と分ける） */
   hashIp: (ip: string, day: string) => Promise<string>;
-  /** timingSafeEqual で照合。admin、member の順に試し、どちらでもなければ null */
+  /** "pass:" を付けて HMAC してから timingSafeEqual で照合。admin と member の両方と比べ、admin を優先。どちらでもなければ null */
   matchPassphrase: (input: string) => Promise<Role | null>;
   /** ミリ秒。秒に直すのは auth.ts だけ */
   nowMs: () => number;
