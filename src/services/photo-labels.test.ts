@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   assignmentLabel,
   candidateLabel,
+  candidateSummary,
   distanceLabel,
+  sendSummaryLabel,
   takenAtLabel,
   uploadOutcomeLabel,
 } from "./photo-labels";
@@ -79,12 +81,46 @@ describe("uploadOutcomeLabel（送った結果）", () => {
   it.each<[UploadOutcome, string]>([
     [{ kind: "created", id: "x" }, "送りました"],
     [{ kind: "duplicate", id: "x" }, "同じ写真はもう送られています"],
-    [{ kind: "unauthorized" }, "合言葉を入れ直してください"],
+    [{ kind: "unauthorized" }, "送るには合言葉が要ります"],
     [{ kind: "too-large" }, "写真が大きすぎて送れませんでした"],
     [{ kind: "rejected" }, "この写真は送れませんでした"],
     [{ kind: "network-error" }, "つながりませんでした。電波のよい所でもう一度送ってください"],
     [{ kind: "error" }, "送れませんでした。時間をおいてもう一度送ってください"],
   ])("%o は「%s」", (outcome, label) => {
     expect(uploadOutcomeLabel(outcome)).toBe(label);
+  });
+});
+
+describe("candidateSummary（候補の出し方。数字は一番近い候補だけ。spec §7「数字は控えめに」）", () => {
+  it("一番近い候補は距離つき、ほかは番号だけ", () => {
+    expect(
+      candidateSummary([
+        { fieldId: "A-06", meters: 52 },
+        { fieldId: "A-07", meters: 380 },
+        { fieldId: "A-02", meters: 410 },
+      ]),
+    ).toEqual({ primary: "A-06（約50m）", others: "A-07・A-02" });
+  });
+
+  it("候補が1つならほかは null", () => {
+    expect(candidateSummary([{ fieldId: "A-06", meters: 1234 }])).toEqual({ primary: "A-06（約1.2km）", others: null });
+  });
+
+  it("候補が無ければ null", () => {
+    expect(candidateSummary([])).toBeNull();
+  });
+});
+
+describe("sendSummaryLabel（送り終わった後のまとめ）", () => {
+  it.each([
+    [{ sent: 3, failed: 0 }, "3枚送りました"],
+    [{ sent: 3, failed: 1 }, "3枚送りました。1枚は送れませんでした"],
+    [{ sent: 0, failed: 2 }, "2枚は送れませんでした"],
+  ])("%o は「%s」", (counts, label) => {
+    expect(sendSummaryLabel(counts)).toBe(label);
+  });
+
+  it("送った写真も送れなかった写真も無ければ null（まとめを出さない）", () => {
+    expect(sendSummaryLabel({ sent: 0, failed: 0 })).toBeNull();
   });
 });
