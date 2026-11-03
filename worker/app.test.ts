@@ -1,0 +1,137 @@
+import { describe, expect, it, vi } from "vitest";
+import { handleRequest } from "./app";
+import type { Deps } from "./deps";
+import { fakeDeps, request, sessionToken } from "./test-helpers";
+
+async function call(method: string, path: string, cookie?: string, deps: Deps = fakeDeps()) {
+  return handleRequest(request(method, path, cookie), deps);
+}
+
+describe("/api/ の外は静的アセット", () => {
+  it.each(["/", "/recent", "/upload", "/apix", "/fields/A-01"])("%s は assets に渡り、応答はそのまま", async (path) => {
+    const response = await call("GET", path);
+    expect(await response.text()).toBe(`asset:${path}`);
+    expect(response.headers.get("x-asset")).toBe("1");
+    expect(response.headers.get("cache-control")).toBeNull();
+  });
+
+  it("assets の例外は 500 で中身を漏らさない", async () => {
+    const deps = fakeDeps({
+      assets: async () => {
+        throw new Error("secret-detail");
+      },
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const response = await call("GET", "/", undefined, deps);
+    expect(response.status).toBe(500);
+    expect(await response.text()).not.toContain("secret-detail");
+  });
+});
+
+describe("/api/", () => {
+  it("health は 200 { ok: true } と共通ヘッダ", async () => {
+    const response = await call("GET", "/api/health");
+    expect(response.status).toBe(200);
+    expect(await response.json()).toStrictEqual({ ok: true });
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+  });
+
+  it("認証なしの経路は 501 と共通ヘッダ", async () => {
+    const response = await call("GET", "/api/photos/recent");
+    expect(response.status).toBe(501);
+    expect(await response.json()).toStrictEqual({ error: "not_implemented" });
+    expect(response.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("認証なしの経路は壊れた Cookie を読まない（401 にならない）", async () => {
+    const response = await call("GET", "/api/photos/recent", "session=broken");
+    expect(response.status).toBe(501);
+  });
+
+  it("クエリ付きでも経路に一致する", async () => {
+    expect((await call("GET", "/api/photos/recent?limit=50")).status).toBe(501);
+  });
+
+  it("無い経路は 404 { error: not_found }（Cookie が無くても認証より先）", async () => {
+    const response = await call("POST", "/api/nothing");
+    expect(response.status).toBe(404);
+    expect(await response.json()).toStrictEqual({ error: "not_found" });
+    expect(response.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it.each(["/api", "/api/"])("%s 単独は 404", async (path) => {
+    expect((await call("GET", path)).status).toBe(404);
+  });
+
+  it("メソッド違いは 405 と Allow", async () => {
+    const response = await call("GET", "/api/session");
+    expect(response.status).toBe(405);
+    expect(response.headers.get("allow")).toBe("POST");
+    expect(await response.json()).toStrictEqual({ error: "method_not_allowed" });
+  });
+
+  it("admin の経路のメソッド違いは、Cookie が無くても 405（認証より先）", async () => {
+    expect((await call("GET", "/api/photos/p1/assignment")).status).toBe(405);
+  });
+});
+
+describe("認証", () => {
+  it("member の経路は Cookie が無いと 401", async () => {
+    const response = await call("POST", "/api/uploads");
+    expect(response.status).toBe(401);
+    expect(await response.json()).toStrictEqual({ error: "unauthorized" });
+    expect(response.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("member の経路は壊れた Cookie だと 401", async () => {
+    expect((await call("POST", "/api/uploads", "session=broken")).status).toBe(401);
+  });
+
+  it.each(["member", "admin"] as const)("member の経路は %s なら通る（501）", async (role) => {
+    expect((await call("POST", "/api/uploads", `session=${await sessionToken(role)}`)).status).toBe(501);
+  });
+
+  it("admin の経路は member だと 403", async () => {
+    const response = await call("PATCH", "/api/photos/p1/assignment", `session=${await sessionToken("member")}`);
+    expect(response.status).toBe(403);
+    expect(await response.json()).toStrictEqual({ error: "forbidden" });
+  });
+
+  it("admin の経路は admin なら通る（501）", async () => {
+    const cookie = `session=${await sessionToken("admin")}`;
+    expect((await call("PATCH", "/api/photos/p1/assignment", cookie)).status).toBe(501);
+  });
+
+  it("hmac の例外は 500 で中身を漏らさない", async () => {
+    const deps = fakeDeps({
+      hmac: async () => {
+        throw new Error("secret-detail");
+      },
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const cookie = `session=${await sessionToken("member")}`;
+    const response = await call("POST", "/api/uploads", cookie, deps);
+    expect(response.status).toBe(500);
+    const text = await response.text();
+    expect(JSON.parse(text)).toStrictEqual({ error: "internal" });
+    expect(text).not.toContain("secret-detail");
+  });
+});
+
+describe("ハンドラの例外", () => {
+  it("ハンドラが投げても 500 { error: internal } で、message は漏らさない", async () => {
+    const routesModule = await import("./routes");
+    const spy = vi.spyOn(routesModule.routes[1], "handler").mockImplementation(async () => {
+      throw new Error("secret-detail");
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const response = await call("POST", "/api/session");
+    spy.mockRestore();
+    expect(response.status).toBe(500);
+    const text = await response.text();
+    expect(JSON.parse(text)).toStrictEqual({ error: "internal" });
+    expect(text).not.toContain("secret-detail");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+  });
+});
