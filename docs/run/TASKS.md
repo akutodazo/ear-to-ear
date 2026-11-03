@@ -131,13 +131,14 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **申し送り（本人へ）**: `wrangler.jsonc` は本人の側で作る。バインディング名 `DB`・`PHOTOS`・`ASSETS`、Secret `MEMBER_PASSPHRASE`・`ADMIN_PASSPHRASE`・`SESSION_SECRET`。設計の推奨は assets の `run_worker_first: ["/api/*"]`（推測を含む）。画面が自分の役割を知る方法（`X-Role` のヘッダ／200 `{role}`／`GET /api/session`）は次のパケットの前に決める
 
 ## T19 `POST /api/session` と `GET /api/session`（合言葉 → Cookie、失敗は 10 分に 5 回まで、役割）
-- **状態**: RED（11-03）。攻撃役と無人運転はこの後
+- **状態**: RED・攻撃役まで（11-03）。無人運転はこの後
 - **Issue**: #54
 - **依存**: T18（取り込み済み）、T11（`usage_counters`）、T05（`issueSessionToken`）
 - **変えてよいファイル**: `src/services/usage-limit.ts`・`src/services/session-request.ts`・`worker/session.ts`（＋ `docs/run/REPORT.md`、止まったときは `docs/run/QUESTIONS.md`）
-- **テスト（凍結）**: `src/services/usage-limit.test.ts`・`src/services/session-request.test.ts`・`worker/session.test.ts`、T18 のテストの直し（`routes.test.ts`・`router.test.ts`・`app.test.ts`）。新しい 3 本で 97 件
+- **テスト（凍結）**: `src/services/usage-limit.test.ts`・`usage-limit-config.test.ts`・`session-request.test.ts`・`worker/session.test.ts`・`session-config.test.ts`、T18 のテストの直し（`routes.test.ts`・`router.test.ts`・`app.test.ts`）。新しい 5 本で **108 件**
 - **人が RED で置いたもの（凍結）**: 3 ファイルの空の実装、`worker/routes.ts` の配線（`GET /api/session` は表の末尾）、`worker/http.ts` のエラーの種類 3 つ、`worker/auth.ts` の `nowSec`、`worker/test-db.ts`（`node:sqlite` の偽の D1）、`worker/test-helpers.ts` の `jsonRequest`
 - **RED の確かめ**: 新しい 3 本の 97 件のうち 93 件が失敗（not implemented と 500）。通る 4 件は、空の実装の定数・認証の 401・D1 を触らない・500 で漏らさない。仮の実装で 289 件（worker と 2 本）がすべて通り、檻の純粋関数の検査も通ることを確かめてから空に戻した
+- **攻撃役（Sonnet、檻の中、21 手、$0.24）**: 97 件を全部通す手抜きが書けた（枠・上限・日数の直書き、SELECT してから INSERT／UPDATE の2段の数え方、session が null でも `{}` を返す GET）。11 件を足して 108 件にし、手抜きは 6 件落ちるようになった。仕様の外として入れなかったもの: 古い行の掃除（このパケットではしない）、`CF-Connecting-IP` の空白や複数の値（Cloudflare が1つの IP を付ける）、Content-Type の崩れた形、同じキーの重複・BOM（`JSON.parse` に任せる）
 - **設計**: Claude Fable 5.1（別のセッション、読み取りだけ、53 手、$3.83）。要判断は先輩が決めた（11-03、#54 のコメント）
 - **合格条件**:
   - 順番は 415（Content-Type が `application/json` でない）→ 413（`content-length` か本文が 1024 文字超。ヘッダで分かれば本文を読まない）→ 400（JSON でない・オブジェクトでない・他のキー・`passphrase` が無い・文字列でない）→ 枠の数を読む → 照合 → 401 か 204。415・413・400 では D1 も `hashIp` も照合も使わない
