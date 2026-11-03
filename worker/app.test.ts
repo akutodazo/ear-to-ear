@@ -96,9 +96,9 @@ describe("認証", () => {
     expect(await response.json()).toStrictEqual({ error: "forbidden" });
   });
 
-  it("admin の経路は admin なら通る（501）", async () => {
+  it("admin の経路は admin なら通る（本文が無いので 415。Issue #78 で 501 から変わった）", async () => {
     const cookie = `session=${await sessionToken("admin")}`;
-    expect((await call("PATCH", "/api/photos/p1/assignment", cookie)).status).toBe(501);
+    expect((await call("PATCH", "/api/photos/p1/assignment", cookie)).status).toBe(415);
   });
 
   it("hmac の例外は 500 で中身を漏らさない", async () => {
