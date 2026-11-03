@@ -3,7 +3,7 @@
  * 合言葉は削らず・正規化せず、そのまま照合に渡す。
  */
 
-/** 本文の上限（文字数）。超えたら 413 */
+/** 本文の上限。超えたら 413。Worker は読むときにバイトで数え、ここの parse は文字数でも見る（文字数はバイト数以下） */
 export const SESSION_BODY_MAX_CHARS = 1024;
 
 /** CF-Connecting-IP が無いときに IP の代わりに使う値（IP の無い要求は 1 つの枠を分け合う） */
@@ -45,7 +45,19 @@ export function parseSessionBody(text: string): SessionBodyResult {
   return { ok: true, passphrase };
 }
 
-/** CF-Connecting-IP の値。無い・空なら UNKNOWN_IP。X-Forwarded-For は見ない */
+/**
+ * CF-Connecting-IP の値。無い・空なら UNKNOWN_IP。X-Forwarded-For は見ない。
+ * IPv6 は 1 つの回線が /64 を持つので、上位 64 ビットにまとめる（同じ回線の中でアドレスを変えても同じ枠）。
+ * IPv4 と、IPv4 を写した IPv6（"." を含む）はそのまま
+ */
 export function clientIp(header: string | null): string {
-  return header === null || header === "" ? UNKNOWN_IP : header;
+  if (header === null || header === "") return UNKNOWN_IP;
+  if (!header.includes(":") || header.includes(".")) return header;
+  const [head, tail] = header.split("::");
+  const headGroups = head === "" ? [] : head.split(":");
+  const tailGroups = tail === undefined || tail === "" ? [] : tail.split(":");
+  const zeros = Array<string>(Math.max(0, 8 - headGroups.length - tailGroups.length)).fill("0");
+  const groups = tail === undefined ? headGroups : [...headGroups, ...zeros, ...tailGroups];
+  const prefix = groups.slice(0, 4).map((group) => parseInt(group, 16).toString(16));
+  return `${prefix.join(":")}::/64`;
 }
