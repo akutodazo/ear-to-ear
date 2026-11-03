@@ -6,14 +6,15 @@
 //   node scripts/relay/run-day.mjs --today 1104             … 列車を走らせる（通知係が背景で起動）
 //   node scripts/relay/run-day.mjs --today 1104 --skip T22  … T22 を飛ばして新しい列車（再開ではない）
 import { execFileSync, spawn } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, userInfo } from "node:os";
 import { dirname, join } from "node:path";
 import { findSecretLikeLines } from "../safety-rules.ts";
-import { BASE, CAGE_SERVER, CLAUDE, NPM_CLI, paths, readJson, REPO, TREES } from "./paths.mjs";
+import { alive, CAGE_SERVER, CLAUDE, NPM_CLI, paths, readJson, REPO, TREES } from "./paths.mjs";
 import {
   cageEnv,
   costFromStream,
+  isRunning,
   isUnknownFailure,
   ledgerTotal,
   mask,
@@ -87,10 +88,35 @@ function readLines(path) {
   return existsSync(path) ? readFileSync(path, "utf8").split("\n") : [];
 }
 
-let seq = readJson(paths("0000").status, { seq: 0 }).seq ?? 0;
+/** STATUS は 1 行 1 件の追記（PR #88 のレビュー #2）。seq は前の行の続き */
+let seq = null;
 function setStatus(p, packet, state, reason) {
+  if (seq === null) {
+    seq = readLines(p.status).reduce((max, line) => {
+      try {
+        return Math.max(max, Number(JSON.parse(line).seq) || 0);
+      } catch {
+        return max;
+      }
+    }, 0);
+  }
   seq += 1;
-  write(p.status, statusLine(seq, packet, state, reason));
+  mkdirSync(dirname(p.status), { recursive: true });
+  appendFileSync(p.status, `${statusLine(seq, packet, state, reason)}
+`);
+}
+
+/** Windows では子を殺しても孫（檻の server・npm run check）が残るので、木ごと止める（PR #88 のレビュー #8） */
+function killTree(child) {
+  if (process.platform === "win32" && child.pid) {
+    try {
+      execFileSync("taskkill", ["/pid", String(child.pid), "/T", "/F"], { stdio: "ignore" });
+      return;
+    } catch {
+      // 既に終わっている
+    }
+  }
+  child.kill();
 }
 
 /** 1 本を檻で走らせる。手数（CAGE_LOG の行数）と壁時計で殺す */
@@ -136,13 +162,17 @@ function runClaude(queue, packet, tree, cageJson, logPath) {
     child.stderr.on("data", () => {});
     const kill = (reason) => {
       if (killedFor === null) killedFor = reason;
-      child.kill();
+      killTree(child);
     };
     const wall = setTimeout(() => kill("wall"), queue.wallMinutes * 60_000);
     const turns = setInterval(() => {
       if (readLines(logPath).filter((l) => l.trim() !== "").length > queue.maxToolCalls) kill("turns");
     }, 5_000);
-    child.on("error", () => resolve({ exitCode: null, lines: tail, killedFor }));
+    child.on("error", () => {
+      clearTimeout(wall);
+      clearInterval(turns);
+      resolve({ exitCode: null, lines: tail, killedFor });
+    });
     child.on("close", (code) => {
       clearTimeout(wall);
       clearInterval(turns);
@@ -182,7 +212,8 @@ function collect(packet, tree, start, logPath) {
 
 async function runTrain(today, queue, skip) {
   const p = paths(today);
-  const state = readJson(p.state, { packets: {}, unknownStreak: 0 });
+  const state = readJson(p.state, { packets: {} });
+  let unknownStreak = 0; // 列車ごとに数える（PR #88 のレビュー #7）
   const started = Date.now();
   const trainLines = [];
   const record = (packet, entry) => {
@@ -210,7 +241,7 @@ async function runTrain(today, queue, skip) {
       stopRequested: existsSync(p.stop),
       elapsedHours: (Date.now() - started) / 3600_000,
       trainHours: queue.trainHours,
-      unknownStreak: state.unknownStreak ?? 0,
+      unknownStreak,
     });
     if (stopReason !== null) {
       trainReason = stopReason;
@@ -237,7 +268,8 @@ async function runTrain(today, queue, skip) {
 
     // 始める前に worktree が空か。前の運転の QUESTIONS だけは state に退避する（無人の Claude ではなく進行役が動かす）
     const questions = join(tree, "docs", "run", "QUESTIONS.md");
-    if (existsSync(questions)) renameSync(questions, join(BASE, "state", `${today}-${packet.id}-old-QUESTIONS.md`));
+    mkdirSync(p.stateDir, { recursive: true }); // 初めての列車でも退避できるように（レビュー #9）
+    if (existsSync(questions)) renameSync(questions, join(p.stateDir, `${today}-${packet.id}-old-QUESTIONS.md`));
     if ((tryGit(tree, "status", "--porcelain", "--untracked-files=all") ?? "?").trim() !== "") {
       record(packet, { state: "stopped", reason: "dirty" });
       continue;
@@ -247,7 +279,7 @@ async function runTrain(today, queue, skip) {
 
     const logPath = join(p.logs, `${today}-${packet.id}.jsonl`);
     write(logPath, "");
-    const cageJson = join(BASE, "state", `${today}-${packet.id}-cage.json`);
+    const cageJson = join(p.stateDir, `${today}-${packet.id}-cage.json`);
     write(
       cageJson,
       JSON.stringify({ mcpServers: { cage: { command: process.execPath, args: [CAGE_SERVER], env: cageEnv(packet, tree, logPath, start, NPM_CLI) } } }),
@@ -260,7 +292,7 @@ async function runTrain(today, queue, skip) {
     const outcome = { id: packet.id, exitCode: run.exitCode, isError: cost.isError, killedFor: run.killedFor, ...collect(packet, tree, start, logPath) };
     const limits = { allow: packet.allow, maxAddedLines: queue.maxAddedLines, maxCheckOutputKb: queue.maxCheckOutputKb, maxToolCalls: queue.maxToolCalls };
     const decision = postGates(outcome, limits, findSecretLikeLines);
-    state.unknownStreak = decision.state !== "ask" && isUnknownFailure(outcome) ? (state.unknownStreak ?? 0) + 1 : 0;
+    unknownStreak = decision.state !== "ask" && isUnknownFailure(outcome) ? unknownStreak + 1 : 0;
     record(packet, {
       ...decision,
       branch: `run/${today}-${packet.id}`,
@@ -283,6 +315,19 @@ async function runTrain(today, queue, skip) {
 }
 
 const { today, skip, prepare: wantPrepare } = parseRunDayArgs(process.argv.slice(2));
-const queue = loadQueue(paths(today));
+const p = paths(today);
+const queue = loadQueue(p);
 if (wantPrepare) prepare(queue);
-else await runTrain(today, queue, skip);
+else {
+  // 二重起動を断る（PR #88 のレビュー #1）。同じパケットが同じ worktree で 2 本走ると、費用と state が壊れる
+  if (isRunning(readJson(p.running, null), alive)) {
+    console.error("進行役はもう走っている（二重起動しない）");
+    process.exit(2);
+  }
+  write(p.running, JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString() }));
+  try {
+    await runTrain(today, queue, skip);
+  } finally {
+    rmSync(p.running, { force: true });
+  }
+}
