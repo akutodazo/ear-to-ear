@@ -357,3 +357,14 @@ describe("readPhotoMeta: レビューで見つかったテストの穴（PR #50�
     expect(readPhotoMeta(bytes).position).toBeNull();
   });
 });
+
+describe("readPhotoMeta: 細工した XMP でも遅くならない（PR #50 のレビュー #3）", () => {
+  it("要素の開きタグだけを並べた XMP の APP1 が 20 個（約 1.3MB）でも 0.5 秒以内", () => {
+    const junk = "<drone-dji:GpsLatitude ".repeat(2800);
+    const segments = Array.from({ length: 20 }, () => xmp(junk));
+    const bytes = jpeg(...segments);
+    const started = performance.now();
+    readPhotoMeta(bytes);
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+});
