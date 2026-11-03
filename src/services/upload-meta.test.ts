@@ -276,3 +276,31 @@ describe("暦の境界（攻撃役の指摘）", () => {
     },
   );
 });
+
+describe("検査の順（攻撃役の指摘）", () => {
+  it.each([
+    ["未知のキーは欠落より先", { contentHash: HASH, lat: 41.8 }, "unknown_key"],
+    ["欠落はハッシュより先", { ...without("takenAt"), contentHash: "x" }, "missing_key"],
+    ["ハッシュは日付より先", { ...VALID, contentHash: "x", takenAt: "x" }, "bad_content_hash"],
+    ["日付は出どころより先", { ...VALID, takenAt: "x", takenAtSource: "gps" }, "bad_taken_at"],
+    ["出どころは整合より先", { ...VALID, takenAt: null, takenAtSource: "gps" }, "bad_taken_at_source"],
+    [
+      "整合は候補より先",
+      { ...VALID, takenAt: null, candidateFieldIds: "A-01" },
+      "taken_at_mismatch",
+    ],
+    [
+      "件数は重複より先",
+      { ...VALID, candidateFieldIds: ["A-01", "A-01", "A-02", "A-03"] },
+      "too_many_candidates",
+    ],
+    ["重複は未知より先", { ...VALID, candidateFieldIds: ["A-99", "A-99"] }, "duplicate_candidate"],
+    [
+      "候補は chosenFieldId より先",
+      { ...VALID, candidateFieldIds: ["A-99"], chosenFieldId: "A-99" },
+      "unknown_field",
+    ],
+  ])("%s", (_name, body, reason) => {
+    expect(reasonOf(body)).toBe(reason);
+  });
+});
