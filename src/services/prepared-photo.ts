@@ -24,6 +24,28 @@ export function checkPreparedJpeg(bytes: Uint8Array, inspect: InspectJpeg, maxBy
  * JPEG として読めなければ null
  */
 export function stripAppSegments(bytes: Uint8Array): Uint8Array | null {
-  void bytes;
-  throw new Error("not implemented");
+  if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
+  const kept: Uint8Array[] = [bytes.subarray(0, 2)];
+  let i = 2;
+  while (i + 4 <= bytes.length) {
+    if (bytes[i] !== 0xff) return null;
+    const marker = bytes[i + 1];
+    // SOS から後ろ（画像のデータと EOI）はそのまま残す
+    if (marker === 0xda) {
+      kept.push(bytes.subarray(i));
+      const out = new Uint8Array(kept.reduce((n, part) => n + part.length, 0));
+      let at = 0;
+      for (const part of kept) {
+        out.set(part, at);
+        at += part.length;
+      }
+      return out;
+    }
+    const length = (bytes[i + 2] << 8) | bytes[i + 3];
+    if (length < 2 || i + 2 + length > bytes.length) return null;
+    const isApp1To15 = marker >= 0xe1 && marker <= 0xef;
+    if (!isApp1To15) kept.push(bytes.subarray(i, i + 2 + length));
+    i += 2 + length;
+  }
+  return null;
 }
