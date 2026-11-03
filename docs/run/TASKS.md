@@ -163,7 +163,7 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **変えてよいファイル**: `src/services/upload-form.ts`・`worker/uploads.ts`（＋ REPORT、止まったときは `docs/run/QUESTIONS.md`）
 - **テスト（凍結）**: `src/services/upload-form.test.ts`（46 件）・`worker/uploads.test.ts`（39 件）・`worker/uploads-config.test.ts`（2 件）、`worker/app.test.ts` の直し（`POST /api/uploads` を 501 から 415 に）
 - **人が RED で置いたもの（凍結）**: 2 ファイルの型・定数と空の実装、`worker/body.ts`（session から切り出し、`Uint8Array<ArrayBuffer>` を返す）とそのテスト、`session.ts` の直し、`routes.ts` の配線、`http.ts` の `"unprocessable"`、`Deps.knownFieldIds`（`env.ts` で `fields.json` から）、`test-bucket.ts`（偽の R2）、`test-helpers.ts` の `tinyJpeg`・`multipartBody`・`multipartRequest`
-- **RED の確かめ**: 新しいテストの 87 件のうち 85 件と、`app.test.ts` の直した 2 件が失敗（not implemented と 500）。仮の実装で worker と Service の 352 件がすべて通り、檻の純粋関数の検査も通ることを確かめてから空に戻した
+- **RED の確かめ**: 新しいテストの 87 件のうち 84 件と、`app.test.ts` の直した 2 件が失敗（not implemented と 500）。仮の実装で worker と Service の 352 件がすべて通り、檻の純粋関数の検査も通ることを確かめてから空に戻した
 - **設計**: Claude Fable 5.1（別のセッション、読み取りだけ、83 手、$6.43）。要判断 14 件は先輩がすべて推奨どおりに決めた（11-03、#60 のコメント）
 - **合格条件**:
   - 順番: 401（`app.ts`）→ 415（media type が `multipart/form-data` でない）→ 413（`content-length` が `UPLOAD_BODY_MAX_BYTES` 超。本文を読まない）→ `readBodyLimited` で上限まで読む（超えたら 413）→ `new Response(本文, { headers: { "content-type": 元の値 } }).formData()`（投げたら 415。`request.formData()` は使わない）→ 欄（`checkUploadParts`、422 `bad_form`）→ 画像（`checkUploadImage`、`too_large` は 413、他は 422）→ meta（`parseUploadMeta(meta, deps.knownFieldIds)`、`too_long` も 422）→ 二重を SELECT（あれば 409 `{ id }`）→ R2 → D1
