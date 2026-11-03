@@ -169,12 +169,15 @@ function readXmp(xml: string): Found {
   };
 }
 
-/** 属性（name="値"）か要素（<name>値</name>）の書き方で値を取る */
+/**
+ * 属性（name="値"）か要素（<name>値</name>）の書き方で値を取る。
+ * 開きタグの中は `[^<>]*`（`<` をまたがない）。またぐと、開きタグだけを並べた XMP で時間が長さの2乗で増える（PR #50 のレビュー #3）
+ */
 function xmpValue(xml: string, name: string): string | null {
   const escaped = name.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&");
   const attr = new RegExp(`(?:^|[\\s<])${escaped}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`).exec(xml);
   if (attr) return attr[1] ?? attr[2] ?? null;
-  const element = new RegExp(`<${escaped}(?:\\s[^>]*)?>([^<]*)</${escaped}\\s*>`).exec(xml);
+  const element = new RegExp(`<${escaped}(?:\\s[^<>]*)?>([^<]*)</${escaped}\\s*>`).exec(xml);
   if (element) return element[1];
   return null;
 }
