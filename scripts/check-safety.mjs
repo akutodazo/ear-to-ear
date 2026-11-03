@@ -4,7 +4,14 @@
 // 見つけた秘密の「値」は出さない（ファイル名・行・種類だけ）。
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
-import { checkDemoJpeg, checkFieldsArea, checkFileName, findSecretLikeLines } from "./safety-rules.ts";
+import {
+  checkDemoJpeg,
+  checkFieldsArea,
+  checkFileName,
+  decodeText,
+  findSecretLikeLines,
+  looksLikeJpeg,
+} from "./safety-rules.ts";
 import { inspectJpeg } from "../src/services/jpeg-segments.ts";
 import { FICTIONAL_AREA } from "../src/config.ts";
 
@@ -21,11 +28,6 @@ const files = execFileSync("git", ["ls-files", "-z"], { encoding: "utf8" })
   // 消したがまだコミットしていないファイルは読めないので飛ばす
   .filter((f) => existsSync(f));
 
-/** バイト列に NUL があれば文字のファイルではないとみなす（画像・フォントなど） */
-function isBinary(bytes) {
-  return bytes.subarray(0, 8000).includes(0);
-}
-
 const hits = [];
 for (const f of files) {
   const nameReason = checkFileName(f);
@@ -33,16 +35,25 @@ for (const f of files) {
     hits.push(`${f}  ← ${nameReason}`);
     continue;
   }
-  const bytes = readFileSync(f);
+  const bytes = new Uint8Array(readFileSync(f));
 
-  if (/^public\/demo\/.*\.jpe?g$/i.test(f)) {
-    const reason = checkDemoJpeg(new Uint8Array(bytes), inspectJpeg);
+  // 拡張子によらず、中身が JPEG なら見る（.jfif・.png などに名前を変えた写真も）
+  if (looksLikeJpeg(bytes)) {
+    const reason = f.toLowerCase().startsWith("public/demo/")
+      ? checkDemoJpeg(bytes, inspectJpeg)
+      : "中身が JPEG（画像は public/demo/ にだけ置く）";
     if (reason !== null) hits.push(`${f}  ← ${reason}`);
     continue;
   }
-  if (isBinary(bytes)) continue;
+  // public/demo/ の .jpg なのに中身が JPEG でないものも止める
+  if (/^public\/demo\/.*\.jpe?g$/i.test(f)) {
+    hits.push(`${f}  ← JPEG として読めない`);
+    continue;
+  }
 
-  const text = bytes.toString("utf8");
+  // UTF-16（BOM 付き）も読む。文字でなければ（画像・フォントなど）飛ばす
+  const text = decodeText(bytes);
+  if (text === null) continue;
   for (const hit of findSecretLikeLines(text)) {
     hits.push(`${f}:${hit.line}  ← 秘密らしい文字列（${SECRET_KINDS[hit.kind]}）`);
   }
