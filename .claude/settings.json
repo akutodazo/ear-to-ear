@@ -9,7 +9,11 @@
       "Bash(npx wrangler secret*)",
       "PowerShell(npx wrangler secret*)",
       "Bash(git push * main*)",
-      "PowerShell(git push * main*)"
+      "PowerShell(git push * main*)",
+      "Bash(npx wrangler d1 * --remote*)",
+      "PowerShell(npx wrangler d1 * --remote*)",
+      "Bash(npx wrangler r2 * --remote*)",
+      "PowerShell(npx wrangler r2 * --remote*)"
     ]
   },
   "hooks": {
