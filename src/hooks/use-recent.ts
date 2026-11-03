@@ -1,14 +1,34 @@
 /**
  * /recent の Presenter。「更新」で新着を読み直す（自動では反映しない。docs/spec.md §7）。
+ * 管理者の端末にだけ「確定・変更」を出す。役割は GET /api/session で知る（11-03 本人決定）。守るのはサーバー（403）。
+ * 合言葉は最初に聞かない。「管理者として入る」を押したときと、確定・変更で 401／403 が返ったときだけ聞く。
  */
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { UploadedPhoto } from "@/types";
+import fieldsData from "@/data/fields.json";
+import type { Field, Role, UploadedPhoto } from "@/types";
+import { applyAssignment, assignOutcomeLabel } from "@/services/assignment";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
-import type { IPhotoRepository, RecentOutcome } from "@/repositories/interfaces/i-photo-repository";
+import type { IPhotoRepository, LoginOutcome, RecentOutcome } from "@/repositories/interfaces/i-photo-repository";
 
 const RECENT_LIMIT = 50;
+const fields: Field[] = fieldsData;
+
+const LOGIN_MESSAGES: Record<LoginOutcome, string | null> = {
+  ok: null,
+  wrong: "合言葉が違います",
+  "too-many": "何度も間違えたので、10分ほどおいてからもう一度",
+  "network-error": "つながりませんでした。電波のよい所でもう一度",
+  error: "うまくいきませんでした。時間をおいてもう一度",
+};
+
+/** 写真ごとの確定・変更の様子 */
+export interface AssignStatus {
+  busy: boolean;
+  message: string | null;
+  ok: boolean;
+}
 
 export function useRecent(repository?: IPhotoRepository) {
   const [repo] = useState<IPhotoRepository>(() => repository ?? createPhotoRepository());
@@ -16,6 +36,11 @@ export function useRecent(repository?: IPhotoRepository) {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [fetchedAt, setFetchedAt] = useState<Date | null>(null);
+  /** 分かるまでは undefined（「確定・変更」も「管理者として入る」も出さない）。入っていなければ null */
+  const [role, setRole] = useState<Role | null | undefined>(undefined);
+  const [needsPassphrase, setNeedsPassphrase] = useState(false);
+  const [loginMessage, setLoginMessage] = useState<string | null>(null);
+  const [assignStatus, setAssignStatus] = useState<Record<string, AssignStatus>>({});
 
   const apply = useCallback((outcome: RecentOutcome) => {
     setLoading(false);
@@ -38,6 +63,10 @@ export function useRecent(repository?: IPhotoRepository) {
     repo.listRecent(RECENT_LIMIT).then((outcome) => {
       if (active) apply(outcome);
     });
+    repo.getRole().then((outcome) => {
+      // 読めなかったときは管理者と見なさない
+      if (active) setRole(outcome.kind === "ok" ? outcome.role : null);
+    });
     return () => {
       active = false;
     };
@@ -48,5 +77,65 @@ export function useRecent(repository?: IPhotoRepository) {
     apply(await repo.listRecent(RECENT_LIMIT));
   }, [repo, apply]);
 
-  return { photos, loading, message, fetchedAt, refresh };
+  const openLogin = useCallback(() => {
+    setLoginMessage(null);
+    setNeedsPassphrase(true);
+  }, []);
+
+  const login = useCallback(
+    async (passphrase: string) => {
+      const outcome = await repo.login(passphrase);
+      if (outcome !== "ok") {
+        setLoginMessage(LOGIN_MESSAGES[outcome]);
+        return;
+      }
+      const current = await repo.getRole();
+      const nextRole = current.kind === "ok" ? current.role : null;
+      setRole(nextRole);
+      if (nextRole === "admin") {
+        setNeedsPassphrase(false);
+        setLoginMessage(null);
+        // 入り直す前の「合言葉を入れてください」などを残さない
+        setAssignStatus({});
+      } else {
+        setLoginMessage("管理者の合言葉ではありません");
+      }
+    },
+    [repo],
+  );
+
+  const assign = useCallback(
+    async (photoId: string, fieldId: string) => {
+      setAssignStatus((s) => ({ ...s, [photoId]: { busy: true, message: null, ok: false } }));
+      const outcome = await repo.assign(photoId, fieldId);
+      setAssignStatus((s) => ({
+        ...s,
+        [photoId]: { busy: false, message: assignOutcomeLabel(outcome, fieldId), ok: outcome === "ok" },
+      }));
+      if (outcome === "ok") {
+        setPhotos((current) => applyAssignment(current, photoId, fieldId));
+      } else if (outcome === "unauthorized" || outcome === "forbidden") {
+        setRole(outcome === "unauthorized" ? null : "member");
+        setLoginMessage(null);
+        setNeedsPassphrase(true);
+      }
+    },
+    [repo],
+  );
+
+  return {
+    photos,
+    loading,
+    message,
+    fetchedAt,
+    refresh,
+    fields,
+    role,
+    needsPassphrase,
+    loginMessage,
+    openLogin,
+    login,
+    assignStatus,
+    assign,
+  };
 }

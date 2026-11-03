@@ -3,9 +3,11 @@
 /** /recent の配線: Presenter（useRecent）を呼び、部品に props で配る（AGENTS.md §4） */
 import { useRecent } from "@/hooks/use-recent";
 import { RecentList } from "@/components/recent/recent-list";
+import { PassphraseForm } from "@/components/upload/passphrase-form";
 
 export function RecentClient() {
   const recent = useRecent();
+  const isAdmin = recent.role === "admin";
   return (
     <div className="stack">
       <div className="row">
@@ -18,8 +20,24 @@ export function RecentClient() {
           </span>
         )}
       </div>
+      {recent.needsPassphrase && (
+        <PassphraseForm
+          onSubmit={recent.login}
+          message={recent.loginMessage}
+          lead="番号を決めるには、管理者の合言葉が要ります。"
+          submitLabel="管理者として入る"
+        />
+      )}
       {recent.message && <p className="note">{recent.message}</p>}
-      <RecentList photos={recent.photos} />
+      <RecentList
+        photos={recent.photos}
+        admin={isAdmin ? { fields: recent.fields, status: recent.assignStatus, onAssign: recent.assign } : null}
+      />
+      {recent.role !== undefined && !isAdmin && !recent.needsPassphrase && (
+        <button type="button" className="button button-small" onClick={recent.openLogin}>
+          管理者として入る
+        </button>
+      )}
     </div>
   );
 }

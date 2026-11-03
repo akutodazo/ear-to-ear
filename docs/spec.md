@@ -112,6 +112,7 @@ CREATE TABLE settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);  -- 
 | メソッド・パス | 認証 | 入力 | 成功 | 失敗 | 段 |
 |---|---|---|---|---|---|
 | `POST /api/session` | なし | `{passphrase}` | 204＋Cookie（HttpOnly, Secure, SameSite=Lax, 30日） | 401／429 | L0 |
+| `GET /api/session` | member 以上 | — | 200 `{role}`（`member`／`admin`）。画面が「確定・変更」を出すかを決めるだけで、守るのは各 API の 401／403 | 401（入っていない） | L0 |
 | `POST /api/uploads` | member 以上 | multipart: `image`（JPEG、3MB 以下）＋`meta`（JSON） | 201 `{id}` | 401／409 `{id}`／413／415／422 | L0 |
 | `GET /api/photos?fieldId=` | なし | — | 200 確定済み（撮影日の新しい順） | 400 | L0 |
 | `GET /api/photos/recent?limit=50` | なし | — | 200 未確定を含む新着 | — | L0 |
@@ -137,7 +138,7 @@ CREATE TABLE settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);  -- 
 | パス | 中身 | 段 |
 |---|---|---|
 | `/upload` | 写真を選ぶ → 写真ごとにプレビュー・撮影日（不明なら「日付不明」）・候補（「A-03（約120m）」）・任意の番号選択 → 送る → 写真ごとの結果。合言葉は送って 401 が返ったときだけ聞き、入れたら送り直す（11-03） | L0 |
-| `/recent` | 新着。「未確定（推定 A-03）」「確定 A-03」。「更新」ボタンと最終取得時刻（自動反映はしない）。管理者の端末にだけ「確定・変更」 | L0 |
+| `/recent` | 新着。「未確定（推定 A-03）」「確定 A-03」。「更新」ボタンと最終取得時刻（自動反映はしない）。管理者の端末にだけ「確定・変更」（候補を「推定」として先に、残りを地区ごと。委員が選んだ番号は出さない）。合言葉は「管理者として入る」を押したときと、401／403 のときだけ聞く | L0 |
 | `/` | 地図（番号ピン。判断の色、未確定の印）と新着への入口 | L1 |
 | `/fields/[id]` | 確定済み写真を撮影日ごと（日付不明は別枠）、判断ボタン、判断の履歴（理由つき）、引き継ぎメモ（各文に根拠の印。根拠の無い文は灰色で「根拠なし」） | L1・L6 |
 
