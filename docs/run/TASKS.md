@@ -181,3 +181,21 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
   - ファイル名・欄の Content-Type は読まない。`console` は片付けの失敗のときだけ
 - **書き方の注意（`scripts/cage/policy.mjs`）**: `Date.now()`・`new Date()`（引数なし）・`crypto` は使わない。`instanceof File` を使わず `typeof value === "string"` で分ける。import は Service が `../config`・`@/types`・`./jpeg-segments`、worker が `@/config`・`@/services/...`・`./...`
 - **担当**: 先輩
+
+## T21 `GET /api/photos/recent` と `GET /api/photo-files/:id`（新着の一覧と画像の配信。認証なし）
+- **状態**: RED（11-03）。攻撃役と無人運転はこの後
+- **Issue**: #67
+- **依存**: T11（`uploaded_photos`）、T18（土台）、T20（`r2KeyFor`・R2 のキー）
+- **変えてよいファイル**: `src/services/photo-query.ts`・`worker/photos.ts`・`worker/photo-files.ts`（＋ `docs/run/REPORT-T21.md`、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結）**: `src/services/photo-query.test.ts`・`worker/photos.test.ts`・`worker/photos-config.test.ts`・`worker/photo-files.test.ts`（計 66 件）、`worker/app.test.ts` の付け替え（「認証なしの経路は 501」の 3 つを `GET /api/photos` に）
+- **人が RED で置いたもの（凍結）**: `src/config.ts` の `RECENT_LIMIT_DEFAULT = 50`・`RECENT_LIMIT_MAX = 200`（共有ファイル）、`photo-query.ts` の `PHOTO_LIST_COLUMNS`・`PhotoListRow` と空の関数、2 つのハンドラの空の実装と `PHOTO_FILE_CACHE_CONTROL`、`routes.ts` の配線、`docs/privacy.md` の「送った端末」の行（本人の承認待ち）
+- **RED の確かめ**: 新しい 66 件のうち 56 件が失敗。通る 10 件は、人が置いた定数・列の一覧と、空の実装でも成り立つ 405・500・`..` の 404。仮の実装で `src/services` と `worker` の 854 件がすべて通り、檻の純粋関数の検査も通ることを確かめてから空に戻した
+- **設計**: Claude Fable 5.1（別のセッション、読み取りだけ、71 手、$4.93）。要判断は先輩が決めた（11-03、#67 のコメント）
+- **合格条件**:
+  - 一覧: `limit` は `ctx.url.searchParams.get("limit")`（最初の値）を `parseRecentLimit` に通す（`/^[1-9]\d*$/` でなければ既定、上限を超えれば上限。400 にしない）。SQL は 1 文 `SELECT <PHOTO_LIST_COLUMNS> FROM uploaded_photos ORDER BY uploaded_at DESC, id DESC LIMIT ?`（`*` を使わない、件数は bind）→ `all()` の `results` を `photoFromRow` で写す → `json(200, …)`。JS で並べ替え・絞り込みをしない
+  - `photoFromRow` は UploadedPhoto の 11 項目をこの順で（`id`・`fieldId`・`chosenFieldId`・`state`・`candidateFieldIds`・`takenAt`・`takenAtSource`・`width`・`height`・`uploadedAt`・`uploaderDevice`）。変換は `candidate_field_ids` の `JSON.parse` だけで、文字列の配列でなければ `candidate_field_ids` を含む文の Error を投げる（500）。null・確定で番号なしもそのまま。行のほかの列は写さない
+  - 写真のハッシュ・R2 のキー・大きさ・更新時刻は返さない。端末 ID と委員が選んだ番号は返す（先輩の決定）
+  - 画像: `deps.photos.get(r2KeyFor(params.id))`。無ければ 404 `{ error: "not_found" }`。あれば 200、本文は R2 の `body` をそのまま、`content-type: image/jpeg`・`content-length: size`・`cache-control: PHOTO_FILE_CACHE_CONTROL`。`params.id` は復号も検査もしない。D1 は触らない
+  - どちらも認証なし（Cookie を読まない）。例外は握らない。`console`・`Date`・`crypto` を使わない。一覧は `cache-control` を触らない（共通ヘッダの `no-store`）
+- **書き方の注意（`scripts/cage/policy.mjs`）**: import は Service が `../config`・`@/types`、worker が `@/services/...`・`./...`。`Response.json()` を使わず `http.ts` の `json()`
+- **担当**: 先輩
