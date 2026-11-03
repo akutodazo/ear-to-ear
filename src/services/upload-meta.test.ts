@@ -232,3 +232,31 @@ describe("takenAtSource", () => {
     expect(reasonOf({ ...VALID, ...overrides })).toBe("taken_at_mismatch");
   });
 });
+
+describe("candidateFieldIds", () => {
+  it.each([
+    ["文字列", "A-01"],
+    ["null", null],
+    ["オブジェクト", { 0: "A-01" }],
+  ])("%s は bad_candidates", (_name, candidateFieldIds) => {
+    expect(reasonOf({ ...VALID, candidateFieldIds })).toBe("bad_candidates");
+  });
+
+  it("4 件は too_many_candidates", () => {
+    const candidateFieldIds = ["A-01", "A-02", "A-03", "A-04"];
+    expect(reasonOf({ ...VALID, candidateFieldIds })).toBe("too_many_candidates");
+  });
+
+  it("重複は duplicate_candidate", () => {
+    expect(reasonOf({ ...VALID, candidateFieldIds: ["A-01", "A-01"] })).toBe("duplicate_candidate");
+  });
+
+  it.each(["A-99", "a-01", "A-1", ""])("未知の番号 %j は unknown_field", (id) => {
+    expect(reasonOf({ ...VALID, candidateFieldIds: ["A-01", id] })).toBe("unknown_field");
+  });
+
+  it("既知の番号が空なら、候補が 1 件でも unknown_field", () => {
+    const body = { ...VALID, candidateFieldIds: ["A-01"], chosenFieldId: null };
+    expect(reasonOf(body, new Set())).toBe("unknown_field");
+  });
+});
