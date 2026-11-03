@@ -173,7 +173,18 @@ describe("GET /api/photos?fieldId= の 200", () => {
     // 未確定なのに field_id が入った行（今の書き方では作らないが、state で絞ることを確かめる）
     insert(testDb, { id: "unconfirmed-with-field", state: "unconfirmed", field_id: "A-03" });
     insert(testDb, { id: "confirmed-null", field_id: null });
+    // 委員が A-03 を選び、候補にも A-03 があるが、管理者が A-04 に確定した行（攻撃役の指摘）
+    insert(testDb, { id: "chosen-but-moved", field_id: "A-04", chosen_field_id: "A-03", candidate_field_ids: '["A-03","A-04"]' });
     expect(await ids(await byField(deps, "?fieldId=A-03"))).toEqual(["hit"]);
+  });
+
+  it("圃場の一覧は deps.knownFieldIds に従う（番号の決め打ちではない。攻撃役の指摘）", async () => {
+    const { deps, testDb } = setup({ knownFieldIds: new Set(["B-07", "Z-99"]) });
+    insert(testDb, { id: "b7", field_id: "B-07" });
+    insert(testDb, { id: "a1", field_id: "A-01" });
+    expect(await ids(await byField(deps, "?fieldId=B-07"))).toEqual(["b7"]);
+    expect(await ids(await byField(deps, "?fieldId=Z-99"))).toEqual([]);
+    expect((await byField(deps, "?fieldId=A-01")).status).toBe(400);
   });
 
   it("A-01 を頼んで A-010 や A-1 を返さない（完全に一致するものだけ）", async () => {

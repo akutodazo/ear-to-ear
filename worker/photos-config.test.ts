@@ -32,3 +32,19 @@ describe("GET /api/photos/recent は config に従う", () => {
     expect(await count("?limit=10")).toBe(3);
   });
 });
+
+describe("GET /api/photos?fieldId= は config に従う（T22、攻撃役の指摘）", () => {
+  it("件数の上限は RECENT_LIMIT_MAX（3）。200 の直書きではない", async () => {
+    const { handleRequest } = await import("./app");
+    const testDb = createTestDb();
+    for (let i = 0; i < 5; i++) {
+      testDb.raw
+        .prepare(
+          "INSERT INTO uploaded_photos (id, field_id, chosen_field_id, state, candidate_field_ids, taken_at, taken_at_source, content_hash, r2_key, width, height, bytes, uploader_device, uploaded_at, updated_at) VALUES (?, 'A-03', NULL, 'confirmed', '[]', ?, 'exif', ?, ?, 1, 1, 1, 'd', ?, ?)",
+        )
+        .run(`f${i}`, `2026-07-0${i + 1}`, String(i).repeat(64), `uploads/f${i}.jpg`, "2026-11-03T00:00:00.000Z", "x");
+    }
+    const response = await handleRequest(request("GET", "/api/photos?fieldId=A-03"), fakeDeps({ db: testDb.db }));
+    expect(((await response.json()) as { id: string }[]).map((p) => p.id)).toEqual(["f4", "f3", "f2"]);
+  });
+});
