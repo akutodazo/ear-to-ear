@@ -205,6 +205,14 @@ describe("POST /api/uploads 二重", () => {
     expect([...bucket.objects.keys()]).toEqual(["uploads/id-first.jpg"]);
   });
 
+  it("2 回目（二重）では newId を呼ばない（R2 の前に二重を見る）", async () => {
+    const newId = vi.fn(() => ID);
+    const { deps } = setup({ newId });
+    await upload(deps);
+    expect((await upload(deps)).status).toBe(409);
+    expect(newId).toHaveBeenCalledTimes(1);
+  });
+
   it("候補・選んだ番号・端末が違っても、同じハッシュなら 409（K7）", async () => {
     const ids = ["id-first", "id-second"];
     const { deps } = setup({ newId: () => ids.shift() ?? "id-x" });
@@ -439,6 +447,32 @@ describe("POST /api/uploads 保存の失敗", () => {
     expect(await response.text()).not.toContain("secret-detail");
     expect(bucket.objects.size).toBe(0);
     expect(bucket.calls.map((c) => c.op)).toEqual(["put", "delete"]);
+  });
+
+  it("INSERT が UNIQUE の文言で投げても、エラー文を見ずに 500（二重は DO NOTHING で見分ける。攻撃役の指摘）", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const testDb = createTestDb();
+    const bucket = createTestBucket();
+    const put = bucket.photos.put;
+    // R2 に置いている間に同じハッシュの行が入る。そのうえで INSERT は UNIQUE の文言で投げる
+    bucket.photos.put = async (key, value, options) => {
+      testDb.raw
+        .prepare(
+          "INSERT INTO uploaded_photos (id, field_id, chosen_field_id, state, candidate_field_ids, taken_at, taken_at_source, content_hash, r2_key, width, height, bytes, uploader_device, uploaded_at, updated_at) VALUES ('other', NULL, NULL, 'unconfirmed', '[]', NULL, 'none', ?, 'uploads/other.jpg', 1, 1, 1, 'd', 'x', 'x')",
+        )
+        .run(HASH);
+      return put(key, value, options);
+    };
+    const { deps } = setup({}, testDb, bucket);
+    const db: DbPort = {
+      prepare: (sql) => {
+        if (/^\s*INSERT/i.test(sql)) throw new Error("UNIQUE constraint failed: uploaded_photos.content_hash");
+        return testDb.db.prepare(sql);
+      },
+      batch: (s) => testDb.db.batch(s),
+    };
+    expect((await upload({ ...deps, db })).status).toBe(500);
+    expect(bucket.objects.has(`uploads/${ID}.jpg`)).toBe(false);
   });
 
   it("R2 の put が投げたら 500 で、D1 に行を残さず、delete も呼ばない", async () => {
