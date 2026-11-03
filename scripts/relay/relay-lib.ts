@@ -72,6 +72,11 @@ const FROZEN: readonly RegExp[] = [
   /^scripts\//,
   /^docs\/run\/TASKS\.md$/,
   /^migrations\//,
+  /^\.github\//,
+  /^\.gitattributes$/,
+  /^wrangler\./,
+  /^next\.config\./,
+  /^public\//,
   /(^|\/)\.dev\.vars/,
   /(^|\/)\.env/,
   /^private\//,
@@ -352,7 +357,8 @@ export function statusLine(seq: number, packet: string | null, state: PacketStat
 
 /** 通知の本文（200 字以内、1 行）。差分・パス・中身を入れない */
 export function notifyText(line: { packet: string | null; state: string; reason: Reason }, summary?: { green: number; ask: number; stopped: number; usd: number }): string | null {
-  if (line.state === "ask") return `${line.packet} 停止: 質問あり（他は続行）。返事は「${line.packet} を飛ばして続けて」か「止めて」`;
+  // 返事で列車を起動させない（二重起動の元。PR #88 のレビュー #1）。人ができるのは「止めて」だけ
+  if (line.state === "ask") return `${line.packet} 停止: 質問あり（他は続行）。止めるなら「止めて」`;
   if (line.state === "stopped") return `${line.packet} 停止: ${line.reason}。他は続行`;
   if (line.state === "train" && line.reason !== "done") return `列車停止: ${line.reason}`;
   if (line.state === "train" && summary) {
@@ -380,4 +386,42 @@ export function parseRunDayArgs(argv: readonly string[]): { today: string; skip:
 /** 通知係を起こした回数の上限（パケット数 + 3）を超えたか */
 export function tooManyWakes(wakes: number, packets: number): boolean {
   return wakes > packets + 3;
+}
+
+export interface StatusEntry {
+  seq: number;
+  packet: string | null;
+  state: string;
+  reason: Reason;
+}
+
+/** STATUS の追記の列（1 行 1 件）から seen より後の行を読む。壊れた行は飛ばす（PR #88 のレビュー #2: 最後の 1 行だけだと取りこぼす） */
+export function unseenStatus(lines: readonly string[], seen: number): { lastSeq: number; entries: StatusEntry[] } {
+  const entries: StatusEntry[] = [];
+  let lastSeq = seen;
+  for (const line of lines) {
+    let v: { seq?: unknown; packet?: unknown; state?: unknown; reason?: unknown };
+    try {
+      v = JSON.parse(line) as typeof v;
+    } catch {
+      continue;
+    }
+    if (typeof v !== "object" || v === null) continue;
+    if (typeof v.seq !== "number" || v.seq <= seen || typeof v.state !== "string" || !REASONS.includes(v.reason as Reason)) continue;
+    entries.push({ seq: v.seq, packet: typeof v.packet === "string" ? v.packet : null, state: v.state, reason: v.reason as Reason });
+    lastSeq = Math.max(lastSeq, v.seq);
+  }
+  return { lastSeq, entries };
+}
+
+/** 複数の通知を 1 通にまとめる（200 字まで。超えたら末尾を「…」） */
+export function joinNotices(texts: readonly string[]): string | null {
+  if (texts.length === 0) return null;
+  const joined = texts.join(" ／ ");
+  return joined.length <= 200 ? joined : `${joined.slice(0, 199)}…`;
+}
+
+/** 進行役が走っているか（二重起動を断る、PR #88 のレビュー #1）。印のプロセスが生きていれば走っている */
+export function isRunning(lock: { pid?: unknown } | null, alive: (pid: number) => boolean): boolean {
+  return lock !== null && typeof lock.pid === "number" && Number.isInteger(lock.pid) && lock.pid > 0 && alive(lock.pid);
 }
