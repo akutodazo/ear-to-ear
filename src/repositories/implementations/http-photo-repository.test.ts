@@ -128,3 +128,65 @@ describe("listRecent（GET /api/photos/recent）", () => {
     expect(await createHttpPhotoRepository(offline).listRecent(50)).toEqual({ kind: "network-error" });
   });
 });
+
+describe("getRole（GET /api/session。この端末の役割）", () => {
+  it("GET で読む", async () => {
+    const { fn, calls } = fakeFetch(() => Response.json({ role: "admin" }));
+    await createHttpPhotoRepository(fn, "https://example.test").getRole();
+    expect(calls[0].url).toBe("https://example.test/api/session");
+    expect(calls[0].init?.method ?? "GET").toBe("GET");
+  });
+
+  it.each(["member", "admin"])("200 {role: %s} はその役割", async (role) => {
+    const { fn } = fakeFetch(() => Response.json({ role }));
+    expect(await createHttpPhotoRepository(fn).getRole()).toEqual({ kind: "ok", role });
+  });
+
+  it("401 はまだ入っていない（role が null）", async () => {
+    const { fn } = fakeFetch(() => Response.json({ error: "unauthorized" }, { status: 401 }));
+    expect(await createHttpPhotoRepository(fn).getRole()).toEqual({ kind: "ok", role: null });
+  });
+
+  it.each([{ role: "owner" }, { role: null }, {}, ["admin"]])("知らない形の本文 %j は error（管理者と見なさない）", async (body) => {
+    const { fn } = fakeFetch(() => Response.json(body));
+    expect(await createHttpPhotoRepository(fn).getRole()).toEqual({ kind: "error" });
+  });
+
+  it("JSON でなければ error、他の状態は error、つながらなければ network-error", async () => {
+    expect(await createHttpPhotoRepository(fakeFetch(() => new Response("admin")).fn).getRole()).toEqual({
+      kind: "error",
+    });
+    expect(
+      await createHttpPhotoRepository(fakeFetch(() => new Response(null, { status: 500 })).fn).getRole(),
+    ).toEqual({ kind: "error" });
+    expect(await createHttpPhotoRepository(offline).getRole()).toEqual({ kind: "network-error" });
+  });
+});
+
+describe("assign（PATCH /api/photos/:id/assignment）", () => {
+  it("番号を JSON で送る。写真の id は URL の中で符号化する", async () => {
+    const { fn, calls } = fakeFetch(() => Response.json({}));
+    await createHttpPhotoRepository(fn, "https://example.test").assign("p/1?x", "A-06");
+    expect(calls[0].url).toBe("https://example.test/api/photos/p%2F1%3Fx/assignment");
+    expect(calls[0].init?.method).toBe("PATCH");
+    expect(new Headers(calls[0].init?.headers).get("Content-Type")).toBe("application/json");
+    expect(JSON.parse(String(calls[0].init?.body))).toEqual({ fieldId: "A-06" });
+  });
+
+  it.each([
+    [200, "ok"],
+    [401, "unauthorized"],
+    [403, "forbidden"],
+    [404, "not-found"],
+    [422, "rejected"],
+    [500, "error"],
+    [204, "error"],
+  ])("状態 %i は %s", async (status, outcome) => {
+    const { fn } = fakeFetch(() => new Response(status === 204 ? null : "{}", { status }));
+    expect(await createHttpPhotoRepository(fn).assign("p1", "A-06")).toBe(outcome);
+  });
+
+  it("つながらなければ network-error", async () => {
+    expect(await createHttpPhotoRepository(offline).assign("p1", "A-06")).toBe("network-error");
+  });
+});

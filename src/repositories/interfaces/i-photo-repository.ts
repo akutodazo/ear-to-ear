@@ -2,7 +2,7 @@
  * 写真の保存先の約束（docs/spec.md §6 の L0 の API）。画面はこの約束だけを知る。
  * 実体は fetch で API を呼ぶもの（implementations/http-photo-repository.ts）。テストでは偽物を差し込む。
  */
-import type { UploadedPhoto, UploadMeta } from "@/types";
+import type { Role, UploadedPhoto, UploadMeta } from "@/types";
 
 /** POST /api/session の結果 */
 export type LoginOutcome = "ok" | "wrong" | "too-many" | "network-error" | "error";
@@ -20,6 +20,19 @@ export type UploadOutcome =
 /** GET /api/photos/recent の結果 */
 export type RecentOutcome = { kind: "ok"; photos: UploadedPhoto[] } | { kind: "network-error" } | { kind: "error" };
 
+/** GET /api/session の結果。入っていない（401）ときは role が null */
+export type RoleOutcome = { kind: "ok"; role: Role | null } | { kind: "network-error" } | { kind: "error" };
+
+/** PATCH /api/photos/:id/assignment の結果 */
+export type AssignOutcome =
+  | "ok"
+  | "unauthorized"
+  | "forbidden"
+  | "not-found"
+  | "rejected"
+  | "network-error"
+  | "error";
+
 export interface IPhotoRepository {
   /** 合言葉で入る（成功すると Cookie が付く） */
   login(passphrase: string): Promise<LoginOutcome>;
@@ -27,4 +40,8 @@ export interface IPhotoRepository {
   upload(image: Blob, meta: UploadMeta): Promise<UploadOutcome>;
   /** 未確定を含む新着 */
   listRecent(limit: number): Promise<RecentOutcome>;
+  /** この端末の役割（画面が「確定・変更」を出すかを決める。守るのはサーバー） */
+  getRole(): Promise<RoleOutcome>;
+  /** 管理者が番号を確定・変更する（履歴はサーバーが残す） */
+  assign(photoId: string, fieldId: string): Promise<AssignOutcome>;
 }

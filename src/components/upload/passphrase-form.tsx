@@ -1,14 +1,18 @@
 "use client";
 
-/** 合言葉の入力（送って「合言葉が要る」と返ったときだけ出す）。props だけで受け取る */
+/** 合言葉の入力（送って「合言葉が要る」と返ったとき、管理者が入るときだけ出す）。props だけで受け取る */
 import { useState } from "react";
 
 export function PassphraseForm({
   onSubmit,
   message,
+  lead = "送るには合言葉が要ります。入れると、そのまま送り直します。",
+  submitLabel = "入って送る",
 }: {
   onSubmit: (passphrase: string) => void;
   message: string | null;
+  lead?: string;
+  submitLabel?: string;
 }) {
   const [value, setValue] = useState("");
   return (
@@ -19,7 +23,7 @@ export function PassphraseForm({
         onSubmit(value);
       }}
     >
-      <p>送るには合言葉が要ります。入れると、そのまま送り直します。</p>
+      <p>{lead}</p>
       <label className="stack-tight">
         合言葉
         <input
@@ -32,7 +36,7 @@ export function PassphraseForm({
       </label>
       {message && <p className="note">{message}</p>}
       <button type="submit" className="button">
-        入って送る
+        {submitLabel}
       </button>
     </form>
   );

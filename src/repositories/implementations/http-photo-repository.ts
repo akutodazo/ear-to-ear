@@ -4,9 +4,11 @@
  */
 import type { UploadedPhoto, UploadMeta } from "@/types";
 import type {
+  AssignOutcome,
   IPhotoRepository,
   LoginOutcome,
   RecentOutcome,
+  RoleOutcome,
   UploadOutcome,
 } from "../interfaces/i-photo-repository";
 
@@ -82,6 +84,44 @@ export function createHttpPhotoRepository(fetchFn: FetchLike, baseUrl = ""): IPh
         return { kind: "ok", photos: body as UploadedPhoto[] };
       } catch {
         return { kind: "error" };
+      }
+    },
+
+    async getRole(): Promise<RoleOutcome> {
+      const response = await send(fetchFn, `${baseUrl}/api/session`, { method: "GET" });
+      if (response === null) return { kind: "network-error" };
+      if (response.status === 401) return { kind: "ok", role: null };
+      if (response.status !== 200) return { kind: "error" };
+      try {
+        const body: unknown = await response.json();
+        const role = (body as { role?: unknown } | null)?.role;
+        // 知らない形を管理者と見なさない（守るのはサーバーだが、画面も読み違えない）
+        return role === "member" || role === "admin" ? { kind: "ok", role } : { kind: "error" };
+      } catch {
+        return { kind: "error" };
+      }
+    },
+
+    async assign(photoId: string, fieldId: string): Promise<AssignOutcome> {
+      const response = await send(fetchFn, `${baseUrl}/api/photos/${encodeURIComponent(photoId)}/assignment`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fieldId }),
+      });
+      if (response === null) return "network-error";
+      switch (response.status) {
+        case 200:
+          return "ok";
+        case 401:
+          return "unauthorized";
+        case 403:
+          return "forbidden";
+        case 404:
+          return "not-found";
+        case 422:
+          return "rejected";
+        default:
+          return "error";
       }
     },
   };
