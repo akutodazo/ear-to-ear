@@ -304,3 +304,10 @@ describe("検査の順（攻撃役の指摘）", () => {
     expect(reasonOf(body)).toBe(reason);
   });
 });
+
+describe("長さの検査の順（レビューの指摘）", () => {
+  it("長すぎて JSON でもない入力は too_long（parse の前に見る）", () => {
+    const text = "x".repeat(UPLOAD_META_MAX_CHARS + 1);
+    expect(parseUploadMeta(text, KNOWN)).toStrictEqual({ ok: false, reason: "too_long" });
+  });
+});
