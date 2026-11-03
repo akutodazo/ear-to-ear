@@ -1,6 +1,6 @@
 import { execFileSync, spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir, userInfo } from "node:os";
 import { join, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -126,10 +126,10 @@ describe("run_tests の抜け穴", () => {
 });
 
 describe("report", () => {
-  it("検査を自分で実行して REPORT.md に残し、Txx REPORT でコミットする", async () => {
+  it("検査を自分で実行して REPORT-Txx.md に残し、Txx REPORT でコミットする", async () => {
     const r = await call("report", { task: "T99" });
     expect(r.content[0].text).toMatch(/C1 ok/);
-    expect(readFileSync(join(root, "docs/run/REPORT.md"), "utf8")).toMatch(/C1 ok/);
+    expect(readFileSync(join(root, "docs/run/REPORT-T99.md"), "utf8")).toMatch(/C1 ok/);
     expect(git("log", "-1", "--format=%s").trim()).toBe("T99 REPORT");
   });
 
@@ -173,5 +173,64 @@ describe("レビューの指摘: REPORT と QUESTIONS", () => {
     await call("write_file", { path: "src/add.mjs", content: "export const a = 1;" });
     await call("commit_green", { message: "T99 GREEN: add" });
     expect(git("diff", "--name-only", "HEAD~1", "HEAD").trim()).toBe("src/add.mjs");
+  });
+});
+
+// REPORT はパケットごと（PR #56）。手元のパスを伏せる（PR #47 のレビュー #5）。#65
+describe("report の書き先と伏せ字", () => {
+  it("REPORT-<task>.md だけをコミットし、REPORT.md は作らない", async () => {
+    await call("report", { task: "T99" });
+    expect(git("show", "--name-only", "--format=", "HEAD").trim()).toBe("docs/run/REPORT-T99.md");
+    expect(existsSync(join(root, "docs/run/REPORT.md"))).toBe(false);
+  });
+
+  it("前の運転の REPORT は上書きしない", async () => {
+    mkdirSync(join(root, "docs/run"), { recursive: true });
+    writeFileSync(join(root, "docs/run/REPORT-T98.md"), "# T98 REPORT\n");
+    git("add", "-A");
+    git("commit", "-q", "-m", "T98 REPORT");
+    await call("report", { task: "T99" });
+    expect(readFileSync(join(root, "docs/run/REPORT-T98.md"), "utf8")).toBe("# T98 REPORT\n");
+  });
+
+  it.each(["docs/run/REPORT-T99.md", "docs/run/REPORT-T1.md", "docs/run/REPORT.md"])(
+    "%s は CAGE_ALLOW にあっても write_file で書けず、commit_green にも入らない",
+    async (path) => {
+      await start({ CAGE_ALLOW: `src/add.mjs,${path}` });
+      expect((await call("write_file", { path, content: "偽" })).isError).toBe(true);
+      await call("write_file", { path: "src/add.mjs", content: "export const a = 1;" });
+      await call("commit_green", { message: "T99 GREEN: add" });
+      expect(git("diff", "--name-only", "HEAD~1", "HEAD").trim()).toBe("src/add.mjs");
+    },
+  );
+
+  it("作業フォルダ・ホームのパス・ユーザー名と色の制御文字を、REPORT にも返事にも出さない", async () => {
+    const print = [
+      "console.log(process.cwd())",
+      "console.log(process.cwd().replaceAll('\\', '/'))",
+      "console.log(require('os').homedir())",
+      "console.log('user=' + require('os').userInfo().username)",
+      "console.log('\x1b[32mgreen\x1b[39m')",
+    ].join(";");
+    await start({ CAGE_CHECKS: JSON.stringify([{ name: "C1", argv: ["node", "-e", print] }]) });
+    const r = await call("report", { task: "T99" });
+    const report = readFileSync(join(root, "docs/run/REPORT-T99.md"), "utf8");
+    for (const text of [report, r.content[0].text]) {
+      expect(text).not.toContain(root);
+      expect(text).not.toContain(root.replaceAll("\\", "/"));
+      expect(text).not.toContain(homedir());
+      expect(text.toLowerCase()).not.toContain(userInfo().username.toLowerCase());
+      expect(text).not.toContain("\x1b[");
+      expect(text).toContain("<作業フォルダ>");
+      expect(text).toContain("green");
+    }
+  });
+
+  it("作業フォルダの下のパスは <作業フォルダ>/… の形で残す（どのファイルかは分かる）", async () => {
+    const print = "console.log(require('path').join(process.cwd(), 'src', 'add.mjs'))";
+    await start({ CAGE_CHECKS: JSON.stringify([{ name: "C1", argv: ["node", "-e", print] }]) });
+    await call("report", { task: "T99" });
+    const report = readFileSync(join(root, "docs/run/REPORT-T99.md"), "utf8");
+    expect(report).toMatch(/<作業フォルダ>[\/]src[\/]add\.mjs/);
   });
 });
