@@ -4,11 +4,11 @@
  * - 縮小・再エンコード（メタデータを消す）と元ファイルの SHA-256。**元のファイルは決して送らない**（K6）。
  *   ブラウザが付ける APP2（色の情報）なども取り除き、inspectJpeg で APP1〜15 が無いことを確かめてから渡す
  */
-import type { TakenAtSource } from "@/types";
-import type { LatLng } from "@/services/candidates";
-import { MAX_UPLOAD_BYTES } from "@/config";
-import { inspectJpeg } from "@/services/jpeg-segments";
-import { prepareJpeg } from "@/services/prepared-photo";
+import type { TakenAtSource } from "../types";
+import type { LatLng } from "../services/candidates";
+import { MAX_UPLOAD_BYTES } from "../config";
+import { inspectJpeg } from "../services/jpeg-segments";
+import { prepareJpeg } from "../services/prepared-photo";
 import { JPEG_QUALITIES, resizeToJpeg } from "./resize-jpeg";
 import { sha256Hex } from "./sha256";
 
@@ -34,6 +34,9 @@ export class PreparePhotoUnavailableError extends Error {
     this.name = "PreparePhotoUnavailableError";
   }
 }
+
+/** 写真の情報を読むときに読む先頭のバイト数（APP1 の EXIF・XMP はこの中に入る） */
+export const PHOTO_INFO_HEAD_BYTES = 0;
 
 /** 写真の情報を読む（仮: T01 までは位置なし・日付不明） */
 export async function readPhotoInfo(file: File): Promise<PhotoInfo> {
