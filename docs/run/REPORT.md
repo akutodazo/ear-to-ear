@@ -152,8 +152,8 @@ warning: in the working copy of 'src/add.test.mjs', LF will be replaced by CRLF 
 Error: Turbopack build failed with 1 error:
 ./src/app
 Error: Could not find the Next.js package (next/package.json)
-Resolved from: C:\Users\funro\AppData\Local\Temp\claude\C--Users-funro-dev-github-ear-to-ear\459f2058-d3bb-40fe-975f-ac72e2554aca\scratchpad\t04-run\src\app
-Filesystem root used for resolution: C:\Users\funro\AppData\Local\Temp\claude\C--Users-funro-dev-github-ear-to-ear\459f2058-d3bb-40fe-975f-ac72e2554aca\scratchpad\t04-run
+Resolved from: C:\Users\<ユーザー>\AppData\Local\Temp\claude\<作業フォルダ>\<セッション>\scratchpad\t04-run\src\app
+Filesystem root used for resolution: C:\Users\<ユーザー>\AppData\Local\Temp\claude\<作業フォルダ>\<セッション>\scratchpad\t04-run
 
 Possible causes:
   - node_modules is being reorganized by a concurrent install (e.g. pnpm adding a package with a `next` peer dependency). This is transient and should clear once the install completes.
@@ -167,7 +167,7 @@ Note: To ensure a hermetic build and a portable cache, files outside of the work
 https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory
 
 
-    at <unknown> (Filesystem root used for resolution: C:\Users\funro\AppData\Local\Temp\claude\C--Users-funro-dev-github-ear-to-ear\459f2058-d3bb-40fe-975f-ac72e2554aca\scratchpad\t04-run)
+    at <unknown> (Filesystem root used for resolution: C:\Users\<ユーザー>\AppData\Local\Temp\claude\<作業フォルダ>\<セッション>\scratchpad\t04-run)
     at <unknown> (https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory)
 npm notice
 npm notice New minor version of npm available! 11.12.1 -> 11.21.1
@@ -190,7 +190,7 @@ check:safety: OK（名前の検査のみ。中身の検査は T17）
 > eslint
 
 
-C:\Users\funro\AppData\Local\Temp\claude\C--Users-funro-dev-github-ear-to-ear\459f2058-d3bb-40fe-975f-ac72e2554aca\scratchpad\t04-run\src\services\upload-meta.test.ts
+C:\Users\<ユーザー>\AppData\Local\Temp\claude\<作業フォルダ>\<セッション>\scratchpad\t04-run\src\services\upload-meta.test.ts
   25:18  warning  '_removed' is assigned a value but never used  @typescript-eslint/no-unused-vars
 
 ✖ 1 problem (0 errors, 1 warning)
@@ -407,8 +407,8 @@ warning: in the working copy of 'src/add.test.mjs', LF will be replaced by CRLF 
 Error: Turbopack build failed with 1 error:
 ./src/app
 Error: Could not find the Next.js package (next/package.json)
-Resolved from: C:\Users\funro\AppData\Local\Temp\claude\C--Users-funro-dev-github-ear-to-ear\459f2058-d3bb-40fe-975f-ac72e2554aca\scratchpad\t04-run\src\app
-Filesystem root used for resolution: C:\Users\funro\AppData\Local\Temp\claude\C--Users-funro-dev-github-ear-to-ear\459f2058-d3bb-40fe-975f-ac72e2554aca\scratchpad\t04-run
+Resolved from: C:\Users\<ユーザー>\AppData\Local\Temp\claude\<作業フォルダ>\<セッション>\scratchpad\t04-run\src\app
+Filesystem root used for resolution: C:\Users\<ユーザー>\AppData\Local\Temp\claude\<作業フォルダ>\<セッション>\scratchpad\t04-run
 
 Possible causes:
   - node_modules is being reorganized by a concurrent install (e.g. pnpm adding a package with a `next` peer dependency). This is transient and should clear once the install completes.
@@ -422,7 +422,7 @@ Note: To ensure a hermetic build and a portable cache, files outside of the work
 https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory
 
 
-    at <unknown> (Filesystem root used for resolution: C:\Users\funro\AppData\Local\Temp\claude\C--Users-funro-dev-github-ear-to-ear\459f2058-d3bb-40fe-975f-ac72e2554aca\scratchpad\t04-run)
+    at <unknown> (Filesystem root used for resolution: C:\Users\<ユーザー>\AppData\Local\Temp\claude\<作業フォルダ>\<セッション>\scratchpad\t04-run)
     at <unknown> (https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory)
 npm notice
 npm notice New minor version of npm available! 11.12.1 -> 11.21.1
