@@ -311,3 +311,14 @@ describe("長さの検査の順（レビューの指摘）", () => {
     expect(parseUploadMeta(text, KNOWN)).toStrictEqual({ ok: false, reason: "too_long" });
   });
 });
+
+describe("文字列の項目の型（レビューの指摘）", () => {
+  // RegExp.test は引数を文字列に直すので、1 要素の配列は正規表現だけでは止まらない
+  it("contentHash が 1 要素の配列なら bad_content_hash", () => {
+    expect(reasonOf({ ...VALID, contentHash: [HASH] })).toBe("bad_content_hash");
+  });
+
+  it("takenAt が 1 要素の配列なら bad_taken_at", () => {
+    expect(reasonOf({ ...VALID, takenAt: ["2026-07-21"] })).toBe("bad_taken_at");
+  });
+});
