@@ -4,6 +4,8 @@
  */
 import type { Route } from "./deps";
 import { errorResponse, json } from "./http";
+import { getPhotoFile } from "./photo-files";
+import { getRecentPhotos } from "./photos";
 import { getSession, postSession } from "./session";
 import { postUploads } from "./uploads";
 
@@ -22,8 +24,8 @@ export const routes: readonly Route[] = [
   { method: "POST", pattern: "/api/session", auth: "none", handler: postSession },
   { method: "POST", pattern: "/api/uploads", auth: "member", handler: postUploads },
   { method: "GET", pattern: "/api/photos", auth: "none", handler: notImplemented },
-  { method: "GET", pattern: "/api/photos/recent", auth: "none", handler: notImplemented },
-  { method: "GET", pattern: "/api/photo-files/:id", auth: "none", handler: notImplemented },
+  { method: "GET", pattern: "/api/photos/recent", auth: "none", handler: getRecentPhotos },
+  { method: "GET", pattern: "/api/photo-files/:id", auth: "none", handler: getPhotoFile },
   { method: "PATCH", pattern: "/api/photos/:id/assignment", auth: "admin", handler: notImplemented },
   // 画面が役割を知る（11-03 本人決定）。表の添字を変えないよう末尾に足す。Allow は "POST, GET"
   { method: "GET", pattern: "/api/session", auth: "member", handler: getSession },
