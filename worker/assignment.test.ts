@@ -217,6 +217,21 @@ describe("PATCH /api/photos/:id/assignment（管理者の確定・変更、Issue
     expect(history(testDb)).toHaveLength(1);
   });
 
+  it("違う番号が同時に2本来ても、履歴の前の番号がつながり、応答はそれぞれ頼んだ番号（PR #79 のレビュー #1・#2）", async () => {
+    const { deps, testDb } = setup();
+    insertPhoto(testDb);
+    const responses = await Promise.all([patch(deps, '{"fieldId":"A-03"}'), patch(deps, '{"fieldId":"A-07"}')]);
+    expect(responses.map((r) => r.status)).toStrictEqual([200, 200]);
+    const bodies = (await Promise.all(responses.map((r) => r.json()))) as { fieldId: string }[];
+    expect(bodies.map((b) => b.fieldId)).toStrictEqual(["A-03", "A-07"]);
+    const rows = history(testDb);
+    expect(rows).toHaveLength(2);
+    // どちらが先でも、後の行の from は先の行の to
+    expect(rows[0].from_field_id).toBeNull();
+    expect(rows[1].from_field_id).toBe(rows[0].to_field_id);
+    expect(photo(testDb).field_id).toBe(rows[1].to_field_id);
+  });
+
   it("確定・変更を続けると、履歴が順に残る", async () => {
     const { deps, testDb } = setup();
     insertPhoto(testDb);
