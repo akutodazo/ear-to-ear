@@ -222,6 +222,41 @@ describe("checkUploadImage", () => {
   });
 });
 
+describe("checkUploadImage は最初のスキャンの後ろも見る（PR #64 のレビュー #1）", () => {
+  const APP1 = segment(0xe1, [0x45, 0x78, 0x69, 0x66, 0x00]);
+  const SOF = segment(0xc0, [8, 1200 >> 8, 1200 & 0xff, 1600 >> 8, 1600 & 0xff, 1, 1, 0x11, 0]);
+  const SOS = segment(0xda, [1, 1, 0x00, 0x00, 0x3f, 0x00]);
+  const DHT_WITH_FF_E1 = segment(0xc4, [0x10, 0xff, 0xe1, 0x00, 0x05]);
+  const raw = (...parts: number[][]) => Uint8Array.from([0xff, 0xd8, ...parts.flat()]);
+
+  it("2 枚目のスキャンの前に隠した APP1 は metadata", () => {
+    const bytes = raw(SOF, SOS, [0x12, 0x34], APP1, SOS, [0x56], [0xff, 0xd9]);
+    expect(check(bytes)).toStrictEqual({ ok: false, reason: "metadata" });
+  });
+
+  it("EOI の後ろに APP1 を足して FF D9 で終えたものは not_jpeg", () => {
+    const bytes = raw(SOF, SOS, [0x12, 0x34], [0xff, 0xd9], APP1, [0xff, 0xd9]);
+    expect(check(bytes)).toStrictEqual({ ok: false, reason: "not_jpeg" });
+  });
+
+  it("スキャンの間の DHT の中身に FF E1 があっても通す（誤って拒まない）", () => {
+    const bytes = raw(SOF, SOS, [0x12, 0x34], DHT_WITH_FF_E1, SOS, [0x56, 0xff, 0x00], [0xff, 0xd9]);
+    expect(check(bytes)).toStrictEqual({ ok: true, width: 1600, height: 1200 });
+  });
+
+  it("注入した inspect が APP なしと言っても、後ろの APP1 は metadata", () => {
+    const inspect = (): JpegInfo => ({ width: 1600, height: 1200, appSegments: [] });
+    const bytes = raw(SOF, SOS, [0x12], APP1, SOS, [0x56], [0xff, 0xd9]);
+    expect(check(bytes, inspect)).toStrictEqual({ ok: false, reason: "metadata" });
+  });
+
+  it("順番: 後ろに隠した APP1 は、長辺の上限超えより先に metadata", () => {
+    const wide = segment(0xc0, [8, 1200 >> 8, 1200 & 0xff, 4000 >> 8, 4000 & 0xff, 1, 1, 0x11, 0]);
+    const bytes = raw(wide, SOS, [0x12], APP1, SOS, [0x56], [0xff, 0xd9]);
+    expect(check(bytes)).toStrictEqual({ ok: false, reason: "metadata" });
+  });
+});
+
 describe("r2KeyFor", () => {
   it("uploads/<id>.jpg", () => {
     expect(r2KeyFor("00000000-0000-4000-8000-000000000001")).toBe("uploads/00000000-0000-4000-8000-000000000001.jpg");
