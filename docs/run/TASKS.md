@@ -129,3 +129,24 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **書き方の注意（`scripts/cage/policy.mjs`）**: `Response.json()` は使わず `new Response(JSON.stringify(...))`。`Date.now()`・`crypto` を檻の側で呼ばない（必ず `deps`）。import は `./deps`（型）・`./...`・`@/services/session-token`・`@/config` だけ
 - **担当**: 先輩。先輩の指示で MCP の檻の中で無人運転する（11-03）
 - **申し送り（本人へ）**: `wrangler.jsonc` は本人の側で作る。バインディング名 `DB`・`PHOTOS`・`ASSETS`、Secret `MEMBER_PASSPHRASE`・`ADMIN_PASSPHRASE`・`SESSION_SECRET`。設計の推奨は assets の `run_worker_first: ["/api/*"]`（推測を含む）。画面が自分の役割を知る方法（`X-Role` のヘッダ／200 `{role}`／`GET /api/session`）は次のパケットの前に決める
+
+## T19 `POST /api/session` と `GET /api/session`（合言葉 → Cookie、失敗は 10 分に 5 回まで、役割）
+- **状態**: RED（11-03）。攻撃役と無人運転はこの後
+- **Issue**: #54
+- **依存**: T18（取り込み済み）、T11（`usage_counters`）、T05（`issueSessionToken`）
+- **変えてよいファイル**: `src/services/usage-limit.ts`・`src/services/session-request.ts`・`worker/session.ts`（＋ `docs/run/REPORT.md`、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結）**: `src/services/usage-limit.test.ts`・`src/services/session-request.test.ts`・`worker/session.test.ts`、T18 のテストの直し（`routes.test.ts`・`router.test.ts`・`app.test.ts`）。新しい 3 本で 97 件
+- **人が RED で置いたもの（凍結）**: 3 ファイルの空の実装、`worker/routes.ts` の配線（`GET /api/session` は表の末尾）、`worker/http.ts` のエラーの種類 3 つ、`worker/auth.ts` の `nowSec`、`worker/test-db.ts`（`node:sqlite` の偽の D1）、`worker/test-helpers.ts` の `jsonRequest`
+- **RED の確かめ**: 新しい 3 本の 97 件のうち 93 件が失敗（not implemented と 500）。通る 4 件は、空の実装の定数・認証の 401・D1 を触らない・500 で漏らさない。仮の実装で 289 件（worker と 2 本）がすべて通り、檻の純粋関数の検査も通ることを確かめてから空に戻した
+- **設計**: Claude Fable 5.1（別のセッション、読み取りだけ、53 手、$3.83）。要判断は先輩が決めた（11-03、#54 のコメント）
+- **合格条件**:
+  - 順番は 415（Content-Type が `application/json` でない）→ 413（`content-length` か本文が 1024 文字超。ヘッダで分かれば本文を読まない）→ 400（JSON でない・オブジェクトでない・他のキー・`passphrase` が無い・文字列でない）→ 枠の数を読む → 照合 → 401 か 204。415・413・400 では D1 も `hashIp` も照合も使わない
+  - IP は `CF-Connecting-IP` だけ。無い・空なら `"unknown"`。`X-Forwarded-For` は見ない。`hashIp(IP, UTC の日付)`
+  - 枠は UTC の固定 10 分。key は `login:<IPのハッシュ>:<YYYY-MM-DDTHH:MM>`、`expires_at` は枠の終わりの ISO
+  - 数えるのは不一致（401）だけ。空の合言葉も数える。UPSERT で 1 ずつ。成功しても数を戻さない
+  - 枠の数が 5 以上なら 429 `{ error: "too_many_attempts" }` と `Retry-After`（枠の終わりまでの秒、切り上げ、最小 1）。照合も書き込みもしない（正しい合言葉でも 429）
+  - 成功は 204、本文なし、`Set-Cookie` 1 本（`buildSessionCookie`）。端末 ID は毎回 `deps.newId()`、`exp` は `nowSec + SESSION_DAYS` 日。合言葉は削らずに照合へ
+  - `GET /api/session`（member 以上）は 200 `{ role }` だけ。D1 を触らない
+  - 例外は握らない（500 は `app.ts`）。合言葉・IP を D1 にも console にも残さない
+- **書き方の注意（`scripts/cage/policy.mjs`）**: `Date.now()`・`new Date()`（引数なし）は使わない（時刻は `deps.nowMs`）。`new Date(ms).toISOString()` は使ってよい。秒に直すのは `auth.ts` の `nowSec`。import は Service が `../config`、worker が `@/config`・`@/services/...`・`./...`
+- **担当**: 先輩。`usage-limit.ts`（担当「後で決める」）は先輩が作る（11-03 先輩の決定、本人に確認する）
