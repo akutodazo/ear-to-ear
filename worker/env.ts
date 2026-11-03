@@ -37,6 +37,8 @@ export function createDeps(env: Env): Deps {
   const secret = requireSecret(env.SESSION_SECRET, "SESSION_SECRET");
   const member = requireSecret(env.MEMBER_PASSPHRASE, "MEMBER_PASSPHRASE");
   const admin = requireSecret(env.ADMIN_PASSPHRASE, "ADMIN_PASSPHRASE");
+  // 同じ値だと照合が常に admin を返し、全員が管理者になる
+  if (member === admin) throw new Error("MEMBER_PASSPHRASE と ADMIN_PASSPHRASE が同じ");
   const subtle = crypto.subtle as WorkersSubtle;
 
   // 鍵は SESSION_SECRET の文字列の UTF-8 をそのまま使う（16進として復号しない）
@@ -50,12 +52,10 @@ export function createDeps(env: Env): Deps {
   const sign = async (data: string) =>
     new Uint8Array(await subtle.sign("HMAC", await key, encoder.encode(data)));
 
-  // バイト長が違えば不一致。同じ長さなら時間の差が出ない比較
-  const equals = (input: string, expected: string) => {
-    const a = encoder.encode(input);
-    const b = encoder.encode(expected);
-    return a.byteLength === b.byteLength && subtle.timingSafeEqual(a, b);
-  };
+  // 合言葉は HMAC してから比べる。どの入力も 32 バイトになるので、長さが時間で漏れない。
+  // 用途の印 "pass:" で Cookie（base64url に ":" が無い）と hashIp（"ip:"）から分ける
+  const digest = (passphrase: string) => sign(`pass:${passphrase}`);
+  let expected: Promise<[Uint8Array, Uint8Array]> | undefined;
 
   return {
     db: env.DB,
@@ -63,9 +63,15 @@ export function createDeps(env: Env): Deps {
     assets: (request) => env.ASSETS.fetch(request),
     hmac: sign,
     hashIp: async (ip, day) => encodeBase64url(await sign(`ip:${day}:${ip}`)),
+    // admin と member の両方と必ず比べる（どちらに当たったかも時間で漏れない）。admin を優先する
     matchPassphrase: async (input): Promise<Role | null> => {
-      if (equals(input, admin)) return "admin";
-      if (equals(input, member)) return "member";
+      expected ??= Promise.all([digest(admin), digest(member)]);
+      const [adminDigest, memberDigest] = await expected;
+      const got = await digest(input);
+      const isAdmin = subtle.timingSafeEqual(got, adminDigest);
+      const isMember = subtle.timingSafeEqual(got, memberDigest);
+      if (isAdmin) return "admin";
+      if (isMember) return "member";
       return null;
     },
     nowMs: () => Date.now(),
