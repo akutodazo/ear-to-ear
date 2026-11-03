@@ -202,3 +202,24 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
   - どちらも認証なし（Cookie を読まない）。例外は握らない。`console`・`Date`・`crypto` を使わない。一覧は `cache-control` を触らない（共通ヘッダの `no-store`）
 - **書き方の注意（`scripts/cage/policy.mjs`）**: import は Service が `../config`・`@/types`、worker が `@/services/...`・`./...`。`Response.json()` を使わず `http.ts` の `json()`
 - **担当**: 先輩
+
+## T22 `GET /api/photos?fieldId=`（圃場ごとの確定済みの写真。認証なし）
+- **状態**: RED済み（人、11-04）
+- **Issue**: #85
+- **依存**: T21（`PHOTO_LIST_COLUMNS`・`photoFromRow`・`RECENT_LIMIT_MAX`）
+- **変えてよいファイル**: `src/services/photo-query.ts`・`worker/photos.ts`（＋ `docs/run/REPORT-T22.md`、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結）**: `src/services/photo-query.test.ts`（`parseFieldIdQuery` を足した）・`worker/photos-field.test.ts`・`worker/app.test.ts`（「認証なしの経路は 501」を health に付け替え）・`worker/routes.test.ts`（`GET /api/photos` の付け先）
+- **人が RED で置いたもの（凍結）**: `photo-query.ts` の `parseFieldIdQuery` の空の実装、`worker/photos.ts` の `getPhotosByField` の空の実装、`routes.ts` の配線
+- **関数**: `parseFieldIdQuery(raw: string | null, knownFieldIds: ReadonlySet<string>): string | null`（一覧にある番号ならそのまま、それ以外は null。例外を出さない）、`getPhotosByField: Handler`
+- **合格条件**:
+  - `fieldId` は `ctx.url.searchParams.get("fieldId")`（最初の値）を `parseFieldIdQuery(…, deps.knownFieldIds)` に通す。null なら 400 `{ error: "bad_request" }` で、D1 を触らない（`http.ts` の `errorResponse`）
+  - 一覧にある番号と完全に一致するものだけ（大文字小文字・前後の空白を直さない）
+  - SQL は 1 文。`SELECT <PHOTO_LIST_COLUMNS> FROM uploaded_photos WHERE state = 'confirmed' AND field_id = ? ORDER BY …`（`*` を使わない）。番号と件数は bind で渡し、SQL の文字列に番号を入れない
+  - 並び: 撮影日（`taken_at`）の新しい順、撮影日が null のものは後ろ、同じなら `uploaded_at` の新しい順、さらに同じなら `id` の降順。JS で並べ替え・絞り込みをしない
+  - 件数の上限は `RECENT_LIMIT_MAX`（200）。`limit` のクエリは読まない
+  - 本文は `results.map(photoFromRow)` を `json(200, …)`。候補の列が壊れた行は 500（握らない）
+  - 認証なし（Cookie を読まない）。`console`・`Date`・`crypto`・R2・`newId`・`nowMs` を使わない。`cache-control` を触らない（共通ヘッダの `no-store`）
+- **決めたこと（先輩、11-04）**: 一覧に無い番号は 404 ではなく 400（spec §6 の誤りの欄が 400 だけ）。上限は新着と同じ 200（ページ送りは作らない）
+- **書き方の注意（`scripts/cage/policy.mjs`）**: import は Service が `@/config`・`@/types`、worker が `@/services/...`・`./...`。`Response.json()` を使わず `http.ts` の `json()`・`errorResponse()`
+- **参照**: `docs/spec.md` §6、`docs/privacy.md`
+- **担当**: 先輩
