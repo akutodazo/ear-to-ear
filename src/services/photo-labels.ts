@@ -34,6 +34,7 @@ export function candidateSummary(
 export function sendSummaryLabel(counts: { sent: number; duplicate: number; failed: number }): string | null {
   const parts: string[] = [];
   if (counts.sent > 0) parts.push(`${counts.sent}枚送りました`);
+  if (counts.duplicate > 0) parts.push(`${counts.duplicate}枚は同じ写真がもう送られていました`);
   if (counts.failed > 0) parts.push(`${counts.failed}枚は送れませんでした`);
   return parts.length === 0 ? null : parts.join("。");
 }
@@ -66,7 +67,7 @@ export function assignmentLabel(
 
 const OUTCOME_LABELS: Record<UploadOutcome["kind"], string> = {
   created: "送りました",
-  duplicate: "同じ写真はもう送られています",
+  duplicate: "送り済み（同じ写真）",
   unauthorized: "送るには合言葉が要ります",
   "too-large": "写真が大きすぎて送れませんでした",
   rejected: "この写真は送れませんでした",
