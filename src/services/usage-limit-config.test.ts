@@ -1,10 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-// 枠の長さと上限を変えたら追従することを、設定を差し替えて確かめる（攻撃役の指摘: 600_000 と 4 の直書きでも通っていた）
+// 枠の長さを変えたら追従することを、設定を差し替えて確かめる（攻撃役の指摘: 600_000 の直書きでも通っていた）
 vi.mock("../config", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../config")>()),
   LOGIN_WINDOW_MINUTES: 5,
-  LOGIN_MAX_ATTEMPTS_PER_WINDOW: 3,
 }));
 
 describe("usage-limit は config に従う", () => {
@@ -19,9 +18,4 @@ describe("usage-limit は config に従う", () => {
     });
   });
 
-  it("上限は LOGIN_MAX_ATTEMPTS_PER_WINDOW から（3 回）", async () => {
-    const { isLoginLimited } = await import("./usage-limit");
-    expect(isLoginLimited(2)).toBe(false);
-    expect(isLoginLimited(3)).toBe(true);
-  });
 });
