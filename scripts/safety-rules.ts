@@ -21,31 +21,76 @@ export interface SecretHit {
   kind: "anthropic-key" | "secret-assignment" | "private-key";
 }
 
+/** 名前で止めるもの。上から順に見て、最初に当たった理由を返す */
+const NAME_RULES: { test: (path: string) => boolean; why: string }[] = [
+  { test: (p) => /(^|\/)\.dev\.vars(\.|$)/.test(p), why: "開発用の秘密（.dev.vars）" },
+  { test: (p) => /(^|\/)\.env(\.|$)/.test(p), why: "環境変数ファイル（.env*）" },
+  { test: (p) => p.endsWith(".csv"), why: "CSV（番号対応表などの実データの疑い）" },
+  { test: (p) => p.startsWith("private/"), why: "/private/ の中身" },
+  { test: (p) => /\.(heic|dng)$/.test(p), why: "HEIC・DNG の写真（メタデータを確かめられない）" },
+  {
+    test: (p) => /\.jpe?g$/.test(p) && !p.startsWith("public/demo/"),
+    why: "public/demo/ の外の JPEG（画像は public/demo/ にだけ置く）",
+  },
+];
+
 /**
  * ファイル名（git ls-files の形、区切りは /）だけで分かる危ないファイルなら理由を、問題なければ null。
  * JPEG は public/demo/ の下だけ許す（中身は checkDemoJpeg で見る）。HEIC・DNG はどこでも許さない。
  */
 export function checkFileName(path: string): string | null {
-  void path;
-  throw new Error("not implemented");
+  const lower = path.toLowerCase();
+  return NAME_RULES.find((rule) => rule.test(lower))?.why ?? null;
 }
 
 /** public/demo/ の JPEG に APP1〜15（位置・日時などのメタデータ）が無ければ null、あれば理由 */
 export function checkDemoJpeg(bytes: Uint8Array, inspect: InspectJpeg): string | null {
-  void bytes;
-  void inspect;
-  throw new Error("not implemented");
+  let apps: number[];
+  try {
+    apps = inspect(bytes).appSegments;
+  } catch {
+    // 見られないものは通さない
+    return "JPEG として読めない";
+  }
+  if (apps.length === 0) return null;
+  return `メタデータ（${apps.map((n) => `APP${n}`).join("・")}）がある`;
 }
 
 /** 圃場の一覧（fields.json を JSON.parse したもの）の座標が範囲の外なら、圃場ごとに理由を返す */
 export function checkFieldsArea(data: unknown, area: Area): string[] {
-  void data;
-  void area;
-  throw new Error("not implemented");
+  if (!Array.isArray(data)) return ["圃場の一覧が配列ではない"];
+  const reasons: string[] = [];
+  for (const item of data) {
+    const { id, lat, lng } = (item ?? {}) as { id?: unknown; lat?: unknown; lng?: unknown };
+    const label = typeof id === "string" ? id : "番号不明";
+    if (typeof lat !== "number" || typeof lng !== "number") {
+      reasons.push(`${label}: 座標が数ではない`);
+      continue;
+    }
+    // 端を含む。NaN はどの比較も false になるので外として扱われる
+    const inside = lat >= area.latMin && lat <= area.latMax && lng >= area.lngMin && lng <= area.lngMax;
+    if (!inside) reasons.push(`${label}: 座標が架空の範囲（P15）の外`);
+  }
+  return reasons;
 }
+
+/** 秘密の値を入れる名前（docs/spec.md §6・§11 の Secret） */
+const SECRET_NAMES = "(?:MEMBER_PASSPHRASE|ADMIN_PASSPHRASE|SESSION_SECRET|ANTHROPIC_API_KEY)";
+/** `名前=値`（.dev.vars の形）。値は8文字以上で、空白・引用符・<>（見本の印）を含まない */
+const ASSIGN_EQUALS = new RegExp(`${SECRET_NAMES}\\s*=\\s*["']?[^\\s"'<>]{8,}`);
+/** `名前: "値"`（オブジェクトの形）。型の宣言（`名前: string;`）は引用符が無いので当たらない */
+const ASSIGN_COLON = new RegExp(`${SECRET_NAMES}\\s*:\\s*["'][^"']{8,}["']`);
+const ANTHROPIC_KEY = /sk-ant-[A-Za-z0-9_-]{20,}/;
+const PRIVATE_KEY = /-----BEGIN [A-Z ]*PRIVATE KEY-----/;
 
 /** 文字のファイルの中身から、秘密らしい文字列のある行を返す。値は返さない */
 export function findSecretLikeLines(text: string): SecretHit[] {
-  void text;
-  throw new Error("not implemented");
+  const hits: SecretHit[] = [];
+  text.split(/\r?\n/).forEach((content, index) => {
+    const line = index + 1;
+    if (ANTHROPIC_KEY.test(content)) hits.push({ line, kind: "anthropic-key" });
+    else if (ASSIGN_EQUALS.test(content) || ASSIGN_COLON.test(content)) hits.push({ line, kind: "secret-assignment" });
+    else if (PRIVATE_KEY.test(content)) hits.push({ line, kind: "private-key" });
+  });
+  return hits;
 }
