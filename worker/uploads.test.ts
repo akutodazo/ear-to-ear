@@ -5,7 +5,17 @@ import { handleRequest } from "./app";
 import type { DbPort, Deps } from "./deps";
 import { createTestBucket, type TestBucket } from "./test-bucket";
 import { createTestDb, type TestDb } from "./test-db";
-import { fakeDeps, multipartBody, multipartRequest, NOW_MS, sessionToken, tinyJpeg, type MultipartPart } from "./test-helpers";
+import {
+  fakeDeps,
+  multipartBody,
+  multipartRequest,
+  NOW_MS,
+  repeatChunks,
+  sessionToken,
+  streamRequest,
+  tinyJpeg,
+  type MultipartPart,
+} from "./test-helpers";
 
 const ID = "00000000-0000-4000-8000-000000000001";
 const HASH = "ab".repeat(32);
@@ -51,29 +61,6 @@ async function upload(
 
 function rows(testDb: TestDb) {
   return testDb.raw.prepare("SELECT * FROM uploaded_photos ORDER BY uploaded_at, id").all();
-}
-
-/** content-length の無い（chunked の）本文。読まれたバイト数を返す */
-function streamRequest(totalBytes: number, cookieValue: string): { req: Request; pulled: () => number } {
-  let pulled = 0;
-  const body = new ReadableStream<Uint8Array>({
-    pull(controller) {
-      if (pulled >= totalBytes) {
-        controller.close();
-        return;
-      }
-      const chunk = new Uint8Array(Math.min(64 * 1024, totalBytes - pulled)).fill(0x61);
-      pulled += chunk.byteLength;
-      controller.enqueue(chunk);
-    },
-  });
-  const req = new Request("https://example.test/api/uploads", {
-    method: "POST",
-    headers: { "content-type": "multipart/form-data; boundary=x", cookie: cookieValue },
-    body,
-    duplex: "half",
-  } as RequestInit);
-  return { req, pulled: () => pulled };
 }
 
 afterEach(() => {
@@ -345,7 +332,10 @@ describe("POST /api/uploads 入口", () => {
 
   it("content-length が無く本文が大きいと、上限の近くで読むのをやめて 413", async () => {
     const { deps, bucket } = setup();
-    const { req, pulled } = streamRequest(20 * 1024 * 1024, await cookie());
+    const { req, pulled } = streamRequest("/api/uploads", repeatChunks(20 * 1024 * 1024, 64 * 1024), {
+      "content-type": "multipart/form-data; boundary=x",
+      cookie: await cookie(),
+    });
     expect((await handleRequest(req, deps)).status).toBe(413);
     expect(pulled()).toBeLessThanOrEqual(UPLOAD_BODY_MAX_BYTES + 256 * 1024);
     expect(bucket.calls).toEqual([]);
