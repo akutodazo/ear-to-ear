@@ -27,6 +27,14 @@ describe("テスト用の D1", () => {
     expect(await stmt.bind("b").first()).toEqual({ count: 2 });
   });
 
+  it("同時に呼んだ batch も重ならない（本物の D1 と同じく 1 つの単位で動く）", async () => {
+    const { db, raw } = createTestDb();
+    raw.exec("INSERT INTO usage_counters VALUES ('k', 10, 'x')");
+    const dec = () => db.batch([db.prepare("UPDATE usage_counters SET count = count - 1 WHERE key = ?").bind("k")]);
+    await Promise.all([dec(), dec(), dec()]);
+    expect(raw.prepare("SELECT count FROM usage_counters").get()).toEqual({ count: 7 });
+  });
+
   it("batch は1つでも失敗すれば全部を戻して投げる", async () => {
     const { db, raw } = createTestDb();
     const insert = "INSERT INTO usage_counters (key, count, expires_at) VALUES (?, 1, 'x')";

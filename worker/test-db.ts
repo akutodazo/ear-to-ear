@@ -14,13 +14,18 @@ export interface TestDb {
   raw: DatabaseSync;
 }
 
+/** batch が文と値を取り出すための控え（StmtPort の形は本物の D1 に合わせて増やさない） */
+const bound = new WeakMap<StmtPort, { sql: string; values: SQLInputValue[] }>();
+
 function statement(raw: DatabaseSync, sql: string, values: SQLInputValue[] = []): StmtPort {
-  return {
+  const stmt: StmtPort = {
     bind: (...next: unknown[]) => statement(raw, sql, next as SQLInputValue[]),
     first: async <T>() => (raw.prepare(sql).get(...values) ?? null) as T | null,
     all: async <T>() => ({ results: raw.prepare(sql).all(...values) as T[] }),
     run: async () => ({ meta: { changes: Number(raw.prepare(sql).run(...values).changes) } }),
   };
+  bound.set(stmt, { sql, values });
+  return stmt;
 }
 
 export function createTestDb(): TestDb {
@@ -30,11 +35,17 @@ export function createTestDb(): TestDb {
   }
   const db: DbPort = {
     prepare: (sql) => statement(raw, sql),
+    // 本物の D1 の batch は 1 つの単位で動き、ほかの要求が間に入らない。
+    // ここでも await を挟まずに続けて実行する（挟むと同時の batch がトランザクションの中で重なる）
     batch: async (statements) => {
       raw.exec("BEGIN");
       try {
         const results = [];
-        for (const stmt of statements) results.push(await stmt.all());
+        for (const stmt of statements) {
+          const entry = bound.get(stmt);
+          if (entry === undefined) throw new Error("このテスト用の D1 で作った文ではない");
+          results.push({ results: raw.prepare(entry.sql).all(...entry.values) });
+        }
         raw.exec("COMMIT");
         return results;
       } catch (error) {
