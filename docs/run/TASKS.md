@@ -19,7 +19,8 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 | 10 | T09・T10 架空圃場・合成写真 | 本人（対話） | — |
 | 11 | T06 `photo-groups.ts`（L1） | 本人 | 可 |
 | 12 | T12 `status-reason.ts`（L1） | 本人 | 可 |
-| 13〜 | T07・T13・T14・T15・T16（L6・L8） | L0 の後に決める | — |
+| 13 | T18 Worker の土台 | 先輩 | 先輩の指示で無人（11-03） |
+| 14〜 | T07・T13・T14・T15・T16（L6・L8） | L0 の後に決める | — |
 
 ---
 
@@ -87,3 +88,22 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **変えたファイル**: `src/data/fields.json`、`src/data/fields.test.ts`、`scripts/check-safety.mjs`（一覧が無ければ止める）
 - **テスト**: `src/data/fields.test.ts`。**9 件**
 - **合格条件（11-03 本人決定）**: 12 圃場、4列×3行、**北西から横に** A-01〜A-12、**行ごとに北地区・中地区・南地区**、**名前は地区の頭の字と列の番号**（例 北の1）。座標は `FICTIONAL_AREA` の中、隣の中心は 300〜500m（横 約 415m・縦 約 445m）
+
+## T18 Worker の土台（`worker/`。ルーター・共通の応答・認証の土台）
+- **状態**: RED済み（人、11-03）
+- **依存**: T05（取り込み済み）
+- **変えてよいファイル**: `worker/app.ts`・`router.ts`・`http.ts`・`cookies.ts`・`auth.ts`・`routes.ts`（＋ `docs/run/REPORT.md`、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結）**: `worker/router.test.ts`・`cookies.test.ts`・`cookies-days.test.ts`・`auth.test.ts`・`http.test.ts`・`routes.test.ts`・`app.test.ts`。**114 件**
+- **人が RED で置いたもの（凍結）**: `worker/deps.ts`（型）、`worker/env.ts`（`crypto`・`env` に触る唯一の場所）、`worker/index.ts`（入口）、`worker/test-helpers.ts`、`vitest.config.ts` の `@` の別名、6 ファイルの空の実装、`routes.ts` の経路の表
+- **設計**: Claude Fable 5.1（別のセッション、読み取りだけ、$4.96）。要判断は先輩が決めた（11-03）: D1 のバインディング名は `DB`、Cookie 名は `session`、vitest に `@` の別名、`/api/health` を作る（200 `{ ok: true }` だけ）、末尾スラッシュは 404、未実装の経路は 501、HEAD・OPTIONS は 405
+- **合格条件**:
+  - `/api` と `/api/` で始まらないパスは `deps.assets` の応答をそのまま返す（ヘッダも触らない）
+  - 経路は区切りごとの完全一致と `:name`。正規化しない。404 と 405（`Allow` は表の順、`, ` 区切り）は認証より先
+  - `auth: "none"` の経路は Cookie を読まない（hmac を呼ばない）。member は 401、admin は 401 と 403
+  - 失敗の本文は `{ error }` だけ。未捕捉の例外は 500 `{ error: "internal" }` で `console.error` に残す
+  - API の応答には、無いときだけ `Cache-Control: no-store` と `X-Content-Type-Options: nosniff`
+  - Cookie の `Max-Age` は `SESSION_DAYS` から計算する
+  - `nowMs` はミリ秒。秒に直すのは `auth.ts` だけ
+- **書き方の注意（`scripts/cage/policy.mjs`）**: `Response.json()` は使わず `new Response(JSON.stringify(...))`。`Date.now()`・`crypto` を檻の側で呼ばない（必ず `deps`）。import は `./deps`（型）・`./...`・`@/services/session-token`・`@/config` だけ
+- **担当**: 先輩。先輩の指示で MCP の檻の中で無人運転する（11-03）
+- **申し送り（本人へ）**: `wrangler.jsonc` は本人の側で作る。バインディング名 `DB`・`PHOTOS`・`ASSETS`、Secret `MEMBER_PASSPHRASE`・`ADMIN_PASSPHRASE`・`SESSION_SECRET`。設計の推奨は assets の `run_worker_first: ["/api/*"]`（推測を含む）。画面が自分の役割を知る方法（`X-Role` のヘッダ／200 `{role}`／`GET /api/session`）は次のパケットの前に決める
