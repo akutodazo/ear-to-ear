@@ -41,16 +41,18 @@ export const patchAssignment: Handler = async (request, ctx) => {
     return errorResponse(status, status === 413 ? "payload_too_large" : status === 422 ? "unprocessable" : "bad_request");
   }
 
-  // 無い写真なら、batch はどの行にも当たらず（履歴も書かない）、後の読み直しで 404
+  // 無い写真なら、batch はどの行にも当たらず（履歴も書かない）、読み直しが空で 404。
+  // 読み直しも同じ batch に入れる（外で読むと、同時に来た別の番号の結果を返してしまう。PR #79 のレビュー #1）
   const photoId = ctx.params.id;
   const actor = requireSession(ctx).device;
   const nowIso = new Date(deps.nowMs()).toISOString();
-  await deps.db.batch([
+  const results = await deps.db.batch([
     deps.db.prepare(INSERT_HISTORY_SQL).bind(body.fieldId, actor, nowIso, photoId, body.fieldId),
     deps.db.prepare(UPDATE_PHOTO_SQL).bind(body.fieldId, nowIso, photoId, body.fieldId),
+    deps.db.prepare(SELECT_PHOTO_SQL).bind(photoId),
   ]);
 
-  const row = await deps.db.prepare(SELECT_PHOTO_SQL).bind(photoId).first<PhotoListRow>();
-  if (row === null) return errorResponse(404, "not_found");
+  const row = (results[2] as { results?: PhotoListRow[] } | undefined)?.results?.[0];
+  if (row === undefined) return errorResponse(404, "not_found");
   return json(200, photoFromRow(row));
 };
