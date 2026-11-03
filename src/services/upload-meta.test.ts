@@ -155,3 +155,12 @@ describe("許可していない項目（K6）", () => {
     expect(reasonOf(body)).toBe("bad_candidates");
   });
 });
+
+describe("必須の項目", () => {
+  it.each(["contentHash", "takenAt", "takenAtSource", "candidateFieldIds"] as const)(
+    "%s が無ければ missing_key",
+    (key) => {
+      expect(reasonOf(without(key))).toBe("missing_key");
+    },
+  );
+});
