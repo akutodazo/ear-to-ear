@@ -13,10 +13,14 @@ export type PreparedCheck =
   | { kind: "metadata"; apps: number[] };
 
 export function checkPreparedJpeg(bytes: Uint8Array, inspect: InspectJpeg, maxBytes: number): PreparedCheck {
-  void bytes;
-  void inspect;
-  void maxBytes;
-  throw new Error("not implemented");
+  if (bytes.length > maxBytes) return { kind: "too-large" };
+  let apps: number[];
+  try {
+    apps = inspect(bytes).appSegments;
+  } catch {
+    return { kind: "unreadable" };
+  }
+  return apps.length > 0 ? { kind: "metadata", apps } : { kind: "ok" };
 }
 
 /**
@@ -64,9 +68,12 @@ export async function prepareJpeg(
   maxBytes: number,
   inspect: InspectJpeg,
 ): Promise<PrepareResult> {
-  void encode;
-  void qualities;
-  void maxBytes;
-  void inspect;
-  throw new Error("not implemented");
+  for (const quality of qualities) {
+    const stripped = stripAppSegments(await encode(quality));
+    if (stripped === null) return { ok: false, reason: "unreadable" };
+    const check = checkPreparedJpeg(stripped, inspect, maxBytes);
+    if (check.kind === "ok") return { ok: true, bytes: stripped };
+    if (check.kind !== "too-large") return { ok: false, reason: check.kind };
+  }
+  return { ok: false, reason: "too-large" };
 }
