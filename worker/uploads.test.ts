@@ -5,7 +5,7 @@ import { handleRequest } from "./app";
 import type { DbPort, Deps } from "./deps";
 import { createTestBucket, type TestBucket } from "./test-bucket";
 import { createTestDb, type TestDb } from "./test-db";
-import { fakeDeps, multipartRequest, NOW_MS, sessionToken, tinyJpeg, type MultipartPart } from "./test-helpers";
+import { fakeDeps, multipartBody, multipartRequest, NOW_MS, sessionToken, tinyJpeg, type MultipartPart } from "./test-helpers";
 
 const ID = "00000000-0000-4000-8000-000000000001";
 const HASH = "ab".repeat(32);
@@ -152,6 +152,20 @@ describe("POST /api/uploads 保存できる", () => {
     const image = tinyJpeg({ scanBytes: MAX_UPLOAD_BYTES - base + 2 });
     expect(image.byteLength).toBe(MAX_UPLOAD_BYTES);
     expect((await upload(deps, { image })).status).toBe(201);
+  });
+
+  it("画像がちょうど MAX_UPLOAD_BYTES で、本当の content-length が付いていても 201（ブラウザは付ける。人の確認で足した）", async () => {
+    const { deps } = setup();
+    const base = tinyJpeg().byteLength;
+    const parts: MultipartPart[] = [
+      { name: "image", value: tinyJpeg({ scanBytes: MAX_UPLOAD_BYTES - base + 2 }) },
+      { name: "meta", value: JSON.stringify(META) },
+    ];
+    const length = multipartBody(parts).byteLength;
+    expect(length).toBeGreaterThan(MAX_UPLOAD_BYTES);
+    const req = multipartRequest(parts, { cookie: await cookie(), headers: { "content-length": String(length) } });
+    expect(req.headers.get("content-length")).toBe(String(length));
+    expect((await handleRequest(req, deps)).status).toBe(201);
   });
 
   it("ブラウザと同じ FormData の要求でも 201", async () => {
