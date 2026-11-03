@@ -22,6 +22,8 @@ export interface UploadedPhoto {
   id: string;
   /** 確定済みの番号。未確定は null */
   fieldId: string | null;
+  /** 委員が選んだ番号。確定ではない。選ばなければ null */
+  chosenFieldId: string | null;
   state: AssignmentState;
   /** 近い順、最大3。距離は持たない（K6） */
   candidateFieldIds: string[];
