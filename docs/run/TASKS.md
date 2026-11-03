@@ -230,3 +230,20 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **書き方の注意（`scripts/cage/policy.mjs`）**: import は Service が `@/config`・`@/types`、worker が `@/services/...`・`./...`。`Response.json()` を使わず `http.ts` の `json()`・`errorResponse()`
 - **参照**: `docs/spec.md` §6、`docs/privacy.md`
 - **担当**: 先輩
+
+## T06 `photo-groups.ts`（圃場ページの写真を撮影日ごとにまとめる。L1）
+- **状態**: RED済み（人、11-03 夜）。攻撃役と凍結はまだ（先輩がハーネスを少し変えるので、変わった手順で行う）
+- **運転の予定**: 11-04、MCP の檻（Service だけのパケット、11-03 決定①）。手順は本人の手元の `手順_檻の運転_本人PC_20261103.md`
+- **依存**: なし（`@/types` の `UploadedPhoto` だけ）
+- **変えてよいファイル**: `src/services/photo-groups.ts` のみ（＋ `docs/run/REPORT-T06.md`、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結の予定）**: `src/services/photo-groups.test.ts`（13 件）
+- **人が RED で置いたもの**: `PhotoGroup` の型（`takenAt: string | null`・`photos: UploadedPhoto[]`）と空の関数 `groupFieldPhotos(photos, fieldId)`。共有ファイルは変えていない
+- **RED の確かめ**: 13 件すべてが not implemented で落ちる。仮の実装で 13 件が通り、檻の純粋関数の検査も通ることを確かめてから空に戻した。lint・型・安全検査はそれぞれ単独で通る
+- **並び（11-03 本人決定）**: 撮影日の新しい日が先、日付不明（`takenAt: null`）はいちばん後ろの別枠。同じ日の中は送った時刻（`uploadedAt`）の新しい順、同じ時刻なら id の大きい順
+- **合格条件**:
+  - 出すのは `state === "confirmed"` かつ `fieldId === 引数` の写真だけ（完全一致。大文字小文字・空白を区別）。未確定は、候補・委員が選んだ番号・矛盾した `fieldId` があっても出さない
+  - 同じ撮影日は 1 つの枠。空の枠を作らない。該当が無ければ `[]`
+  - 枠の項目は `takenAt` と `photos` の 2 つだけ。写真はそのままのものを入れる（写しを作らない）。元の配列と写真は変えない
+  - 例外を出さない。`console`・`Date`・`crypto` を使わない
+- **書き方の注意（`scripts/cage/policy.mjs`）**: import は `@/types` だけ
+- **担当**: 本人
