@@ -69,6 +69,9 @@ for (const f of files) {
   }
 }
 
+// 座標の検査は圃場の一覧だけを見るので、一覧が無いと何も確かめずに通ってしまう（PR #39 のレビュー #6）
+if (!files.includes(FIELDS_PATH)) hits.push(`${FIELDS_PATH}  ← 圃場の一覧が無い（座標の検査ができない）`);
+
 console.log(`check:safety: ${files.length} ファイルを確認`);
 if (hits.length > 0) {
   console.error("check:safety: 入れてはいけないものがあります（値は表示しません）");
