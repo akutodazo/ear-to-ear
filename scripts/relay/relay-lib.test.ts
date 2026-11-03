@@ -5,6 +5,8 @@ import {
   checksFor,
   costFromStream,
   isFrozenPath,
+  isRunning,
+  joinNotices,
   isPlainRelativePath,
   isUnknownFailure,
   ledgerTotal,
@@ -18,6 +20,7 @@ import {
   reportBlocks,
   statusLine,
   tooManyWakes,
+  unseenStatus,
   validateQueue,
 } from "./relay-lib";
 
@@ -59,6 +62,11 @@ describe("isFrozenPath", () => {
     ".dev.vars",
     "worker/.env.local",
     "private/fixtures/a.jpg",
+    ".github/workflows/ci.yml",
+    ".gitattributes",
+    "wrangler.jsonc",
+    "next.config.ts",
+    "public/demo/a.jpg",
   ])("%s は凍結・共有・秘密", (path) => {
     expect(isFrozenPath(path)).toBe(true);
   });
@@ -368,7 +376,9 @@ describe("statusLine・notifyText", () => {
   });
 
   it("ask・stopped・列車の停止と終了だけを通知し、green は通知しない", () => {
-    expect(notifyText({ packet: "T22", state: "ask", reason: "ask" })).toContain("T22 を飛ばして続けて");
+    // 返事で列車を起動させない（PR #88 のレビュー #1）
+    expect(notifyText({ packet: "T22", state: "ask", reason: "ask" })).toBe("T22 停止: 質問あり（他は続行）。止めるなら「止めて」");
+    expect(notifyText({ packet: "T22", state: "ask", reason: "ask" })).not.toContain("続けて」");
     expect(notifyText({ packet: "T06", state: "stopped", reason: "check" })).toBe("T06 停止: check。他は続行");
     expect(notifyText({ packet: null, state: "train", reason: "budget" })).toBe("列車停止: budget");
     expect(notifyText({ packet: null, state: "train", reason: "done" }, { green: 2, ask: 1, stopped: 0, usd: 2.1 })).toBe(
@@ -400,5 +410,50 @@ describe("tooManyWakes", () => {
   it("パケット数 + 3 を超えたら止める", () => {
     expect(tooManyWakes(6, 3)).toBe(false);
     expect(tooManyWakes(7, 3)).toBe(true);
+  });
+});
+
+describe("unseenStatus・joinNotices（PR #88 のレビュー #2）", () => {
+  const lines = [
+    '{"seq":1,"packet":"T22","state":"green","reason":"done"}',
+    '{"seq":2,"packet":"T23","state":"stopped","reason":"check"}',
+    "broken",
+    '{"seq":3,"packet":"T24","state":"skipped","reason":"dep"}',
+    '{"seq":4,"packet":null,"state":"train","reason":"C:/Users/x"}',
+    "",
+  ];
+
+  it("見ていない行だけを、壊れた行と知らない理由を飛ばして返す", () => {
+    expect(unseenStatus(lines, 1)).toEqual({
+      lastSeq: 3,
+      entries: [
+        { seq: 2, packet: "T23", state: "stopped", reason: "check" },
+        { seq: 3, packet: "T24", state: "skipped", reason: "dep" },
+      ],
+    });
+    expect(unseenStatus(lines, 3)).toEqual({ lastSeq: 3, entries: [] });
+  });
+
+  it("続けて止まった 2 本を取りこぼさない（1 通にまとめる）", () => {
+    const entries = unseenStatus(lines, 0).entries;
+    const texts = entries.map((e) => notifyText(e)).filter((x): x is string => x !== null);
+    expect(joinNotices(texts)).toBe("T23 停止: check。他は続行");
+  });
+
+  it("200 字を超えたら末尾を「…」にする。空なら null", () => {
+    expect(joinNotices([])).toBeNull();
+    const long = joinNotices(Array.from({ length: 20 }, (_, i) => `T${i} 停止: check。他は続行`));
+    expect(long?.length).toBe(200);
+    expect(long?.endsWith("…")).toBe(true);
+  });
+});
+
+describe("isRunning（PR #88 のレビュー #1）", () => {
+  it("印のプロセスが生きていれば走っている", () => {
+    expect(isRunning({ pid: 42 }, () => true)).toBe(true);
+    expect(isRunning({ pid: 42 }, () => false)).toBe(false);
+    expect(isRunning(null, () => true)).toBe(false);
+    expect(isRunning({ pid: "42" }, () => true)).toBe(false);
+    expect(isRunning({ pid: 0 }, () => true)).toBe(false);
   });
 });
