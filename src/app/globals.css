@@ -334,3 +334,11 @@ a:focus-visible {
   opacity: 1;
   cursor: progress;
 }
+
+/* 折り返すときに最後の1文字だけが次の行に残らないように */
+.balance {
+  margin: 0;
+  text-wrap: balance;
+  /* 日本語を文節で折り返す（対応していないブラウザは今までどおり） */
+  word-break: auto-phrase;
+}
