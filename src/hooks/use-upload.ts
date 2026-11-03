@@ -23,8 +23,8 @@ import {
 
 const fields: Field[] = fieldsData;
 
-/** unusable は画像として開けない写真（送る数に入れない） */
-export type ItemStatus = "reading" | "ready" | "sending" | "sent" | "failed" | "unusable";
+/** unusable は画像として開けない写真（送る数に入れない）。duplicate は同じ写真がもう送られていた（送り済みと同じ扱い） */
+export type ItemStatus = "reading" | "ready" | "sending" | "sent" | "duplicate" | "failed" | "unusable";
 
 export interface UploadItem {
   key: string;
@@ -55,6 +55,11 @@ function candidatesFor(info: PhotoInfo): UploadItem["candidates"] {
     const field = fields.find((f) => f.id === fieldId);
     return { fieldId, meters: field ? distanceMeters(position, field) : 0 };
   });
+}
+
+/** 送り終わった写真（同じ写真がもう送られていたものを含む） */
+function isDone(item: UploadItem): boolean {
+  return item.status === "sent" || item.status === "duplicate";
 }
 
 /** 送れる写真（読み取りが済んで、まだ送れていないもの） */
@@ -164,7 +169,8 @@ export function useUpload(repository?: IPhotoRepository) {
       });
       const outcome = await repo.upload(prepared.image, meta);
       const sent = outcome.kind === "created" || outcome.kind === "duplicate";
-      update(item.key, { status: sent ? "sent" : "failed", message: uploadOutcomeLabel(outcome) });
+      const status: ItemStatus = outcome.kind === "duplicate" ? "duplicate" : sent ? "sent" : "failed";
+      update(item.key, { status, message: uploadOutcomeLabel(outcome) });
       if (outcome.kind === "unauthorized") return "unauthorized";
       return sent ? "ok" : "failed";
     },
@@ -213,13 +219,13 @@ export function useUpload(repository?: IPhotoRepository) {
   /** 送った写真を片付けて、続けて選べるようにする */
   const clearSent = useCallback(() => {
     for (const item of items) {
-      if (item.status !== "sent") continue;
+      if (!isDone(item)) continue;
       filesByKey.current.delete(item.key);
       const url = urlsByKey.current.get(item.key);
       if (url) URL.revokeObjectURL(url);
       urlsByKey.current.delete(item.key);
     }
-    setItems((current) => current.filter((item) => item.status !== "sent"));
+    setItems((current) => current.filter((item) => !isDone(item)));
     setFinished(false);
   }, [items]);
 
@@ -227,6 +233,7 @@ export function useUpload(repository?: IPhotoRepository) {
   const summary = finished
     ? sendSummaryLabel({
         sent: items.filter((i) => i.status === "sent").length,
+        duplicate: items.filter((i) => i.status === "duplicate").length,
         failed: items.filter((i) => i.status === "failed").length,
       })
     : null;

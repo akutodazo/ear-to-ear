@@ -17,7 +17,7 @@ export function PhotoCard({
   onChoose: (key: string, fieldId: string | null) => void;
   onRemove: (key: string) => void;
 }) {
-  const locked = disabled || item.status === "sending" || item.status === "sent";
+  const locked = disabled || item.status === "sending" || item.status === "sent" || item.status === "duplicate";
   const unusable = item.status === "unusable";
   const candidates = candidateSummary(item.candidates);
   return (
@@ -64,7 +64,11 @@ export function PhotoCard({
         {item.message && (
           <p
             className={
-              item.status === "sent" ? "note note-ok" : item.status === "sending" ? "note" : "note note-alert"
+              item.status === "sent"
+                ? "note note-ok"
+                : item.status === "sending" || item.status === "duplicate"
+                  ? "note"
+                  : "note note-alert"
             }
           >
             {item.message}

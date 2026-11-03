@@ -54,7 +54,14 @@ export function UploadClient() {
 
       {upload.summary && (
         <div ref={summaryRef} className="panel panel-ok stack">
-          <p className="label">{upload.summary}</p>
+          {/* 文ごとに行を分ける（途中で折れて読みにくくならないように） */}
+          <div className="stack-tight">
+            {upload.summary.split("。").map((sentence) => (
+              <p key={sentence} className="label balance">
+                {sentence}
+              </p>
+            ))}
+          </div>
           <Link className="button button-primary" href="/recent">
             新着を見る
           </Link>

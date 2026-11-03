@@ -3,8 +3,8 @@
  * 純粋関数。撮影位置はこの関数の外（サーバー）に出さない。戻り値は番号だけで距離は含めない（K6）。
  * 距離はハバーサイン。画面の「A-03（約120m）」用の距離は distanceMeters で別に出す。
  */
-import { MAX_CANDIDATES } from "../config";
-import type { Field } from "../types";
+import { MAX_CANDIDATES } from "@/config";
+import type { Field } from "@/types";
 
 /** 緯度・経度（度） */
 export interface LatLng {

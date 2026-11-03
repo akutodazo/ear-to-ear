@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import fieldsData from "../data/fields.json";
-import type { Field } from "../types";
-import { candidateFieldIds } from "../services/candidates";
-import { buildUploadMeta } from "../services/upload-request";
+import fieldsData from "@/data/fields.json";
+import type { Field } from "@/types";
+import { candidateFieldIds } from "@/services/candidates";
+import { buildUploadMeta } from "@/services/upload-request";
 import { PHOTO_INFO_HEAD_BYTES, readPhotoInfo } from "./upload-steps";
 
 // テストの写真はここでバイト列を組み立てる（画像ファイルはコミットしない）。座標は架空の範囲の中（A-06 のすぐ近く）
