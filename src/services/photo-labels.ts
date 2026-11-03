@@ -18,6 +18,20 @@ export function candidateLabel(fieldId: string, meters: number): string {
   return `${fieldId}（${distanceLabel(meters)}）`;
 }
 
+/** 候補の出し方。一番近い候補だけ距離つき（例 A-06（約50m））、ほかは番号だけ（例 A-07・A-02）。無ければ null */
+export function candidateSummary(
+  candidates: { fieldId: string; meters: number }[],
+): { primary: string; others: string | null } | null {
+  void candidates;
+  throw new Error("not implemented");
+}
+
+/** 送り終わった後のまとめ（例 3枚送りました。1枚は送れませんでした）。どちらも 0 なら null */
+export function sendSummaryLabel(counts: { sent: number; failed: number }): string | null {
+  void counts;
+  throw new Error("not implemented");
+}
+
 /** 撮影日の表示（例 2026年7月21日）。不明は「日付不明」（推測しない） */
 export function takenAtLabel(takenAt: string | null): string {
   if (takenAt === null) return "日付不明";
