@@ -35,6 +35,19 @@ export interface UploadedPhoto {
   uploaderDevice: string;
 }
 
+/** POST /api/uploads の meta（docs/spec.md §6）。距離・座標は持たない（K6） */
+export interface UploadMeta {
+  /** 元ファイルの SHA-256（小文字の16進64桁） */
+  contentHash: string;
+  /** 'YYYY-MM-DD'（日本時間）。不明は null */
+  takenAt: string | null;
+  takenAtSource: TakenAtSource;
+  /** 近い順、最大3。距離は持たない（K6） */
+  candidateFieldIds: string[];
+  /** 委員が選んだ番号。選ばなければ null。あっても state は unconfirmed */
+  chosenFieldId: string | null;
+}
+
 /** 番号の確定・訂正の履歴（L0） */
 export interface AssignmentEvent {
   photoId: string;
