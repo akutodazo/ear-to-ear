@@ -1,0 +1,52 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run check)",
+      "Bash(npm run check:safety)",
+      "Bash(npm run lint)",
+      "Bash(npm run typecheck)",
+      "Bash(npm run test)",
+      "Bash(npm run build)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npx eslint src)",
+      "Bash(node scripts/check-safety.mjs)",
+      "Bash(node scripts/make-fixtures.mjs)",
+      "Bash(node --check *)",
+      "Bash(git fetch *)",
+      "Bash(git pull)",
+      "Bash(git switch *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr merge * --squash --auto)",
+      "Bash(gh pr edit *)",
+      "Bash(gh issue create *)",
+      "mcp__ccd_pr__get_status",
+      "mcp__ccd_session_mgmt__list_events",
+      "mcp__Claude_Browser__read_console_messages",
+      "mcp__Claude_Browser__read_network_requests",
+      "mcp__Claude_Browser__get_page_text",
+      "mcp__Claude_Browser__read_page",
+      "mcp__Claude_Browser__find"
+    ],
+    "deny": [
+      "Bash(git push * main)",
+      "Bash(git push * main:*)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(npx wrangler deploy*)",
+      "PowerShell(npx wrangler deploy*)",
+      "Bash(npx wrangler secret*)",
+      "PowerShell(npx wrangler secret*)",
+      "Bash(npx wrangler d1 * --remote*)",
+      "PowerShell(npx wrangler d1 * --remote*)",
+      "Bash(npx wrangler r2 * --remote*)",
+      "PowerShell(npx wrangler r2 * --remote*)",
+      "Read(//c/Users/<ユーザー名>/<作業フォルダの親>/**/.dev.vars)",
+      "Read(//c/Users/<ユーザー名>/<作業フォルダの親>/**/.dev.vars.*)",
+      "Read(//c/Users/<ユーザー名>/<作業フォルダの親>/**/.env*)",
+      "Read(//c/Users/<ユーザー名>/<ear-to-ear の置き場所>/private/**)"
+    ]
+  }
+}
