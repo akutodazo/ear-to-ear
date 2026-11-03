@@ -217,6 +217,10 @@ describe("findSecretLikeLines（秘密らしい文字列）", () => {
     expect(findSecretLikeLines(text)).toEqual([]);
   });
 
+  it("文書の中のコード（バッククォート）は、閉じる所までを値として数える", () => {
+    expect(findSecretLikeLines(`例: \`${MEMBER_NAME}=abc\`（3文字）は止めない`)).toEqual([]);
+  });
+
   it("値は8文字から止める（7文字は止めない）", () => {
     expect(findSecretLikeLines(`${MEMBER_NAME}=abcdefg`)).toEqual([]);
     expect(findSecretLikeLines(`${MEMBER_NAME}=abcdefgh`)).toEqual([{ line: 1, kind: "secret-assignment" }]);
