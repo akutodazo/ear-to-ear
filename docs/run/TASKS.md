@@ -232,7 +232,10 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **担当**: 先輩
 
 ## T23 `DELETE /api/status-events/:id`（判断の取り消し。委員以上、L1）
-- **状態**: RED 凍結（11-04）。GREEN は檻リレーで無人
+- **状態**: 検査済み・人の確認待ち（11-04）
+- **運転の記録（檻リレー v0.6 の 2 本目、1104 の列車）**: START `3949c30` → GREEN `86518ab` → REPORT `05e317d`。モデル Opus、`claude -p`、道具は檻の5つだけ、15 手、$0.51。ゲート G0〜G7 は green。変更は許可した 2 ファイルだけ。QUESTIONS なし。C1〜C5 合格（C3 66 件、C4 テスト全体 1420 件、lint エラー 0・警告 2）。REPORT に手元のパスなし。watch.mjs の「列車終了: GREEN 1／ask 0／stopped 0、$0.51」をこのセッションから PushNotification でスマホに送った
+- **Claude の確認（11-04、人の確認の前）**: 実装を 10 通りに壊して 10 通りとも落ちる（取り消し済みの条件を外す 3 件・時刻の固定 1・先頭の 0 を許す 5・安全な整数の上限を外す 3・要素の型を見ない 2・例外に中身 2・revokedAt を返さない 4・reasons を空 9・読んでから書く 2 文 1・id を確かめずに D1 へ 7）。手元の `wrangler dev`（使い捨ての値と、使い捨ての置き場の D1）で、Cookie なし 401、委員で 200 と 9 項目、もう一度 404、999・abc・01 は 404、GET は 405 Allow: DELETE、すべて no-store、同時 2 本は 200 と 404、表は行が残り revoked_at が入った
+- **人の確認**: まだ（先輩が差分を読んでからマージ。CLAUDE.md の無人運転の PR の例外）
 - **Issue**: #89
 - **依存**: T11（`field_status_events`）、T18（土台）。T12（`status-reason`、本人）には依存しない
 - **変えてよいファイル**: `src/services/status-events.ts`・`worker/status-events.ts`（＋ `docs/run/REPORT-T23.md`、止まったときは `docs/run/QUESTIONS.md`）
