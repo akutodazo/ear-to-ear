@@ -94,10 +94,11 @@ worktree は **パケットごと** `<ホーム>\dev\ear-train\Txx`（1 つを�
 
 ## 4. 通知（人に聞くものだけ）
 経路（未検証の段が 4 つ: watch の終了 → 通知係 → PushNotification → Remote Control → スマホ）。**試運転 A の合格条件に「スマホで実際に受信した」を入れ、届くまでの秒数を記録する**。届かなくても列車は進む（損失は小さい）ので、12:00・15:00 の人の目視を下限にする。
+**通知を待つ間はスマホの Claude アプリを閉じておく**（11-04 実測: アプリを前面に開いていると、PushNotification が「Mobile push requested」と返っても通知が出ない。ホーム画面にしておくと届いた。PC 側の通知設定は既定のバナーのままでよい）。PC 側から言える段は「送った」まで（`PushNotification` → Remote Control）。スマホの表示までの段は人の受信で確かめる。
 
 通知係: デスクトップアプリの対話セッション 1 本（Sonnet）。本体のチェックアウトで:
 ```
-claude --model sonnet --add-dir %LOCALAPPDATA%\ear-train --allowedTools "Bash(node scripts/relay/run-day.mjs --today *),Bash(node scripts/relay/watch.mjs),Bash(node scripts/relay/stop.mjs),PushNotification" --disallowedTools "Read,Grep,Glob,Edit,Write,WebFetch,WebSearch,Agent,Workflow,Bash(git *),Bash(type *),Bash(cat *)"
+claude --model sonnet --add-dir %USERPROFILE%\dev\ear-train\ops --allowedTools "Bash(node scripts/relay/run-day.mjs --today *),Bash(node scripts/relay/watch.mjs),Bash(node scripts/relay/stop.mjs),PushNotification" --disallowedTools "Read,Grep,Glob,Edit,Write,WebFetch,WebSearch,Agent,Workflow,Bash(git *),Bash(type *),Bash(cat *)"
 ```
 → `/remote-control` → `/config` で「Push when actions required」ON、予測・要約・アイドル圧縮 OFF、`CLAUDE_CODE_GOAL_CHECKIN_MINUTES=0`。スマホの Claude アプリを一度開く（「No mobile registered」対策）。朝に watch.mjs を 1 回手で動かし、権限の問いが出ないのを見てから離れる。
 
