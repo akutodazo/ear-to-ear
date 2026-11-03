@@ -131,7 +131,9 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **申し送り（本人へ）**: `wrangler.jsonc` は本人の側で作る。バインディング名 `DB`・`PHOTOS`・`ASSETS`、Secret `MEMBER_PASSPHRASE`・`ADMIN_PASSPHRASE`・`SESSION_SECRET`。設計の推奨は assets の `run_worker_first: ["/api/*"]`（推測を含む）。画面が自分の役割を知る方法（`X-Role` のヘッダ／200 `{role}`／`GET /api/session`）は次のパケットの前に決める
 
 ## T19 `POST /api/session` と `GET /api/session`（合言葉 → Cookie、失敗は 10 分に 5 回まで、役割）
-- **状態**: RED・攻撃役まで（11-03）。無人運転はこの後
+- **状態**: 検査済み・人の確認待ち（11-03）
+- **運転の記録（試験4、MCP の檻）**: START `cd75d0d` → GREEN `e9cda9e` → REPORT `ef13a71`。モデル Opus 5.5、`claude -p`、道具は檻の5つだけ、26手、$0.63。**C1〜C5 がすべて合格**。変更は許可した3ファイルだけ。REPORT の手元のパスは、push の前に REPORT のコミットそのものを伏せた版に入れ直した（T18 のように途中のコミットに残らない）
+- **人の確認**: 本体のチェックアウトで C1・C3（173 件）・C4（テスト全体 923 件、lint エラー 0・警告 2）・C5 が合格。実装を 13 通りに壊して 13 通りとも落ちる（上限の境界・Retry-After の切り捨て・枠の単位・日本時間の日付・415 を飛ばす・X-Forwarded-For・429 でも照合・数えない・合言葉を削る・他のキーを許す・GET が端末 ID を返す・content-length を見ない・IP なしで空文字）。手元の `wrangler dev`（本物の `wrangler.jsonc`、使い捨ての値と D1）で 415・400・401×5・6 回目は正しい合言葉でも 429 と `Retry-After`・204 と Cookie・`GET` 200 `{"role":"admin"}`・Cookie なしの `GET` 401・`DELETE` 405 `Allow: POST, GET` を確認。D1 の key は 43 文字のハッシュで、生の IP は無い。手元では送り手が付けた `CF-Connecting-IP` がそのまま通った（本番は Cloudflare が付け直す。dev で確かめる）
 - **Issue**: #54
 - **依存**: T18（取り込み済み）、T11（`usage_counters`）、T05（`issueSessionToken`）
 - **変えてよいファイル**: `src/services/usage-limit.ts`・`src/services/session-request.ts`・`worker/session.ts`（＋ `docs/run/REPORT.md`、止まったときは `docs/run/QUESTIONS.md`）
