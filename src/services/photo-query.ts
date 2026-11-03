@@ -80,3 +80,13 @@ export function photoFromRow(row: PhotoListRow): UploadedPhoto {
     uploaderDevice: row.uploader_device,
   };
 }
+
+/**
+ * ?fieldId= の値（GET /api/photos、T22）。圃場の一覧にある番号ならそのまま、それ以外（null・空・一覧に無い）は null。
+ * 大文字小文字・前後の空白は直さない。例外は出さない
+ */
+export function parseFieldIdQuery(raw: string | null, knownFieldIds: ReadonlySet<string>): string | null {
+  void raw;
+  void knownFieldIds;
+  throw new Error("not implemented");
+}

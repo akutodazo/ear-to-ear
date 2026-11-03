@@ -6,7 +6,7 @@ import { patchAssignment } from "./assignment";
 import type { Route } from "./deps";
 import { errorResponse, json } from "./http";
 import { getPhotoFile } from "./photo-files";
-import { getRecentPhotos } from "./photos";
+import { getPhotosByField, getRecentPhotos } from "./photos";
 import { getSession, postSession } from "./session";
 import { postUploads } from "./uploads";
 
@@ -24,7 +24,7 @@ export const routes: readonly Route[] = [
   { method: "GET", pattern: "/api/health", auth: "none", handler: health },
   { method: "POST", pattern: "/api/session", auth: "none", handler: postSession },
   { method: "POST", pattern: "/api/uploads", auth: "member", handler: postUploads },
-  { method: "GET", pattern: "/api/photos", auth: "none", handler: notImplemented },
+  { method: "GET", pattern: "/api/photos", auth: "none", handler: getPhotosByField },
   { method: "GET", pattern: "/api/photos/recent", auth: "none", handler: getRecentPhotos },
   { method: "GET", pattern: "/api/photo-files/:id", auth: "none", handler: getPhotoFile },
   { method: "PATCH", pattern: "/api/photos/:id/assignment", auth: "admin", handler: patchAssignment },
