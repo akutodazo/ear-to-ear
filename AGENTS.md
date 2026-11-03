@@ -59,11 +59,12 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Next.js は版で作法が変わる。**書く前に `node_modules/next/dist/docs/` の該当ガイドを読む**
 - 言葉を盛らない。推定は推定と書く。水分・収穫の可否を Claude に言わせない
 
-## 5. 無人運転のとき（`/goal` で動いているとき。本人のパケットだけ）
-決まりの全文は本人の手元のハーネス設計（v0.4）。リポジトリ側で守ること:
-- 扱うのは `/goal` で名指しされた **1パケット**だけ（`docs/run/TASKS.md`）。無人で行うのは **実装（GREEN）だけ**。テストは人が書く
-- 変えてよいのは TASKS の「変えてよいファイル」と `docs/run/REPORT.md`・`docs/run/QUESTIONS.md` だけ。**凍結ファイル**（`*.test.ts`、`tests/**`、`src/types/**`、`src/config.ts`、`vitest.config.*`、`package.json`、`package-lock.json`、`tsconfig*.json`、`eslint.config.*`、`.gitignore`、`.claude/**`、`AGENTS.md`、`CLAUDE.md`、`scripts/**`、`docs/run/TASKS.md`）は変えない
-- テストが誤りに見えても直さない。仕様外の判断・対象外の変更・権限で止められた・検査が不合格のときは `QUESTIONS.md` に「何が起きたか・選択肢・推奨」を書いて止まる。直して検査を回し直さない
+## 5. 無人運転のとき（`/goal` か MCP の檻で動いているとき。本人・先輩どちらのパケットも）
+決まりの全文は本人の手元のハーネス設計（v0.5、11-03）。流れ: 設計（必要なら Fable）→ RED（人）→ 攻撃役（凍結の前、`docs/dev/test-attack.md`）→ 凍結 → 無人の GREEN → C1〜C5 → 人の確認 → 別のセッションのレビュー → PR。道具はパケットで選ぶ: Service だけのパケットは檻（`docs/dev/cage.md`）、画面・`src/lib`・ブラウザの API を使うものは `/goal`（手元の deny・push 先の無効化・pre-push フック）。どちらでも秘密を外す。リポジトリ側で守ること:
+- 扱うのは `/goal`（檻では `claude -p` の指示）で名指しされた **1パケット**だけ（`docs/run/TASKS.md`）。無人で行うのは **実装（GREEN）だけ**。テストは人が書く
+- 変えてよいのは TASKS の「変えてよいファイル」と `docs/run/REPORT-Txx.md`（パケットごと。前の運転の REPORT を上書きしない）・`docs/run/QUESTIONS.md` だけ。**凍結ファイル**（`*.test.ts`、`tests/**`、`src/types/**`、`src/config.ts`、`vitest.config.*`、`package.json`、`package-lock.json`、`tsconfig*.json`、`eslint.config.*`、`.gitignore`、`.claude/**`、`AGENTS.md`、`CLAUDE.md`、`scripts/**`、`docs/run/TASKS.md`）は変えない
+- テストが誤りに見えても直さない。仕様外の判断・対象外の変更・権限で止められた・検査が不合格のときは `QUESTIONS.md` に「何が起きたか・選択肢（2つ以上）・推奨」を書いて止まる（書き方の合格条件は `docs/dev/stop-report.md`）。直して検査を回し直さない
 - push・PR・`gh`・`wrangler`・`npm install`・Secret・デプロイをしない。ブランチを切り替えない。`git reset --hard`・`git stash`・`git checkout -- .`・ファイル削除で変更を消さない
-- GREEN をコミットした後、検査 C1〜C5 を**1回ずつ、他のコマンドとつなげずに**実行し、出力をそのまま会話と `REPORT.md` に貼って「Txx REPORT」でコミットする。「完了」ではなく「検査済み・人の確認待ち」と書く
+- GREEN をコミットした後、検査 C1〜C5 を**1回ずつ、他のコマンドとつなげずに**実行し、出力をそのまま会話と `REPORT-Txx.md` に貼って「Txx REPORT」でコミットする。「完了」ではなく「検査済み・人の確認待ち」と書く
 - **QUESTIONS に書くのは `git status --porcelain --untracked-files=all` の出力のファイル名の列だけ**。差分の中身・ファイルの中身は貼らない。対象外・秘密の疑いのある変更は add・コミット・元に戻し・削除をしない
+- （人）push の前に `REPORT-Txx.md` を読み、手元のパス・秘密が載っていないか確かめる。檻の `report` は今は `docs/run/REPORT.md` に書くので、人が確認のときに `REPORT-Txx.md` へ名前を変える（檻が直るまで）
