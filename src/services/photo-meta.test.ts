@@ -302,3 +302,58 @@ describe("readPhotoMeta: 取れないとき（例外を出さず、位置なし�
     expect(readPhotoMeta(bytes).position).toBeNull();
   });
 });
+
+// ---- PR #50 のレビューを受けて人が足したテスト（実装は変えていない。今後の書き換えで壊れないように） ----
+
+describe("readPhotoMeta: レビューで見つかったテストの穴（PR #50）", () => {
+  it("時差の無い XMP の日時は日本時間とみなす（23:30 は UTC とみなすと翌日になる）", () => {
+    const bytes = jpeg(djiXmp({ "xmp:CreateDate": "2026-07-21T23:30:00" }));
+    expect(readPhotoMeta(bytes).takenAt).toBe("2026-07-21");
+  });
+
+  it("時差の無い EXIF の日時（OffsetTimeOriginal なし）も日本時間とみなす", () => {
+    const bytes = jpeg(exif({ dateTimeOriginal: "2026:07:21 23:30:00" }));
+    expect(readPhotoMeta(bytes)).toMatchObject({ takenAt: "2026-07-21", takenAtSource: "exif" });
+  });
+
+  it("XMP と EXIF の両方に違う日付があれば XMP の日付（11-03 本人決定）", () => {
+    const bytes = jpeg(exif({ dateTimeOriginal: "2026:07:19 08:00:00" }), djiXmp({ "xmp:CreateDate": "2026-07-21T10:00:00" }));
+    expect(readPhotoMeta(bytes)).toMatchObject({ takenAt: "2026-07-21", takenAtSource: "xmp" });
+  });
+
+  it("経度が範囲の外（181）なら位置は null、180 ちょうどは受ける", () => {
+    expect(readPhotoMeta(jpeg(djiXmp({ "drone-dji:GpsLatitude": "41.807", "drone-dji:GpsLongitude": "181" }))).position).toBeNull();
+    expect(readPhotoMeta(jpeg(djiXmp({ "drone-dji:GpsLatitude": "41.807", "drone-dji:GpsLongitude": "180" }))).position).toEqual({
+      lat: 41.807,
+      lng: 180,
+    });
+  });
+
+  it("実在しない日付（2月30日）は不明", () => {
+    const bytes = jpeg(djiXmp({ "xmp:CreateDate": "2026-02-30T10:00:00" }));
+    expect(readPhotoMeta(bytes)).toMatchObject({ takenAt: null, takenAtSource: "none" });
+  });
+
+  it("SOS（画像のデータ）より後ろの XMP は読まない", () => {
+    const after = djiXmp({ "drone-dji:GpsLatitude": "41.807", "drone-dji:GpsLongitude": "144.51" });
+    const bytes = new Uint8Array([...SOI, ...FRAME, ...after, ...EOI]);
+    expect(readPhotoMeta(bytes).position).toBeNull();
+  });
+
+  it("EXIF の位置が壊れていても、日付は使う", () => {
+    const zero: Dms = [
+      [0, 0],
+      [0, 0],
+      [0, 0],
+    ];
+    const bytes = jpeg(
+      exif({ gps: { latRef: "N", lat: zero, lngRef: "E", lng: zero }, dateTimeOriginal: "2026:07:21 10:15:30" }),
+    );
+    expect(readPhotoMeta(bytes)).toEqual({ position: null, takenAt: "2026-07-21", takenAtSource: "exif" });
+  });
+
+  it("EXIF の N/S・E/W の参照が無い（空）なら位置は null", () => {
+    const bytes = jpeg(exif({ gps: { latRef: "", lat: LAT_DMS, lngRef: "", lng: LNG_DMS } }));
+    expect(readPhotoMeta(bytes).position).toBeNull();
+  });
+});
