@@ -101,3 +101,16 @@ export function inspectJpeg(bytes: Uint8Array): JpegInfo {
     offset = start + length;
   }
 }
+
+export interface JpegScan {
+  /** ファイル全体（最初のスキャンの後ろを含む）で見つかった APP の番号（1〜15） */
+  appSegments: number[];
+  /** 最初の EOI でちょうど終わるか。EOI が無い・後ろに付け足し・壊れた形は false */
+  endsAtEoi: boolean;
+}
+
+/** 最初のスキャンの後ろまでセグメントをたどる。例外は出さない */
+export function scanJpegMarkers(bytes: Uint8Array): JpegScan {
+  void bytes;
+  throw new Error("not implemented");
+}
