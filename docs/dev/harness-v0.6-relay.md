@@ -1,6 +1,6 @@
 # ハーネス v0.6 案「檻リレーと夜番」（日中の自律運転＋夜の点検）
 
-状態: **案（11-03、先輩）。11/4 朝に本人と対面で §8 を決めてから組む**。v0.5（本人の手元）の上に足す。檻（`docs/dev/cage.md`）は変えない。
+状態: **案（11-03、先輩）。道具は 11-04 に `scripts/relay/` に組んだ（§11）。§8 の承認（Remote Control の ON は本人決定済み）は本人と対面で**。v0.5（本人の手元）の上に足す。檻（`docs/dev/cage.md`）は変えない。
 
 作り方の記録: Fable のワークフロー（読み手 3・設計 3・審判 1・反証 3 の 10 体、約 21 分）で案を出し、反証の「止める」を全部取り込んだ。このワークフロー 1 回で週次の使用量が **全モデル 14→18%、Fable 10→18%** 動いた（事実、`get_usage`）。これが夜番の寸法の出発点（§6）。
 
@@ -94,10 +94,11 @@ worktree は **パケットごと** `<ホーム>\dev\ear-train\Txx`（1 つを�
 
 ## 4. 通知（人に聞くものだけ）
 経路（未検証の段が 4 つ: watch の終了 → 通知係 → PushNotification → Remote Control → スマホ）。**試運転 A の合格条件に「スマホで実際に受信した」を入れ、届くまでの秒数を記録する**。届かなくても列車は進む（損失は小さい）ので、12:00・15:00 の人の目視を下限にする。
+**通知を待つ間はスマホの Claude アプリを閉じておく**（11-04 実測: アプリを前面に開いていると、PushNotification が「Mobile push requested」と返っても通知が出ない。ホーム画面にしておくと届いた。PC 側の通知設定は既定のバナーのままでよい）。PC 側から言える段は「送った」まで（`PushNotification` → Remote Control）。スマホの表示までの段は人の受信で確かめる。
 
 通知係: デスクトップアプリの対話セッション 1 本（Sonnet）。本体のチェックアウトで:
 ```
-claude --model sonnet --add-dir %LOCALAPPDATA%\ear-train --allowedTools "Bash(node scripts/relay/run-day.mjs --today *),Bash(node scripts/relay/watch.mjs),Bash(node scripts/relay/stop.mjs),PushNotification" --disallowedTools "Read,Grep,Glob,Edit,Write,WebFetch,WebSearch,Agent,Workflow,Bash(git *),Bash(type *),Bash(cat *)"
+claude --model sonnet --add-dir %USERPROFILE%\dev\ear-train\ops --allowedTools "Bash(node scripts/relay/run-day.mjs --today *),Bash(node scripts/relay/watch.mjs),Bash(node scripts/relay/stop.mjs),PushNotification" --disallowedTools "Read,Grep,Glob,Edit,Write,WebFetch,WebSearch,Agent,Workflow,Bash(git *),Bash(type *),Bash(cat *)"
 ```
 → `/remote-control` → `/config` で「Push when actions required」ON、予測・要約・アイドル圧縮 OFF、`CLAUDE_CODE_GOAL_CHECKIN_MINUTES=0`。スマホの Claude アプリを一度開く（「No mobile registered」対策）。朝に watch.mjs を 1 回手で動かし、権限の問いが出ないのを見てから離れる。
 
@@ -194,3 +195,29 @@ Fable は夜番に使わない（詰まったときの相談の枠を残す）�
 6. 予算は「前夜 + 14%」の累積上限と起動前ゲートで守る
 
 README に載せる表: 運転回数・人が触らない時間・手数・$・%・止まった率・夜番の指摘のうち RED になった件数（`docs/claude-usage.md` の「足りないもの」を実績の表へ移す）。
+
+## 11. 組んだもの（11-04、Issue #86）
+| ファイル | 中身 |
+|---|---|
+| `scripts/relay/relay-lib.ts`（＋テスト） | 待ち行列の検査（凍結・共有・秘密を allow に書かせない）、C1〜C5、起動前ゲート、終了後ゲート G0〜G7、費用の読み取り、伏せ字、通知の本文、引数 |
+| `scripts/relay/run-day.mjs`・`paths.mjs` | 進行役。`--prepare` で worktree（`<ホーム>\dev\ear-train\Txx`、`npm ci`、push 無効）、列車、`--skip Txx` |
+| `scripts/relay/watch.mjs`・`stop.mjs`・`usage.mjs` | 通知係が使う。watch の最後の行は `NOTIFY <本文>`・`QUIET`・`STOP` |
+| `scripts/relay/night.mjs`・`night-review.workflow.template.mjs` | 夜番の準備（clone・対象の埋め込み・lock・起動コマンド）と回収 |
+| `scripts/relay/PACKET.txt`・`NOTIFIER.txt`・`NIGHT.txt` | 固定の指示文 |
+
+計画（§2〜§6）から変えたこと:
+- **手数の上限**: `--max-turns` が無い（2.1.299）ので、進行役が CAGE_LOG の行数を 5 秒ごとに見て、上限を超えたら殺す（`turns`）
+- **使用量**: 通知係が `get_usage` の値を `usage.mjs` で `usage.json` に書く（通知係に Write を渡さない）。前夜の値は人が朝に `usage.mjs --night-before N`。3 時間より古い値は読めないものとして止める
+- **夜番**: ワークフローはファイルを読めないので、lock は `night.mjs` が持つ。対象のコードは `night.mjs` がワークフローに埋め込み、夜のセッションには Read・Grep・Bash を渡さない。起動は `claude -p`（`--max-budget-usd` で縛る）。寸法は small（Find 4 体）と medium（Find 8 体、Opus の反証 3 件まで）
+- **ゲート**: QUESTIONS（ask）を終了コードより先に見る。G2 で GREEN が 1 つも無いときは `claude`（原因不明）として数え、2 本続いたら列車を止める
+- **未検証**: ワークフローの中の役が、夜のセッションの道具の制限を受け継ぐか。通知係の入れ子の起動（試運転で確かめる）
+
+### PR #88 のレビュー（`docs/reviews/pr-88-relay.md`）で変えたこと（11-04）
+- **置き場**: `%LOCALAPPDATA%\ear-train` をやめて `<ホーム>\dev\ear-train\ops` に。デスクトップアプリから起動したプロセスは `%LOCALAPPDATA%` が別の場所に振り替えられ、ターミナルから起動したものと置き場がずれる
+- **二重起動を断る**: 進行役は `running-<MMDD>.json`（プロセス番号）を置き、生きていれば 2 本目を起動しない。ask の通知は「止めるなら『止めて』」だけにし、返事で列車を起動しない
+- **STATUS は追記の列**（`status-<MMDD>.jsonl`）。watch は見ていない行をまとめて 1 通にする（続けて止まった 2 本を取りこぼさない）
+- **STOP は日付ごと**（`STOP-<MMDD>`）。前の日の STOP が次の日の列車を止めない
+- **原因不明の連続**は列車ごとに数える（新しい列車で数え直す）
+- **子を木ごと止める**（Windows の `taskkill /T /F`）。檻の server や `npm run check` が残らない
+- 凍結の一覧に `.github/`・`.gitattributes`・`wrangler.*`・`next.config.*`・`public/` を足した
+- 子に渡す環境変数は 10 個（檻の 7 個に `APPDATA`・`LOCALAPPDATA`・`USERNAME`。claude の認証の置き場を探すため）。§2 の「7 つ」はこれに読み替える
