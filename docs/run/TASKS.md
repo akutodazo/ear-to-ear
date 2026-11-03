@@ -204,7 +204,9 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **担当**: 先輩
 
 ## T22 `GET /api/photos?fieldId=`（圃場ごとの確定済みの写真。認証なし）
-- **状態**: RED済み（人、11-04。攻撃役を 2 回通して凍結）
+- **状態**: 検査済み・人の確認待ち（11-04）
+- **運転の記録（試験7、檻リレー v0.6 の初めての運転、#86）**: 進行役 `scripts/relay/run-day.mjs` が 1 本の列車として起動。START `380579d` → GREEN `aadfc55` → REPORT `785b518`。モデル Opus 5.5、`claude -p`、道具は檻の5つだけ、12手、$0.51。ゲート G0〜G7 は green。変更は許可した 2 ファイルだけ。QUESTIONS なし。C1〜C5 合格（C3 118 件、C4 テスト全体 1274 件、lint エラー 0・警告 2）。REPORT に手元のパスなし。通知係の役の watch.mjs が「列車終了: GREEN 1／ask 0／stopped 0、$0.51」を出した
+- **人の確認**: まだ（先輩が差分を読んでからマージ。CLAUDE.md の無人運転の PR の例外）
 - **Issue**: #85
 - **依存**: T21（`PHOTO_LIST_COLUMNS`・`photoFromRow`・`RECENT_LIMIT_MAX`）
 - **変えてよいファイル**: `src/services/photo-query.ts`・`worker/photos.ts`（＋ `docs/run/REPORT-T22.md`、止まったときは `docs/run/QUESTIONS.md`）
