@@ -24,8 +24,11 @@ export const LOGIN_MAX_ATTEMPTS_PER_WINDOW = 5;
 export const RECENT_LIMIT_DEFAULT = 50;
 export const RECENT_LIMIT_MAX = 200;
 
-/** 判断のメモの上限（文字） */
+/** 判断のメモの上限（文字。見た目の 1 文字＝コードポイント 1 つで数える） */
 export const STATUS_NOTE_MAX_CHARS = 200;
+
+/** 判断の根拠に付けられる写真の上限（11-03 本人決定） */
+export const STATUS_REF_PHOTOS_MAX = 5;
 
 /** 架空の圃場番号の形（例 A-01）。実在の番号体系と重ねない（K10） */
 export const FIELD_ID_PATTERN = /^[A-Z]-\d{2}$/;
@@ -37,14 +40,14 @@ export const FIELD_ID_PATTERN = /^[A-Z]-\d{2}$/;
 export const FICTIONAL_AREA = { latMin: 41.8, latMax: 41.815, lngMin: 144.5, lngMax: 144.52 } as const;
 
 /**
- * 判断の理由の選択肢（L1）。
- * 農協の判定の2つは必ず入れる（K16）。それ以外は父の答え（P21）が来るまでの仮の選択肢。
+ * 判断の理由の選択肢（L1）。画面にはこの順で出す。
+ * 何を見て「刈れる」とするかは父の答え（P21、11-03）。農協の判定の2つは必ず入れる（K16）。11-03 本人確定
  */
 export const STATUS_REASONS = [
+  { code: "ear_color", label: "穂の色" },
+  { code: "yellow_ratio", label: "黄色い穂の割合" },
   { code: "ja_stop_moisture", label: "農協の判定で中止（水分超過）" },
   { code: "ja_stop_damage", label: "農協の判定で中止（砕けなどの傷）" },
-  { code: "ear_color", label: "穂の色（仮）" },
-  { code: "grain_hardness", label: "粒の硬さ（仮）" },
   { code: "other", label: "その他" },
 ] as const;
 

@@ -230,3 +230,19 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **書き方の注意（`scripts/cage/policy.mjs`）**: import は Service が `@/config`・`@/types`、worker が `@/services/...`・`./...`。`Response.json()` を使わず `http.ts` の `json()`・`errorResponse()`
 - **参照**: `docs/spec.md` §6、`docs/privacy.md`
 - **担当**: 先輩
+
+## T12 `status-reason.ts`（判断と理由・根拠の入力の検証。L1）
+- **状態**: RED済み（人、11-03 夜）。攻撃役と凍結はまだ（ハーネス v0.6 の決め方で行う）
+- **運転の予定**: 11-04、MCP の檻（Service だけのパケット、11-03 決定①）
+- **依存**: なし（`@/types` の `StatusEvent`、`src/config.ts` の定数）
+- **変えてよいファイル**: `src/services/status-reason.ts` のみ（＋ `docs/run/REPORT-T12.md`、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結の予定）**: `src/services/status-reason.test.ts`（41 件）
+- **人が RED で置いたもの**: `src/config.ts`（**共有ファイル、先輩の確認が要る**）の `STATUS_REASONS` を P21 の答えの 5 つに（穂の色・黄色い穂の割合・農協の判定で中止（水分超過）・同（砕けなどの傷）・その他、この順）、`STATUS_REF_PHOTOS_MAX = 5`、`STATUS_NOTE_MAX_CHARS` のコメント。`src/config.test.ts` に 2 件。`status-reason.ts` の型（`StatusInputReason`・`StatusInput`・`StatusInputResult`）と空の関数 `parseStatusInput(body, confirmedPhotoIds)`
+- **RED の確かめ**: 41 件すべてが not implemented で落ちる。仮の実装で 41 件が通り、檻の純粋関数の検査も通ることを確かめてから空に戻した。lint・型・安全検査はそれぞれ単独で通る
+- **決まり（11-03 本人決定）**: 「その他」でもメモは任意／理由 0 個は許す（「記録なし」）／根拠の写真は 5 枚まで／同じ理由・同じ写真の二重は拒否
+- **合格条件**:
+  - 入力は JSON を読んだ後の値。オブジェクトでなければ `not_object`、キーは `status`・`reasons`・`note`・`refPhotoIds` だけ（`__proto__` も数える）
+  - `status` は `ready`・`done` だけ。`reasons` は文字列の配列で、選択肢のコードと完全一致・重ねない。`note` は無い・null・文字列（前後の空白を除き、空なら null、コードポイントで 200 字まで、改行は残す）。`refPhotoIds` は空でない文字列の配列で、5 枚まで・重ねない・`confirmedPhotoIds` にあるものだけ（完全一致）
+  - 返す値は 4 つの項目だけで、配列は入力の順を保った写し。元の入力を変えない。例外を出さない
+- **書き方の注意（`scripts/cage/policy.mjs`）**: import は `@/types`・`../config` だけ
+- **担当**: 本人
