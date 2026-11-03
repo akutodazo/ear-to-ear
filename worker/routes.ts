@@ -3,15 +3,16 @@
  * 各 API の中身は次のパケットで差し替える。
  */
 import type { Route } from "./deps";
+import { errorResponse, json } from "./http";
 
 /** 未実装の経路。501 */
 export async function notImplemented(): Promise<Response> {
-  throw new Error("not implemented");
+  return errorResponse(501, "not_implemented");
 }
 
 /** 動作の確認用。200 { ok: true } だけを返し、中身を漏らさない */
 export async function health(): Promise<Response> {
-  throw new Error("not implemented");
+  return json(200, { ok: true });
 }
 
 export const routes: readonly Route[] = [
