@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { getPhotosByField } from "./photos";
 import { health, notImplemented, routes } from "./routes";
 
 describe("経路の表（docs/spec.md §6 の L0）", () => {
@@ -13,6 +14,11 @@ describe("経路の表（docs/spec.md §6 の L0）", () => {
       ["PATCH", "/api/photos/:id/assignment", "admin"],
       ["GET", "/api/session", "member"],
     ]);
+  });
+
+  it("GET /api/photos は getPhotosByField（T22。501 の経路は無い）", () => {
+    expect(routes.find((r) => r.method === "GET" && r.pattern === "/api/photos")?.handler).toBe(getPhotosByField);
+    expect(routes.some((r) => r.handler === notImplemented)).toBe(false);
   });
 });
 

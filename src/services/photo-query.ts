@@ -20,6 +20,9 @@ export const PHOTO_LIST_COLUMNS = [
   "uploader_device",
 ] as const;
 
+/** 圃場ごとの一覧（GET /api/photos?fieldId=、T22）の件数の上限。新着と同じ上限 */
+export const FIELD_PHOTOS_LIMIT = RECENT_LIMIT_MAX;
+
 /** D1 から読んだ 1 行 */
 export interface PhotoListRow {
   id: string;
@@ -79,4 +82,13 @@ export function photoFromRow(row: PhotoListRow): UploadedPhoto {
     uploadedAt: row.uploaded_at,
     uploaderDevice: row.uploader_device,
   };
+}
+
+/**
+ * ?fieldId= の値（GET /api/photos、T22）。圃場の一覧にある番号ならそのまま、それ以外（null・空・一覧に無い）は null。
+ * 大文字小文字・前後の空白は直さない。例外は出さない
+ */
+export function parseFieldIdQuery(raw: string | null, knownFieldIds: ReadonlySet<string>): string | null {
+  if (raw === null) return null;
+  return knownFieldIds.has(raw) ? raw : null;
 }

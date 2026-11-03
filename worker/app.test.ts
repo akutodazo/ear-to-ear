@@ -37,20 +37,21 @@ describe("/api/", () => {
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
   });
 
-  it("認証なしの経路は 501 と共通ヘッダ", async () => {
-    const response = await call("GET", "/api/photos");
-    expect(response.status).toBe(501);
-    expect(await response.json()).toStrictEqual({ error: "not_implemented" });
-    expect(response.headers.get("cache-control")).toBe("no-store");
-  });
-
+  // T22 で 501 の経路が無くなったので、認証なしの経路は health で確かめる
   it("認証なしの経路は壊れた Cookie を読まない（401 にならない）", async () => {
-    const response = await call("GET", "/api/photos", "session=broken");
-    expect(response.status).toBe(501);
+    const response = await call("GET", "/api/health", "session=broken");
+    expect(response.status).toBe(200);
   });
 
   it("クエリ付きでも経路に一致する", async () => {
-    expect((await call("GET", "/api/photos?fieldId=A-01")).status).toBe(501);
+    expect((await call("GET", "/api/health?fieldId=A-01")).status).toBe(200);
+  });
+
+  it("GET /api/photos は番号が無ければ 400（501 ではない。T22）", async () => {
+    const response = await call("GET", "/api/photos");
+    expect(response.status).toBe(400);
+    expect(await response.json()).toStrictEqual({ error: "bad_request" });
+    expect(response.headers.get("cache-control")).toBe("no-store");
   });
 
   it("無い経路は 404 { error: not_found }（Cookie が無くても認証より先）", async () => {
