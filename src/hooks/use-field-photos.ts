@@ -4,7 +4,7 @@
  */
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { groupFieldPhotos, type PhotoGroup } from "@/services/photo-groups";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
 import type { IPhotoRepository, RecentOutcome } from "@/repositories/interfaces/i-photo-repository";
@@ -52,5 +52,8 @@ export function useFieldPhotos(fieldId: string, repository?: IPhotoRepository) {
     apply(await repo.listFieldPhotos(fieldId));
   }, [repo, fieldId, apply]);
 
-  return { groups, loading, message, fetchedAt, refresh };
+  /** 根拠に選べる写真（その圃場に確定済み）。判断の Presenter（useFieldStatus）に渡す */
+  const confirmedPhotoIds = useMemo(() => new Set(groups.flatMap((g) => g.photos.map((p) => p.id))), [groups]);
+
+  return { groups, confirmedPhotoIds, loading, message, fetchedAt, refresh };
 }

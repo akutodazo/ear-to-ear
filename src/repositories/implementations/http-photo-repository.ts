@@ -14,8 +14,8 @@ import type {
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
-/** つながらない（fetch そのものが失敗した）ときは null */
-async function send(fetchFn: FetchLike, url: string, init?: RequestInit): Promise<Response | null> {
+/** つながらない（fetch そのものが失敗した）ときは null。判断の保存先（http-field-status-repository）も使う */
+export async function send(fetchFn: FetchLike, url: string, init?: RequestInit): Promise<Response | null> {
   try {
     return await fetchFn(url, init);
   } catch {
