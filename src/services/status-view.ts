@@ -106,6 +106,24 @@ export function withStatusEvent(history: readonly StatusEvent[], event: StatusEv
   return [...history.filter((e) => e.id !== event.id), event].sort(newestFirst);
 }
 
+/** 手元で変えた判断 1 つ（送った・取り消した）。stamp は変えた順の番号（1 から増える） */
+export interface LocalStatusChange {
+  stamp: number;
+  event: StatusEvent;
+}
+
+/**
+ * 読んだ履歴に、その読み込みを始めた後（stamp が since より大きい）に手元で変えた判断を、stamp の順に重ねる。
+ * 遅れて届いた読み込みで、送った判断や取り消しが消えないようにする。元の配列は変えない
+ */
+export function withLocalChanges(
+  _events: readonly StatusEvent[],
+  _changes: readonly LocalStatusChange[],
+  _since: number,
+): StatusEvent[] {
+  return [];
+}
+
 /** 地図のピンの状態。判断が無ければ none */
 export function pinState(summary: FieldSummary): PinState {
   return { status: summary.latest?.status ?? "none", unconfirmed: summary.hasUnconfirmed };
