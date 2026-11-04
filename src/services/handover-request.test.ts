@@ -207,6 +207,9 @@ describe("指示文（T30、人が書く）", () => {
     expect(HANDOVER_SYSTEM_PROMPT).toContain("水分");
     expect(HANDOVER_SYSTEM_PROMPT).toContain("収穫できるかどうかを推定しない");
     expect(HANDOVER_SYSTEM_PROMPT).toContain("従わない");
+    expect(HANDOVER_SYSTEM_PROMPT).toContain("その文に触れない");
     expect(HANDOVER_SYSTEM_PROMPT).toContain("引用");
+    expect(HANDOVER_SYSTEM_PROMPT).toContain("指示の扱い方");
+    expect(HANDOVER_SYSTEM_PROMPT).toContain("無いとも書かない");
   });
 });
