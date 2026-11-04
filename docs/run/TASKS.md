@@ -230,3 +230,29 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **書き方の注意（`scripts/cage/policy.mjs`）**: import は Service が `@/config`・`@/types`、worker が `@/services/...`・`./...`。`Response.json()` を使わず `http.ts` の `json()`・`errorResponse()`
 - **参照**: `docs/spec.md` §6、`docs/privacy.md`
 - **担当**: 先輩
+
+## T23 `DELETE /api/status-events/:id`（判断の取り消し。委員以上、L1）
+- **状態**: 検査済み・人の確認待ち（11-04）
+- **運転の記録（檻リレー v0.6 の 2 本目、1104 の列車）**: START `3949c30` → GREEN `86518ab` → REPORT `05e317d`。モデル Opus、`claude -p`、道具は檻の5つだけ、15 手、$0.51。ゲート G0〜G7 は green。変更は許可した 2 ファイルだけ。QUESTIONS なし。C1〜C5 合格（C3 66 件、C4 テスト全体 1420 件、lint エラー 0・警告 2）。REPORT に手元のパスなし。watch.mjs の「列車終了: GREEN 1／ask 0／stopped 0、$0.51」をこのセッションから PushNotification でスマホに送った
+- **Claude の確認（11-04、人の確認の前）**: 実装を 10 通りに壊して 10 通りとも落ちる（取り消し済みの条件を外す 3 件・時刻の固定 1・先頭の 0 を許す 5・安全な整数の上限を外す 3・要素の型を見ない 2・例外に中身 2・revokedAt を返さない 4・reasons を空 9・読んでから書く 2 文 1・id を確かめずに D1 へ 7）。手元の `wrangler dev`（使い捨ての値と、使い捨ての置き場の D1）で、Cookie なし 401、委員で 200 と 9 項目、もう一度 404、999・abc・01 は 404、GET は 405 Allow: DELETE、すべて no-store、同時 2 本は 200 と 404、表は行が残り revoked_at が入った
+- **人の確認**: まだ（先輩が差分を読んでからマージ。CLAUDE.md の無人運転の PR の例外）
+- **Issue**: #89
+- **依存**: T11（`field_status_events`）、T18（土台）。T12（`status-reason`、本人）には依存しない
+- **変えてよいファイル**: `src/services/status-events.ts`・`worker/status-events.ts`（＋ `docs/run/REPORT-T23.md`、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結）**: `src/services/status-events.test.ts`・`worker/status-events.test.ts`・`worker/routes.test.ts`（DELETE の経路を足した）
+- **人が RED で置いたもの（凍結）**: `status-events.ts` の `STATUS_EVENT_COLUMNS`・`StatusEventRow` と 2 つの関数の空の実装、`worker/status-events.ts` の `deleteStatusEvent` の空の実装、`routes.ts` の配線（表の末尾）
+- **関数**: `parseStatusEventId(raw: string): number | null`、`statusEventFromRow(row: StatusEventRow): StatusEvent`、`deleteStatusEvent: Handler`
+- **合格条件**:
+  - `:id` は `/^[1-9]\d*$/` で `Number.MAX_SAFE_INTEGER` 以下のときだけ数。それ以外は 404 `{ error: "not_found" }` で、D1 を触らない
+  - 行は消さず、`revoked_at` が null の行だけに `new Date(deps.nowMs()).toISOString()` を入れる。無い id・取り消し済みは 404 で、最初の取り消しの時刻を変えない。同時に 2 本来ても 200 は 1 本だけ（条件付きの UPDATE 1 文で、読んでから書く 2 文にしない）
+  - 成功は 200 で、取り消した判断を `statusEventFromRow` で `StatusEvent` にして `json(200, …)`。列は `STATUS_EVENT_COLUMNS`（`*` を使わない）。値は bind で渡す
+  - `reasons`・`ref_photo_ids` が文字列の配列の JSON でない行は例外（500、握らない）。例外のメッセージに列の名前を入れ、中身を入れない
+  - 本文は読まない。`console`・`Date.now`・`crypto`・R2・`newId` を使わない。`cache-control` を触らない（共通ヘッダの `no-store`）
+- **RED の確かめ（11-04）**: 空の実装で 56 件が失敗。通るのは空でも成り立つ 10 件（`routes.test.ts` の 5 件・401 の 2 件・500 の 2 件・405）。仮の実装で新しい 66 件と src・worker の 1074 件が通り、檻の純粋さの検査も通ることを確かめてから空に戻した
+- **攻撃役（Sonnet、檻の中、仕様・決まりのファイルを消した複製で。13 手、$0.13）**: 手抜きを探す前に素直な最小の実装を書いて 66 件が通り、手抜きは試さなかった（報告にそう書いた）。縛っていたもの: id の境界 22 件と「D1 を触らない」、9 項目だけ・配列が別もの、`deps.nowMs`、2 回目の 404 と時刻の保持、同時 2 本で 200 が 1 本（読んでから書く形では通らない）。人も手抜きの形（読んでから書く 2 文、`revoked_at IS NULL` を外す、固定の時刻）を考え、それぞれに当たるテスト（同時 2 本・続けて 2 回・nowMs）があると読んだ（実装して試してはいない）
+  - 入れなかった指摘: `status`・`note`・`id` の型の検査（表の CHECK と型で決まる。T21・T22 の `photoFromRow` も見ない）。`params.id` が無い場合（経路の型で必ずある）。本物の D1 の `RETURNING` と同時実行（人の確認の `wrangler dev` で見る）。T24 の一覧が取り消しを除くか（T24 のテストで見る）
+  - 攻撃役の `report` は `CAGE_CHECKS` が空のため拒まれ、報告は返答の本文で受けた。手抜きの実装は捨てた
+- **決めたこと（先輩、11-04）**: 取り消し済みをもう一度取り消すと 404（無い判断と同じ）。成功の本文は取り消した `StatusEvent`（共有ファイルを変えない）。取り消した人の端末は記録しない（表に列が無い。要るなら T25 の前に決める）
+- **書き方の注意（`scripts/cage/policy.mjs`）**: import は Service が `@/types`、worker が `@/services/...`・`./...`。`Response.json()` を使わず `http.ts` の `json()`・`errorResponse()`
+- **参照**: `docs/spec.md` §6
+- **担当**: 先輩
