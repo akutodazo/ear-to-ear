@@ -75,6 +75,18 @@ export interface StatusEvent {
   revokedAt: string | null;
 }
 
+/**
+ * GET /api/fields/summary の 1 圃場（L1、地図。本文は { fields: FieldSummary[] }、圃場の一覧の順）。
+ * 11-04 本人承認（#90）
+ */
+export interface FieldSummary {
+  fieldId: string;
+  /** 取り消していない判断のうち at が新しいもの（同じなら id の大きい方）。無ければ null */
+  latest: StatusEvent | null;
+  /** 未確定の写真の候補（最大3）か委員が選んだ番号に、この圃場が含まれるか */
+  hasUnconfirmed: boolean;
+}
+
 /** L6。Claude に渡す記録1件＝カスタムコンテンツの1要素 */
 export interface HandoverRecord {
   kind: "status" | "photo";
