@@ -145,6 +145,19 @@ describe("summarizeFields（GET /api/fields/summary のまとめ、T24）", () =
     expect(() => summarizeFields(FIELDS, [], rows)).not.toThrow(/secret/);
   });
 
+  // 攻撃役（T24 の 2 回目）: 先頭の行だけ検査しても通った
+  it.each([
+    ["JSON でない", "secret-not-json"],
+    ["配列でない", '{"secret":1}'],
+    ["文字列でない要素", "[1]"],
+    ["null", "null"],
+    ["文字列", '"secret"'],
+  ])("2 行目以降の候補の列が %s でも candidate_field_ids の名前の例外で、中身を入れない", (_label, text) => {
+    const rows = [photo(["A-01"]), photo(["A-02"]), { candidate_field_ids: text, chosen_field_id: null }];
+    expect(() => summarizeFields(FIELDS, [], rows)).toThrow(/candidate_field_ids/);
+    expect(() => summarizeFields(FIELDS, [], rows)).not.toThrow(/secret/);
+  });
+
   it("渡したものを書き換えない", () => {
     const events = [event({ id: 2, at: "2026-07-22T01:00:00.000Z" }), event({ id: 1 })];
     const rows = [photo(["A-01"])];

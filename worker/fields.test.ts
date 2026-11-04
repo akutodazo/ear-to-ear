@@ -242,6 +242,37 @@ describe("GET /api/fields/summary（地図用のまとめ、T24）", () => {
     expect(await response.text()).not.toMatch(/secret/);
   });
 
+  // 攻撃役（T24 の 2 回目）: 先頭（最新）の行だけ statusEventFromRow に通しても通った
+  it.each([
+    ["同じ圃場の古い判断", { id: 2, field_id: "A-03", at: "2026-07-01T01:00:00.000Z" }],
+    ["別の圃場の判断", { id: 2, field_id: "A-05", at: "2026-07-01T01:00:00.000Z" }],
+    ["一覧に無い圃場の判断", { id: 2, field_id: "Z-99", at: "2026-07-01T01:00:00.000Z" }],
+  ])("正しい最新の判断の後ろに、壊れた %s があっても 500 で、中身を漏らさない", async (_label, overrides) => {
+    const { deps, testDb } = setup();
+    insertEvent(testDb, { id: 1, field_id: "A-03", at: "2026-07-25T01:00:00.000Z" });
+    insertEvent(testDb, { ...overrides, reasons: '{"secret":1}' });
+    const response = await handleRequest(request("GET", "/api/fields/summary"), deps);
+    expect(response.status).toBe(500);
+    const text = await response.text();
+    expect(text).not.toMatch(/secret/);
+    expect(JSON.parse(text)).toStrictEqual({ error: "internal" });
+  });
+
+  it("正しい写真の後ろに候補の列が壊れた未確定の写真があれば 500", async () => {
+    const { deps, testDb } = setup();
+    insertPhoto(testDb, { candidate_field_ids: '["A-01"]' });
+    insertPhoto(testDb, { candidate_field_ids: "[1]" });
+    const response = await handleRequest(request("GET", "/api/fields/summary"), deps);
+    expect(response.status).toBe(500);
+  });
+
+  it("確定済みの写真の候補の列は見ない（壊れていても 200）", async () => {
+    const { deps, testDb } = setup();
+    insertPhoto(testDb, { state: "confirmed", field_id: "A-04", candidate_field_ids: "secret-not-json" });
+    const { fields } = await summary(deps);
+    expect(fields.some((f) => f.hasUnconfirmed)).toBe(false);
+  });
+
   it("未確定の写真の候補の列が壊れていれば 500 で、中身を漏らさない", async () => {
     const { deps, testDb } = setup();
     insertPhoto(testDb, { candidate_field_ids: "secret-not-json" });
