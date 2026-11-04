@@ -49,7 +49,17 @@ describe("parseStatusInput: 通るもの（T12）", () => {
     expect(parseStatusInput(withoutNote, MINE)).toMatchObject({ ok: true, value: { note: null } });
     expect(parseStatusInput(body({ note: null }), MINE)).toMatchObject({ ok: true, value: { note: null } });
     expect(parseStatusInput(body({ note: "  \n " }), MINE)).toMatchObject({ ok: true, value: { note: null } });
+    expect(parseStatusInput(body({ note: "" }), MINE)).toMatchObject({ ok: true, value: { note: null } });
     expect(parseStatusInput(body({ note: "  黄色が多い \n" }), MINE)).toMatchObject({
+      ok: true,
+      value: { note: "黄色が多い" },
+    });
+  });
+
+  it("全角の空白・タブだけのメモも null（trim と同じく空白として扱う）", () => {
+    expect(parseStatusInput(body({ note: "　　" }), MINE)).toMatchObject({ ok: true, value: { note: null } });
+    expect(parseStatusInput(body({ note: "\t\t" }), MINE)).toMatchObject({ ok: true, value: { note: null } });
+    expect(parseStatusInput(body({ note: "　黄色が多い\t" }), MINE)).toMatchObject({
       ok: true,
       value: { note: "黄色が多い" },
     });
@@ -72,6 +82,11 @@ describe("parseStatusInput: 通るもの（T12）", () => {
     const emoji = "🌾".repeat(STATUS_NOTE_MAX_CHARS);
     expect(emoji.length).toBe(STATUS_NOTE_MAX_CHARS * 2);
     expect(reasonOf(body({ note: emoji }))).toBe("ok");
+  });
+
+  it("絵文字と普通の字が混ざっても 1 字ずつ数える（200 字は通り、201 字は拒む）", () => {
+    expect(reasonOf(body({ note: `${"あ".repeat(STATUS_NOTE_MAX_CHARS - 1)}🌾` }))).toBe("ok");
+    expect(reasonOf(body({ note: `🌾${"あ".repeat(STATUS_NOTE_MAX_CHARS)}` }))).toBe("note_too_long");
   });
 
   it("前後の空白を除いた後の長さで数える", () => {
@@ -108,11 +123,15 @@ describe("parseStatusInput: 拒むもの（T12）", () => {
     ["status が無い", body({ status: undefined }), "bad_status"],
     ["status が選択肢に無い", body({ status: "maybe" }), "bad_status"],
     ["status の大文字", body({ status: "READY" }), "bad_status"],
+    ["status が null", body({ status: null }), "bad_status"],
+    ["status が数値", body({ status: 1 }), "bad_status"],
     ["reasons が無い", body({ reasons: undefined }), "bad_reasons"],
     ["reasons が配列でない", body({ reasons: "ear_color" }), "bad_reasons"],
     ["reasons に文字列でないもの", body({ reasons: [1] }), "bad_reasons"],
     ["選択肢に無い理由", body({ reasons: ["grain_hardness"] }), "unknown_reason"],
     ["理由の大文字", body({ reasons: ["EAR_COLOR"] }), "unknown_reason"],
+    ["理由が空文字", body({ reasons: [""] }), "unknown_reason"],
+    ["理由の前後に空白", body({ reasons: [" ear_color"] }), "unknown_reason"],
     ["同じ理由が二つ", body({ reasons: ["ear_color", "other", "ear_color"] }), "duplicate_reason"],
     ["メモが数値", body({ note: 5 }), "bad_note"],
     ["メモが配列", body({ note: ["a"] }), "bad_note"],
