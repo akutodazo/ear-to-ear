@@ -15,6 +15,10 @@ const SECRET_NAME = "SESSION_" + "SECRET";
 const MEMBER_NAME = "MEMBER_" + "PASSPHRASE";
 const ADMIN_NAME = "ADMIN_" + "PASSPHRASE";
 const KEY_HEAD = "-----BEGIN " + "PRIVATE KEY-----";
+const CLAUDE_NAME = "CLAUDE_" + "API_KEY";
+const CF_NAME = "CLOUDFLARE_" + "API_TOKEN";
+const CF_USER = "cf" + "ut_";
+const CF_ACCOUNT = "cf" + "at_";
 
 describe("checkFileName（名前で分かる危ないファイル）", () => {
   it.each([".dev.vars", "worker/.dev.vars", ".dev.vars.example"])("%s は開発用の秘密", (path) => {
@@ -224,6 +228,30 @@ describe("findSecretLikeLines（秘密らしい文字列）", () => {
   it("値は8文字から止める（7文字は止めない）", () => {
     expect(findSecretLikeLines(`${MEMBER_NAME}=abcdefg`)).toEqual([]);
     expect(findSecretLikeLines(`${MEMBER_NAME}=abcdefgh`)).toEqual([{ line: 1, kind: "secret-assignment" }]);
+  });
+
+  it.each([
+    [`${CLAUDE_NAME}=${"k9".repeat(10)}`, "Claude の API キーの名前（11-04）"],
+    [`${CF_NAME}=${"t7".repeat(10)}`, "Cloudflare のトークンの名前（11-04）"],
+    [`  ${CF_NAME}: "abcdefgh12"`, "Cloudflare のトークンの名前（オブジェクト）"],
+  ])("%s（%s）は止める", (text) => {
+    expect(findSecretLikeLines(text)).toEqual([{ line: 1, kind: "secret-assignment" }]);
+  });
+
+  it.each([
+    [`curl -H "Authorization: Bearer ${CF_USER}${"Ab3d".repeat(10)}"`, "ユーザーのトークン"],
+    [`token=${CF_ACCOUNT}${"Zx9Q".repeat(10)}`, "アカウントのトークン"],
+  ])("Cloudflare のトークンの形（%s、%s）は名前が無くても止める", (text) => {
+    expect(findSecretLikeLines(text)).toEqual([{ line: 1, kind: "cloudflare-token" }]);
+  });
+
+  it.each([
+    [`${CF_USER}xxx`, "短すぎる"],
+    [`\`${CF_NAME}\` を Environment の秘密に置く`, "文書の中の名前"],
+    [`CLOUDFLARE_API_TOKEN: \${{ secrets.${CF_NAME} }}`, "Actions で秘密から渡す"],
+    [`const k = env.${CLAUDE_NAME};`, "環境からの読み出し"],
+  ])("%s（%s）は止めない", (text) => {
+    expect(findSecretLikeLines(text)).toEqual([]);
   });
 
   it("結果に秘密の値そのものを含めない", () => {
