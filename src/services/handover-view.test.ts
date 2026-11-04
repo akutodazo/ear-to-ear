@@ -89,6 +89,15 @@ describe("sourceLabel（T27 の書き方を読む）", () => {
     expect(sourceLabel(withNote)).toBe("判断 7/21");
   });
 
+  it("取り消しの印は T27 の書き方（文末の「（YYYY-MM-DD に取り消し）」）だけ", () => {
+    expect(sourceLabel({ kind: "status", id: "1", text: "[判断 1] 2026-07-21 収穫可能。メモ: 雨なら 7/22 に取り消し）" })).toBe(
+      "判断 7/21",
+    );
+    expect(sourceLabel({ kind: "status", id: "1", text: "[判断 1] 2026-07-21 収穫可能。（2026-07-22 に取り消し）" })).toBe(
+      "判断 7/21（取り消し）",
+    );
+  });
+
   it("写真は「写真 月/日」（撮影日）、撮影日が無ければ「写真（撮影日不明）」", () => {
     expect(sourceLabel(photoA)).toBe("写真 7/20");
     expect(sourceLabel(photoB)).toBe("写真 8/3");
@@ -232,6 +241,17 @@ describe("handoverSentences", () => {
     );
     expect(a.sources.map((s) => s.id)).toStrictEqual(["7"]);
     expect(b.sources.map((s) => s.id)).toStrictEqual(["12"]);
+  });
+
+  it("同じ記録を別の文が引用したら、どちらの文にも印が付く（文をまたいで重複を除かない）", () => {
+    const [a, b] = handoverSentences(
+      note([status7, status12], [
+        { text: "一", cites: [cite(0, 2, "一の引用")] },
+        { text: "二", cites: [cite(0, 1, "二の引用")] },
+      ]),
+    );
+    expect(a.sources.map((s) => s.id)).toStrictEqual(["7", "12"]);
+    expect(b.sources.map((s) => [s.id, s.citedText])).toStrictEqual([["7", "二の引用"]]);
   });
 
   it("メモを変えない", () => {
