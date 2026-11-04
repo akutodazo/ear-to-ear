@@ -4,15 +4,17 @@
 
 | いつ | どこへ | すること |
 |---|---|---|
-| PR が main にマージされたとき（自動） | dev | `npm run check` → `d1 migrations apply --remote` → `wrangler deploy` |
+| PR が main にマージされたとき（自動） | dev | `npm run check` と build（秘密なし）→ 別のジョブで `d1 migrations apply --remote` → `wrangler deploy` |
 | Actions の画面で人が「Run workflow」を押したとき | demo（選べば dev も） | 同じ。demo は Environment の承認を通ってから動く |
 
 - PR（`pull_request`）では動かない。フォークの PR に秘密は渡らない
+- リポジトリのコード（テスト・lint・build）を動かすジョブと、秘密を持つジョブを分けた。秘密のジョブは `npm ci --ignore-scripts` で依存の install スクリプトも動かさず、build の結果（`out/`）を受け取ってデプロイするだけ
 - 秘密の登録（合言葉・`SESSION_SECRET`・`CLAUDE_API_KEY`）は今までどおり本人の手元から（`docs/dev/cloudflare.md`）。デプロイしても Worker の秘密は消えない
-- Claude はクラウドに触らない（`.claude/settings.json` の禁止は 11-03 のまま）。Claude ができるのは、マージで動いた結果を `gh run list --workflow deploy` で読むこと
+- Claude は手元からクラウドに触らない（`.claude/settings.json` で止めている）。ただし **Claude がマージした PR も、dev にデプロイと migration が流れる**。Claude ができるのは、その結果を `gh run list --workflow deploy` で読むこと
+- **トークンは Worker・D1 ごとに絞れず、アカウント全体（demo と、同じアカウントのほかの資源）に効く**。秘密のジョブで動く wrangler の設定・依存・workflow を変える PR（`.github/workflows/**`・`wrangler.jsonc`・`package.json`・`package-lock.json`）は、自動マージせず人が差分を読む（CLAUDE.md）
 
 ## 人がすること（1 回、10 分）
-**トークンの値を会話・Issue・PR・ファイルに貼らない**。
+**トークンの値を会話・Issue・PR・ファイルに貼らない**。**deploy の PR（#125）をマージする前に 2 まで済ませる**（先にマージすると、GitHub が守りの無い `dev` を自動で作る。もう `dev`・`demo` が有れば、New ではなくその名前を開いて同じ設定をする）。
 
 ### 1. Cloudflare のトークンを作る
 1. https://dash.cloudflare.com/profile/api-tokens → **Create Token** → **Create Custom Token** の **Get started**
@@ -49,4 +51,5 @@ https://github.com/akutodazo/ear-to-ear/settings/environments で:
 
 ## 確かめていないこと
 - 上の権限でデプロイ・migration が通るか（足りなければ、wrangler のエラーに出た権限を足す）
-- `d1 migrations apply` が CI で確認を聞かずに進むか（wrangler は CI では聞かない、と理解している）
+- `d1 migrations apply` が CI で確認を聞かずに進むか（wrangler は CI では聞かない、と理解している）。最初の dev の実行のログで確かめる
+- `npm ci --ignore-scripts` のままで wrangler（esbuild）が動くか。動かなければ `--ignore-scripts` を外す（依存は `package-lock.json` を人が読むことで守る）
