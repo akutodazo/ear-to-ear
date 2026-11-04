@@ -54,6 +54,29 @@ describe("groupFieldPhotos: どの写真を出すか（T06）", () => {
     expect(ids(groups)).toStrictEqual([["2026-07-21", ["ok"]]]);
   });
 
+  it("引数の圃場の番号で選ぶ（混ざった入力を、番号を変えて呼ぶ）", () => {
+    const mixed = [
+      photo({ id: "a06", fieldId: "A-06" }),
+      photo({ id: "a07", fieldId: "A-07" }),
+      photo({ id: "b01", fieldId: "B-01" }),
+    ];
+    expect(ids(groupFieldPhotos(mixed, "A-07"))).toStrictEqual([["2026-07-21", ["a07"]]]);
+    expect(ids(groupFieldPhotos(mixed, "B-01"))).toStrictEqual([["2026-07-21", ["b01"]]]);
+    expect(ids(groupFieldPhotos(mixed, "A-06"))).toStrictEqual([["2026-07-21", ["a06"]]]);
+    expect(groupFieldPhotos(mixed, "C-09")).toStrictEqual([]);
+  });
+
+  it("確定済みは確定の番号（fieldId）で選ぶ。委員の選んだ番号（chosenFieldId）が同じでも、確定の番号が違えば出さない", () => {
+    const groups = groupFieldPhotos(
+      [
+        photo({ id: "moved", fieldId: "A-07", chosenFieldId: "A-06" }),
+        photo({ id: "kept", fieldId: "A-06", chosenFieldId: "A-07" }),
+      ],
+      "A-06",
+    );
+    expect(ids(groups)).toStrictEqual([["2026-07-21", ["kept"]]]);
+  });
+
   it("写真が無い・該当が無ければ []（空の枠を作らない）", () => {
     expect(groupFieldPhotos([], "A-06")).toStrictEqual([]);
     expect(groupFieldPhotos([photo({ fieldId: "A-07" })], "A-06")).toStrictEqual([]);
