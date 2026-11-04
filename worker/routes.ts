@@ -11,6 +11,7 @@ import { getPhotoFile } from "./photo-files";
 import { getPhotosByField, getRecentPhotos } from "./photos";
 import { getSession, postSession } from "./session";
 import { deleteStatusEvent } from "./status-events";
+import { getFieldStatusEvents } from "./status-history";
 import { postUploads } from "./uploads";
 
 /** 未実装の経路。501 */
@@ -39,4 +40,6 @@ export const routes: readonly Route[] = [
   { method: "GET", pattern: "/api/fields/summary", auth: "none", handler: getFieldsSummary },
   // L1 の判断を残す（T25）
   { method: "POST", pattern: "/api/fields/:id/status", auth: "member", handler: postFieldStatus },
+  // L1 の判断の履歴（T26）
+  { method: "GET", pattern: "/api/fields/:id/status-events", auth: "none", handler: getFieldStatusEvents },
 ];
