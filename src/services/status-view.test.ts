@@ -11,7 +11,9 @@ import {
   revokeOutcomeLabel,
   statusLabel,
   toggleRefPhoto,
+  withLocalChanges,
   withStatusEvent,
+  type LocalStatusChange,
 } from "./status-view";
 
 function event(change: Partial<StatusEvent> = {}): StatusEvent {
@@ -179,6 +181,93 @@ describe("withStatusEvent（履歴に入れる）", () => {
     const result = withStatusEvent(history, event({ id: 2, at: "2026-08-01T00:00:00.000Z" }));
     expect(history.map((e) => e.id)).toStrictEqual([1]);
     expect(result).not.toBe(history);
+  });
+});
+
+describe("withLocalChanges（遅れて届いた履歴に、手元の変更を重ねる）", () => {
+  const at1 = "2026-07-20T00:00:00.000Z";
+  const at2 = "2026-07-21T00:00:00.000Z";
+  const at3 = "2026-07-22T00:00:00.000Z";
+  const server = [event({ id: 2, at: at2 }), event({ id: 1, at: at1 })];
+  const change = (stamp: number, e: StatusEvent): LocalStatusChange => ({ stamp, event: e });
+
+  it("手元の変更が無ければ、読んだ履歴のまま", () => {
+    expect(withLocalChanges(server, [], 0)).toStrictEqual(server);
+  });
+
+  it("読み込みの後に送った判断は、読んだ履歴に無くても入る（正しい位置に）", () => {
+    const sent = event({ id: 3, at: at3 });
+    expect(withLocalChanges(server, [change(1, sent)], 0).map((e) => e.id)).toStrictEqual([3, 2, 1]);
+  });
+
+  it("読み込みの後に取り消した判断は、取り消した形に置き換わる", () => {
+    const revoked = event({ id: 1, at: at1, revokedAt: at3 });
+    const result = withLocalChanges(server, [change(5, revoked)], 4);
+    expect(result).toHaveLength(2);
+    expect(result[1]).toBe(revoked);
+  });
+
+  it("読み込みを始める前（stamp が since 以下）の変更は重ねない（読んだ履歴が新しい）", () => {
+    const old = event({ id: 1, at: at1, note: "古い" });
+    const sent = event({ id: 9, at: at3 });
+    expect(withLocalChanges(server, [change(3, old), change(4, sent)], 4)).toStrictEqual(server);
+    expect(withLocalChanges(server, [change(3, old)], 2)[1].note).toBe("古い");
+  });
+
+  it("同じ判断の変更が続いたら、stamp の大きい方が残る（配列の順によらない）", () => {
+    const sent = event({ id: 3, at: at3 });
+    const revoked = event({ id: 3, at: at3, revokedAt: "2026-07-23T00:00:00.000Z" });
+    for (const changes of [
+      [change(1, sent), change(2, revoked)],
+      [change(2, revoked), change(1, sent)],
+    ]) {
+      const result = withLocalChanges(server, changes, 0);
+      expect(result.map((e) => e.id)).toStrictEqual([3, 2, 1]);
+      expect(result[0]).toBe(revoked);
+    }
+  });
+
+  it("読んだ履歴で取り消し済みなら、手元の取り消し前の形で戻さない（取り消しは戻らない）", () => {
+    // 読み込みを始める → 手元で送る → 別の端末が取り消す → サーバーが答える、の順
+    const sent = event({ id: 3, at: at3 });
+    const revokedOnServer = event({ id: 3, at: at3, revokedAt: "2026-07-23T00:00:00.000Z" });
+    const result = withLocalChanges([revokedOnServer, ...server], [change(1, sent)], 0);
+    expect(result.map((e) => e.id)).toStrictEqual([3, 2, 1]);
+    expect(result[0]).toBe(revokedOnServer);
+  });
+
+  it("どちらも取り消し済みなら手元の形、手元だけ取り消し済みなら手元の形", () => {
+    const serverRevoked = event({ id: 1, at: at1, revokedAt: "2026-07-23T00:00:00.000Z" });
+    const localRevoked = event({ id: 1, at: at1, revokedAt: "2026-07-24T00:00:00.000Z" });
+    expect(withLocalChanges([serverRevoked], [change(1, localRevoked)], 0)[0]).toBe(localRevoked);
+    expect(withLocalChanges([event({ id: 1, at: at1 })], [change(1, localRevoked)], 0)[0]).toBe(localRevoked);
+  });
+
+  it("取り消し済み同士でも、stamp の大きい方が残る（配列の順によらない）", () => {
+    const first = event({ id: 1, at: at1, revokedAt: "2026-07-23T00:00:00.000Z" });
+    const second = event({ id: 1, at: at1, revokedAt: "2026-07-24T00:00:00.000Z" });
+    for (const changes of [
+      [change(1, first), change(2, second)],
+      [change(2, second), change(1, first)],
+    ]) {
+      expect(withLocalChanges(server, changes, 0)[1]).toBe(second);
+    }
+  });
+
+  it("読んだ履歴が空でも、手元の変更は入る", () => {
+    const sent = event({ id: 3, at: at3 });
+    expect(withLocalChanges([], [change(1, sent)], 0)).toStrictEqual([sent]);
+  });
+
+  it("元の配列を変えない", () => {
+    const events = [...server];
+    const changes = [change(2, event({ id: 3, at: at3 })), change(1, event({ id: 4, at: at3 }))];
+    const changesCopy = [...changes];
+    const result = withLocalChanges(events, changes, 0);
+    expect(events).toStrictEqual(server);
+    expect(changes).toStrictEqual(changesCopy);
+    expect(withLocalChanges(events, [], 0)).not.toBe(events);
+    expect(result).not.toBe(events);
   });
 });
 
