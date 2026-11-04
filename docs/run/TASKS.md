@@ -384,3 +384,27 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **書き方の注意（`scripts/cage/policy.mjs`）**: import は `@/services/...`・`./...`。`Response.json()` を使わず `http.ts` の `json()`・`errorResponse()`
 - **参照**: `docs/spec.md` §6、`docs/privacy.md`
 - **担当**: 先輩
+
+## T28 `handover-citations`（L6 の 2 段目。返事の引用を記録に対応付ける）
+- **状態**: RED 凍結（11-04）。無人の GREEN の待ち
+- **人の確認**: まだ
+- **Issue**: #105（L6 のサーバー側は先輩。11-04 本人と先輩の合意）
+- **依存**: 共有の型 `HandoverNote`。T27 とは独立（要素の数だけを受け取る）
+- **変えてよいファイル**: `src/services/handover-citations.ts`（＋ `docs/run/REPORT-T28.md`、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結）**: `src/services/handover-citations.test.ts`
+- **人が RED で置いたもの（凍結）**: `handover-citations.ts` の空の実装と `HandoverBlock` の型
+- **関数**: `toHandoverBlocks(content: unknown, recordCount: number): HandoverBlock[]`
+- **合格条件**:
+  - 返事の形（11-04 に公式の文書で確かめた）: `content` は配列。`text` のブロックの `citations` の各要素は `{ type: "content_block_location", cited_text, document_index, document_title, start_block_index, end_block_index }`、番号は 0 始まり、end は含まない
+  - `text` のブロックごとに `{ text, cites }`。`cites` は `{ start, end, citedText }` だけ、返事の順のまま
+  - 捨てる引用: 種類が `content_block_location` でない・`document_index` が数の 0 でない・`cited_text` が文字列でない・番号が整数でない・`0 <= start < end <= recordCount` でない・オブジェクトでない。全部捨てたブロックも `cites: []` で残す
+  - `citations` が無い・null は `cites: []`。text 以外のブロック（thinking など）は捨てる
+  - 例外（メッセージに「返事の形」）: content が配列でない・ブロックがオブジェクトでない・`type` が文字列でない・text が文字列でない・citations が配列でも null でもない・text のブロックが 1 つも無い
+  - 渡したものを書き換えない
+- **RED の確かめ（11-04）**: 空の実装で 26 件すべてが失敗。仮の実装で 26 件と src・worker の全件が通り、檻の純粋さの検査も通ることを確かめた
+- **攻撃役（Sonnet、檻の中、仕様・決まりのファイルを消した複製で）**:
+  - 1 回目（5 手、$0.07）: 26 件を、ほぼ正しい実装で通した（固定値・要素の数の決め打ち・先頭だけを見る手抜きは落ちた）
+  - 入れなかった指摘: thinking のブロックの中身の検査（捨てるだけ）、空の `cited_text`・空の文（そのまま残す）、重なる・重複する引用（そのまま残す）、`recordCount` が負・小数（呼ぶ側は records の数を渡す）、`-0`（`Number.isInteger(-0)` は true で 0 と同じ）
+- **書き方の注意（`scripts/cage/policy.mjs`）**: import は `@/types` だけ。`JSON.parse` は呼ぶ側（T30）で行う
+- **参照**: `docs/spec.md` §3・§9、K17
+- **担当**: 先輩
