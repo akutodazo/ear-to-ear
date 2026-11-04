@@ -329,3 +329,31 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
   - 返す値は 4 つの項目だけで、配列は入力の順を保った写し。元の入力を変えない。例外を出さない
 - **書き方の注意（`scripts/cage/policy.mjs`）**: import は `@/types`・`../config` だけ
 - **担当**: 本人
+
+## T25 `POST /api/fields/:id/status`（判断と理由・根拠を残す。委員以上、L1）
+- **状態**: 検査済み・人の確認待ち（11-04）
+- **運転の記録（1104 の列車の 3 本目、`--skip T23 --skip T24`）**: START `d18e0fa` → GREEN `b828aab` → REPORT `b3f684c`。モデル Opus、`claude -p`、道具は檻の5つだけ、18 手、$0.67。ゲート G0〜G7 は green。変更は許可した 2 ファイルだけ。QUESTIONS なし。C1〜C5 合格（C3 105 件、C4 テスト全体 1649 件、lint エラー 0・警告 2）。REPORT に手元のパスなし。watch.mjs の「列車終了: GREEN 3／ask 0／stopped 0、$1.70」をこのセッションから PushNotification でスマホに送った。本体に `.dev.vars` は無かった（退避するものなし）
+- **Claude の確認（11-04、人の確認の前）**: 実装を 12 通りに壊して 12 通りとも落ちる（確定済みの条件を外す 1・圃場の条件を外す 33・圃場の一覧を見ない 5・Content-Type を見ない 6・申告の長さを見ない 1・上限を 2 倍に 2・端末を固定 1・時刻を固定 1・理由を JSON にしない 17・400 を 422 に 3・T12 に任せない 68・JSON の失敗を 422 に 8）。手元の `wrangler dev`（使い捨ての値と D1）で、Cookie なし 401、委員で 201 と 9 項目、未確定の写真・別の圃場の写真を根拠にすると 422 `ref_photo_not_in_field`、Z-99 は 422 `unknown_field`、JSON でない 400、text/plain 415、知らない理由 422 `unknown_reason`、3000 バイトは 413、すべて no-store。残した判断が `GET /api/fields/summary` の latest になり、T23 で取り消すと null に戻った。UTF-8 のファイルから送ったメモ（絵文字入り）は前後の空白を除いてそのまま残った（シェルの引数で送ると文字化けしたが、Git Bash の引数の文字コードのせいで API ではない）
+- **人の確認**: まだ（先輩が差分を読んでからマージ。CLAUDE.md の無人運転の PR の例外）
+- **Issue**: #91
+- **依存**: T12（`parseStatusInput`、本人、#96）、T23（`STATUS_EVENT_COLUMNS`・`statusEventFromRow`）、T11、T18、T19（`body.ts`・`isJsonContentType`）
+- **変えてよいファイル**: `src/services/status-request.ts`・`worker/field-status.ts`（＋ `docs/run/REPORT-T25.md`、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結）**: `src/services/status-request.test.ts`・`src/services/status-request-delegate.test.ts`（`parseStatusInput` を差し替えて任せていることを確かめる）・`worker/field-status.test.ts`・`worker/routes.test.ts`（POST の経路を足した）
+- **人が RED で置いたもの（凍結）**: `status-request.ts` の `STATUS_BODY_MAX_BYTES`（2048）・`StatusBodyResult` と `parseStatusBody` の空の実装、`worker/field-status.ts` の `postFieldStatus` の空の実装、`routes.ts` の配線（表の末尾）
+- **関数**: `parseStatusBody(text: string, confirmedPhotoIds: ReadonlySet<string>): StatusBodyResult`（JSON でなければ 400、読めたら `parseStatusInput` に任せて 422 と理由）、`postFieldStatus: Handler`
+- **合格条件**:
+  - Content-Type が JSON でなければ 415（`isJsonContentType`）。申告・実際の長さが 2048 バイトを超えれば 413（`declaredTooLarge`・`readBodyLimited`）
+  - 経路の `:id` が `deps.knownFieldIds` に無ければ 422 `{ error: "unprocessable", reason: "unknown_field" }` で、D1 を触らない
+  - 根拠の判定に渡す集合は、その圃場で `state = 'confirmed'` の写真の id（値は bind）。中身の誤りは 422 と T12 の理由のコード、JSON でなければ 400 `{ error: "bad_request" }`。どちらも行を足さない
+  - 通れば `field_status_events` に 1 行（理由・根拠は JSON の配列、メモは T12 が整えた値、端末は Cookie の端末、時刻は `deps.nowMs`）。`RETURNING` の行を `statusEventFromRow` で写して 201
+  - `console`・`Date.now`・`crypto`・R2・`newId` を使わない。`cache-control` を触らない
+- **決めたこと（先輩、11-04）**: 成功の本文は残した `StatusEvent`。一覧に無い圃場は 404 ではなく 422 `unknown_field`（T22 と同じく spec §6 の誤りの欄に合わせる）。JSON でない本文は 400、Content-Type 415、大きすぎる 413（PATCH assignment と同じ）。本文の上限 2048 バイト（メモ 200 字×4 バイト・理由 5 つ・UUID 5 枚が収まる）
+- **RED の確かめ（11-04）**: 空の実装で 49 件が失敗・11 件が成功（経路の表・401・500・405・上限の大きさ）。仮の実装で、攻撃役の後の 105 件と src・worker の全件が通り、檻の純粋さの検査も通ることを確かめた
+- **攻撃役（Sonnet、檻の中、仕様・決まりのファイルを消した複製で。文面に「素直な実装を先に書かない」）**:
+  - 1 回目（19 手、$0.27）: 60 件を、`parseStatusInput` を呼ばずテストの値（`"maybe"`・201 字・6 枚など）だけ見る手抜き、SQL から `state = 'confirmed'` を外す手抜き、Content-Type の完全一致で通した。`parseStatusInput` と同じ結果になるかを 28 の入力で比べるテスト、番号入りの未確定の写真、`charset` 付き、1 バイトずつのチャンク、`duplicate_ref_photo` を足した
+  - 2 回目（17 手、$0.23）: 93 件を、検証を手で写す（字数を空白を除く前に数える誤り付き）手抜きで通した。`parseStatusInput` を差し替えて呼ばれることを確かめる別のファイル、空白付きの長いメモ、JSON でない Content-Type 5 つを足した
+  - 3 回目（17 手、$0.20）: 102 件を、ほぼ素直な実装で通した。残りは境目だけだったので、上限ちょうど・1 バイト超え、`;` の前の空白、Content-Type 無しを足して凍結した
+  - 入れなかった指摘: `content-length` が `abc`・負・小数（`declaredTooLarge` が読めなければ本文で判定する。T19 で確かめ済み）。誤りが重なったときの順序（仕様に無い）。根拠が空のときに D1 を引かないこと（性能。12 圃場の規模）。INSERT が行を返さない場合（D1 の RETURNING は必ず返す）。同じ要求を 2 回（続けて残すテストで別の行になる）
+- **書き方の注意（`scripts/cage/policy.mjs`）**: import は Service が `./status-reason`・`@/types`、worker が `@/services/...`・`./...`。`Response.json()` を使わず `http.ts` の `json()`・`errorResponse()`
+- **参照**: `docs/spec.md` §6
+- **担当**: 先輩
