@@ -15,7 +15,8 @@ export type HandoverOutcome =
 /**
  * POST /api/fields/:id/handover の結果（#107 の先輩の決定）。
  * forbidden は管理者でない（403）、no-records は記録が 0 件（422）、usage-limit は 1 日の上限（429）、
- * upstream-error は Claude の失敗・形の違う返事（502。保存されない）
+ * upstream-error は Claude の失敗・形の違う返事（502。保存されない）、
+ * disabled は Claude を止めている（503 `claude_disabled`。`CLAUDE_ENABLED=false` かキーなし、T31 #111）
  */
 export type CreateHandoverOutcome =
   | { kind: "created"; note: HandoverNote }
@@ -25,6 +26,7 @@ export type CreateHandoverOutcome =
   | { kind: "no-records" }
   | { kind: "usage-limit" }
   | { kind: "upstream-error" }
+  | { kind: "disabled" }
   | { kind: "network-error" }
   | { kind: "error" };
 
