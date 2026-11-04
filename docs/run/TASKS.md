@@ -331,7 +331,10 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **担当**: 本人
 
 ## T25 `POST /api/fields/:id/status`（判断と理由・根拠を残す。委員以上、L1）
-- **状態**: RED 凍結（11-04）。GREEN は檻リレーで無人
+- **状態**: 検査済み・人の確認待ち（11-04）
+- **運転の記録（1104 の列車の 3 本目、`--skip T23 --skip T24`）**: START `d18e0fa` → GREEN `b828aab` → REPORT `b3f684c`。モデル Opus、`claude -p`、道具は檻の5つだけ、18 手、$0.67。ゲート G0〜G7 は green。変更は許可した 2 ファイルだけ。QUESTIONS なし。C1〜C5 合格（C3 105 件、C4 テスト全体 1649 件、lint エラー 0・警告 2）。REPORT に手元のパスなし。watch.mjs の「列車終了: GREEN 3／ask 0／stopped 0、$1.70」をこのセッションから PushNotification でスマホに送った。本体に `.dev.vars` は無かった（退避するものなし）
+- **Claude の確認（11-04、人の確認の前）**: 実装を 12 通りに壊して 12 通りとも落ちる（確定済みの条件を外す 1・圃場の条件を外す 33・圃場の一覧を見ない 5・Content-Type を見ない 6・申告の長さを見ない 1・上限を 2 倍に 2・端末を固定 1・時刻を固定 1・理由を JSON にしない 17・400 を 422 に 3・T12 に任せない 68・JSON の失敗を 422 に 8）。手元の `wrangler dev`（使い捨ての値と D1）で、Cookie なし 401、委員で 201 と 9 項目、未確定の写真・別の圃場の写真を根拠にすると 422 `ref_photo_not_in_field`、Z-99 は 422 `unknown_field`、JSON でない 400、text/plain 415、知らない理由 422 `unknown_reason`、3000 バイトは 413、すべて no-store。残した判断が `GET /api/fields/summary` の latest になり、T23 で取り消すと null に戻った。UTF-8 のファイルから送ったメモ（絵文字入り）は前後の空白を除いてそのまま残った（シェルの引数で送ると文字化けしたが、Git Bash の引数の文字コードのせいで API ではない）
+- **人の確認**: まだ（先輩が差分を読んでからマージ。CLAUDE.md の無人運転の PR の例外）
 - **Issue**: #91
 - **依存**: T12（`parseStatusInput`、本人、#96）、T23（`STATUS_EVENT_COLUMNS`・`statusEventFromRow`）、T11、T18、T19（`body.ts`・`isJsonContentType`）
 - **変えてよいファイル**: `src/services/status-request.ts`・`worker/field-status.ts`（＋ `docs/run/REPORT-T25.md`、止まったときは `docs/run/QUESTIONS.md`）
