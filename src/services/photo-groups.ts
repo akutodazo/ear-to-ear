@@ -13,9 +13,43 @@ export interface PhotoGroup {
   photos: UploadedPhoto[];
 }
 
+/** 文字列の大小（降順に使う）。a が先なら負 */
+function compareDesc(a: string, b: string): number {
+  if (a > b) return -1;
+  if (a < b) return 1;
+  return 0;
+}
+
+/** 撮影日の新しい順、null は後ろ */
+function compareTakenAt(a: string | null, b: string | null): number {
+  if (a === b) return 0;
+  if (a === null) return 1;
+  if (b === null) return -1;
+  return compareDesc(a, b);
+}
+
+/** 送った時刻の新しい順、同じなら id の大きい順 */
+function comparePhotos(a: UploadedPhoto, b: UploadedPhoto): number {
+  const byTime = compareDesc(a.uploadedAt, b.uploadedAt);
+  if (byTime !== 0) return byTime;
+  return compareDesc(a.id, b.id);
+}
+
 /** fieldId に確定済みの写真を撮影日ごとにまとめる。元の配列と写真は変えない。該当が無ければ [] */
 export function groupFieldPhotos(photos: UploadedPhoto[], fieldId: string): PhotoGroup[] {
-  void photos;
-  void fieldId;
-  throw new Error("not implemented");
+  const selected = photos.filter((p) => p.state === "confirmed" && p.fieldId === fieldId);
+  const sorted = [...selected].sort(comparePhotos);
+
+  const byDay = new Map<string | null, UploadedPhoto[]>();
+  for (const p of sorted) {
+    const list = byDay.get(p.takenAt);
+    if (list === undefined) {
+      byDay.set(p.takenAt, [p]);
+    } else {
+      list.push(p);
+    }
+  }
+
+  const days = [...byDay.keys()].sort(compareTakenAt);
+  return days.map((takenAt) => ({ takenAt, photos: byDay.get(takenAt) ?? [] }));
 }
