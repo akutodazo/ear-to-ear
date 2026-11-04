@@ -1,0 +1,111 @@
+/**
+ * /fields/[id] の引き継ぎメモ（L6、docs/spec.md §3・§7）の Presenter。今のシーズンのメモを読み、作り直す。
+ * 作り直すのは管理者だけ（守るのはサーバーの 401／403）。合言葉は最初に聞かない。
+ * 作るときに 401／403 が返ったときだけ聞く（新着の確定と同じ流れ。委員の端末から管理者で入り直せる）。
+ * Claude を呼ぶのは 1 回押すごとに 1 回（作っている間は押せない。1 日の上限はサーバー）。
+ * 文と根拠の印への分け方（handover-view）と画面の配置は後でつなぐので、ここはメモと状態だけを返す。
+ */
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import type { HandoverNote } from "@/types";
+import { createHandoverOutcomeLabel, handoverOutcomeLabel } from "@/services/handover-labels";
+import { loginOutcomeLabel } from "@/services/login-label";
+import { createHandoverRepository } from "@/repositories/create-handover-repository";
+import { createPhotoRepository } from "@/repositories/create-photo-repository";
+import type { HandoverOutcome, IHandoverRepository } from "@/repositories/interfaces/i-handover-repository";
+import type { IPhotoRepository } from "@/repositories/interfaces/i-photo-repository";
+
+export function useHandover(
+  fieldId: string,
+  repositories?: { handover?: IHandoverRepository; photo?: IPhotoRepository },
+) {
+  const [handoverRepo] = useState<IHandoverRepository>(() => repositories?.handover ?? createHandoverRepository());
+  const [photoRepo] = useState<IPhotoRepository>(() => repositories?.photo ?? createPhotoRepository());
+  const [note, setNote] = useState<HandoverNote | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [createMessage, setCreateMessage] = useState<{ text: string; ok: boolean } | null>(null);
+  const [needsPassphrase, setNeedsPassphrase] = useState(false);
+  const [loginMessage, setLoginMessage] = useState<string | null>(null);
+  const [loggingIn, setLoggingIn] = useState(false);
+
+  const apply = useCallback((outcome: HandoverOutcome) => {
+    setLoading(false);
+    setMessage(handoverOutcomeLabel(outcome));
+    // 読めなかったときは、前に読めたメモを残す（電波が悪いだけで消さない）
+    if (outcome.kind === "ok") setNote(outcome.note);
+    else if (outcome.kind === "none") setNote(null);
+  }, []);
+
+  useEffect(() => {
+    // 開いたときに1回だけ読む（静的書き出しの事前描画では動かない）。閉じた後に届いた結果は捨てる
+    let active = true;
+    handoverRepo.getNote(fieldId).then((outcome) => {
+      if (active) apply(outcome);
+    });
+    return () => {
+      active = false;
+    };
+  }, [handoverRepo, fieldId, apply]);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    apply(await handoverRepo.getNote(fieldId));
+  }, [handoverRepo, fieldId, apply]);
+
+  const create = useCallback(async () => {
+    if (creating) return;
+    setCreating(true);
+    setCreateMessage(null);
+    try {
+      const outcome = await handoverRepo.createNote(fieldId);
+      setCreateMessage({ text: createHandoverOutcomeLabel(outcome), ok: outcome.kind === "created" });
+      if (outcome.kind === "created") {
+        setNote(outcome.note);
+        setMessage(null);
+      } else if (outcome.kind === "unauthorized" || outcome.kind === "forbidden") {
+        setLoginMessage(null);
+        setNeedsPassphrase(true);
+      }
+    } finally {
+      setCreating(false);
+    }
+  }, [creating, handoverRepo, fieldId]);
+
+  const login = useCallback(
+    async (passphrase: string) => {
+      if (loggingIn) return;
+      setLoggingIn(true);
+      try {
+        const outcome = await photoRepo.login(passphrase);
+        if (outcome === "ok") {
+          setNeedsPassphrase(false);
+          setLoginMessage(null);
+          // 入った後は、もう一度「作る」を押してもらう（勝手に Claude を呼ばない）
+          setCreateMessage(null);
+        } else {
+          setLoginMessage(loginOutcomeLabel(outcome));
+        }
+      } finally {
+        setLoggingIn(false);
+      }
+    },
+    [photoRepo, loggingIn],
+  );
+
+  return {
+    note,
+    loading,
+    message,
+    refresh,
+    create,
+    creating,
+    createMessage,
+    needsPassphrase,
+    loginMessage,
+    loggingIn,
+    login,
+  };
+}
