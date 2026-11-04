@@ -199,6 +199,12 @@ describe("toHandoverBlocks: 形の違う返事は例外（T30 で 502）（T28�
   it("type が無いブロックは形の違いとして例外", () => {
     expect(() => toHandoverBlocks([{ text: "x" }], 3)).toThrow(/返事の形/);
   });
+
+  // 人の確認（T28 の GREEN の後）: type が無いブロックだけの返事は「text が無い」でも例外になり、type の検査を外しても通った
+  it("正しい text のブロックと混ざっていても、type が文字列でないブロックがあれば例外", () => {
+    expect(() => toHandoverBlocks([{ type: "text", text: "a" }, { text: "x" }], 3)).toThrow(/返事の形/);
+    expect(() => toHandoverBlocks([{ type: "text", text: "a" }, { type: 1, text: "x" }], 3)).toThrow(/返事の形/);
+  });
 });
 
 describe("toHandoverBlocks: 渡したものを変えない（T28）", () => {
