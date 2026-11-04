@@ -17,18 +17,11 @@ import {
   toggleRefPhoto as toggleRefPhotoIn,
   withStatusEvent,
 } from "@/services/status-view";
+import { loginOutcomeLabel } from "@/services/login-label";
 import { createFieldStatusRepository } from "@/repositories/create-field-status-repository";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
 import type { HistoryOutcome, IFieldStatusRepository } from "@/repositories/interfaces/i-field-status-repository";
-import type { IPhotoRepository, LoginOutcome } from "@/repositories/interfaces/i-photo-repository";
-
-const LOGIN_MESSAGES: Record<LoginOutcome, string | null> = {
-  ok: null,
-  wrong: "合言葉が違います",
-  "too-many": "何度も間違えたので、10分ほどおいてからもう一度",
-  "network-error": "つながりませんでした。電波のよい所でもう一度",
-  error: "うまくいきませんでした。時間をおいてもう一度",
-};
+import type { IPhotoRepository } from "@/repositories/interfaces/i-photo-repository";
 
 /** 入力中の判断 */
 export interface StatusDraft {
@@ -183,7 +176,7 @@ export function useFieldStatus(
           setFormMessage(null);
           setRevokeStatus({});
         } else {
-          setLoginMessage(LOGIN_MESSAGES[outcome]);
+          setLoginMessage(loginOutcomeLabel(outcome));
         }
       } finally {
         setLoggingIn(false);
