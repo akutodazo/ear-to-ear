@@ -51,11 +51,14 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **担当**: 先輩
 
 ## T32 `handover-view`（L6 の引き継ぎメモを、画面の文と根拠の印に分ける）
-- **状態**: RED済み（人、11-04）
+- **状態**: 検査済み・人の確認待ち（11-04）
+- **運転の記録**: 1104 の列車の 3 本目（T06・T12 は済みで飛ばした）。START `43b43c7` → GREEN `ce0ae68` → REPORT `9560953`。Opus、9 手、$0.34。ゲート G0〜G7 と C1〜C5 がすべて合格（C3 24 件、C4 テスト全体）。変更は許可した 1 ファイルと REPORT だけ。QUESTIONS なし。REPORT に手元のパスなし。列車の前に `.dev.vars` が無いことと wrangler が未ログインであることを確かめた
+- **Claude の確認（11-04、人の確認の前）**: 差分を読んで抜けは見つからなかった（仮の実装と同じ形）。実装を 18 通りに壊して 5 つが生き残り、結果が変わらない 3 つを除く 2 つ（取り消しの印を文末だけで見る・start だけが整数でない引用）を落とすテストを足して 26 件
+- **人の確認**: まだ
 - **Issue**: なし（画面側のデータ層 #114 の続き。合格条件 13）
 - **依存**: T27 `buildHandoverRecords` の記録の文の書き方（テストは T27 で作った記録を使う）、`HandoverNote` の型
 - **変えてよいファイル**: `src/services/handover-view.ts`（＋ `docs/run/REPORT-T32.md`、止まったときは `docs/run/QUESTIONS.md`）
-- **テスト（凍結）**: `src/services/handover-view.test.ts`（24 件）
+- **テスト（凍結）**: `src/services/handover-view.test.ts`（24 件。GREEN の後に人の確認で 2 件を足して 26 件）
 - **人が RED で置いたもの（凍結）**: `handover-view.ts` の型（`HandoverSource`・`HandoverSentence`）、`NO_SOURCE_LABEL`、空の関数
 - **関数**: `statusAnchorId(eventId): string`、`sourceLabel(record): string`、`handoverSentences(note): HandoverSentence[]`
 - **合格条件**:
