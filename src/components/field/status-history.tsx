@@ -5,6 +5,7 @@
  * 取り消しは 2 段（DS §7-5）: 1 回目でボタンが「本当に取り消す（5 秒で戻ります）」に変わり、5 秒で戻る。2 回目で取り消す。
  * 各項目に statusAnchorId の id を付ける（引き継ぎメモの根拠の印から戻ってくる先）。props だけで受け取る
  */
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import type { StatusEvent } from "@/types";
 import type { RevokeStatus } from "@/hooks/use-field-status";
@@ -77,7 +78,23 @@ export function StatusHistory({
                 </p>
                 <p>理由: {reasonsLabel(event.reasons)}</p>
                 {event.note !== null && <p>メモ: {event.note}</p>}
-                {event.refPhotoIds.length > 0 && <p className="note">根拠の写真 {event.refPhotoIds.length}枚</p>}
+                {event.refPhotoIds.length > 0 && (
+                  <div className="stack-tight">
+                    <p className="note">根拠の写真 {event.refPhotoIds.length}枚（押すと開きます）</p>
+                    <ul className="photo-grid">
+                      {event.refPhotoIds.map((photoId, i) => {
+                        const src = `/api/photo-files/${encodeURIComponent(photoId)}`;
+                        return (
+                          <li key={photoId}>
+                            <a className="thumb" href={src} target="_blank" rel="noreferrer">
+                              <Image src={src} alt={`根拠の写真 ${i + 1}`} fill sizes="(max-width: 600px) 33vw, 200px" />
+                            </a>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
                 {!revoked && <RevokeButton eventId={event.id} status={status} onRevoke={onRevoke} />}
                 {status?.message && <p className="note">{status.message}</p>}
               </li>

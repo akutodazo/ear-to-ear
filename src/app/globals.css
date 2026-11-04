@@ -378,7 +378,8 @@ button.thumb {
   cursor: pointer;
 }
 
-.thumb-selected {
+/* button.thumb より詳細度を上げる（Codex の点検 P2。同じ詳細度だと選んでも枠が出なかった） */
+button.thumb.thumb-selected {
   border: 4px solid var(--brand);
 }
 
