@@ -7,7 +7,7 @@
  */
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { HandoverNote } from "@/types";
 import { createHandoverOutcomeLabel, handoverOutcomeLabel } from "@/services/handover-labels";
 import { loginOutcomeLabel } from "@/services/login-label";
@@ -30,8 +30,12 @@ export function useHandover(
   const [needsPassphrase, setNeedsPassphrase] = useState(false);
   const [loginMessage, setLoginMessage] = useState<string | null>(null);
   const [loggingIn, setLoggingIn] = useState(false);
+  // 読み込みの番号。新しい読み込みを始めたときと、作り直しに成功したときに進める。
+  // 番号が古い読み込みの結果は捨てる（遅れて届いた古いメモや 404 で、作ったばかりのメモを上書きしない）
+  const readSeq = useRef(0);
 
-  const apply = useCallback((outcome: HandoverOutcome) => {
+  const apply = useCallback((seq: number, outcome: HandoverOutcome) => {
+    if (seq !== readSeq.current) return;
     setLoading(false);
     setMessage(handoverOutcomeLabel(outcome));
     // 読めなかったときは、前に読めたメモを残す（電波が悪いだけで消さない）
@@ -42,8 +46,9 @@ export function useHandover(
   useEffect(() => {
     // 開いたときに1回だけ読む（静的書き出しの事前描画では動かない）。閉じた後に届いた結果は捨てる
     let active = true;
+    const seq = ++readSeq.current;
     handoverRepo.getNote(fieldId).then((outcome) => {
-      if (active) apply(outcome);
+      if (active) apply(seq, outcome);
     });
     return () => {
       active = false;
@@ -51,8 +56,9 @@ export function useHandover(
   }, [handoverRepo, fieldId, apply]);
 
   const refresh = useCallback(async () => {
+    const seq = ++readSeq.current;
     setLoading(true);
-    apply(await handoverRepo.getNote(fieldId));
+    apply(seq, await handoverRepo.getNote(fieldId));
   }, [handoverRepo, fieldId, apply]);
 
   const create = useCallback(async () => {
@@ -63,6 +69,8 @@ export function useHandover(
       const outcome = await handoverRepo.createNote(fieldId);
       setCreateMessage({ text: createHandoverOutcomeLabel(outcome), ok: outcome.kind === "created" });
       if (outcome.kind === "created") {
+        readSeq.current += 1;
+        setLoading(false);
         setNote(outcome.note);
         setMessage(null);
       } else if (outcome.kind === "unauthorized" || outcome.kind === "forbidden") {
