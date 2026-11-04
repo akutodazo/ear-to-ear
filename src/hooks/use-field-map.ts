@@ -66,5 +66,5 @@ export function useFieldMap(repository?: IFieldStatusRepository) {
     });
   }, [summaries]);
 
-  return { pins, loading, message, fetchedAt, refresh };
+  return { pins, summaries, loading, message, fetchedAt, refresh };
 }

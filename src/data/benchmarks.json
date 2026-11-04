@@ -1,1 +1,12 @@
-[]
+[
+  {
+    "season": "2026",
+    "district": "北地区",
+    "fieldId": "A-03"
+  },
+  {
+    "season": "2026",
+    "district": "中地区",
+    "fieldId": "A-07"
+  }
+]

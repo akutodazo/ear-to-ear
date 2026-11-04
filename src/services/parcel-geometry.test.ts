@@ -70,9 +70,9 @@ describe("polygonCentroid（重心）", () => {
 
   it("L 字の重心は点の平均ではなく面の重心（広い方に寄る）", () => {
     const [lat, lng] = polygonCentroid(lShape);
-    // 点の平均は (43.2413…, 141.7513…)。面の重心は細い腕の分だけずれる
-    expect(lat).toBeCloseTo(43.2412, 4);
-    expect(lng).toBeCloseTo(141.7508, 4);
+    // 点の平均は (43.24133, 141.75133)。面の重心は 横の棒 3 と 縦の棒 2 の面積の重み付きで (43.2411, 141.7511)
+    expect(lat).toBeCloseTo(43.2411, 5);
+    expect(lng).toBeCloseTo(141.7511, 5);
   });
 
   it("面積が 0（点が一直線）なら点の平均", () => {

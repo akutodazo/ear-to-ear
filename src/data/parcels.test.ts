@@ -7,7 +7,8 @@ import parcelsData from "./parcels.json";
 
 // 架空の 12 区画（11-04 夜の本人決定）。圃場の一覧と 1 対 1 で、中心を含み、互いに重ならず、範囲（P15）の中
 const fields: Field[] = fieldsData;
-const parcels: Parcel[] = parcelsData;
+// JSON の型は number[][] なので、[lat, lng] の組に読み替える（中身は下のテストで確かめる）
+const parcels: Parcel[] = parcelsData.map((p) => ({ fieldId: p.fieldId, polygon: p.polygon.map(([lat, lng]) => [lat, lng] as [number, number]) }));
 
 /** 地球を球として 1 度あたりのおよその距離（m） */
 const M_PER_DEG_LAT = 111_320;
