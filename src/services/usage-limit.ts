@@ -45,12 +45,19 @@ export function retryAfterSec(window: LoginWindow, nowMs: number): number {
   return Math.max(1, Math.ceil((window.endMs - nowMs) / 1000));
 }
 
+/** 日本時間と UTC の差（ミリ秒） */
+const JST_OFFSET_MS = 9 * 3600_000;
+
+/** 1 日（ミリ秒） */
+const DAY_MS = 24 * 3600_000;
+
 /** Claude の 1 日の回数の key。`claude:<日本時間の日付 YYYY-MM-DD>`（環境全体で 1 つ、T31） */
-export function claudeCounterKey(_nowMs: number): string {
-  throw new Error("未実装");
+export function claudeCounterKey(nowMs: number): string {
+  return `claude:${new Date(nowMs + JST_OFFSET_MS).toISOString().slice(0, 10)}`;
 }
 
 /** nowMs を含む日本時間の日の終わり（翌日の日本時間 0 時）の ISO 8601（usage_counters.expires_at、T31） */
-export function claudeDayEndsAt(_nowMs: number): string {
-  throw new Error("未実装");
+export function claudeDayEndsAt(nowMs: number): string {
+  const dayStartJst = Math.floor((nowMs + JST_OFFSET_MS) / DAY_MS) * DAY_MS;
+  return new Date(dayStartJst + DAY_MS - JST_OFFSET_MS).toISOString();
 }
