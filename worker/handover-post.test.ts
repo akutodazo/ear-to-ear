@@ -183,6 +183,25 @@ describe("POST /api/fields/:id/handover: 作って保存する（T31）", () => 
     }
   });
 
+  // 人の確認（T31 の GREEN の後）: どの引用も範囲の内側で、要素の数を違えても通った
+  it("要素の範囲の外を指す引用は捨てる（要素は 3 つ）", async () => {
+    const reply = apiReply({
+      content: [
+        {
+          type: "text",
+          text: "範囲の外",
+          citations: [
+            { type: "content_block_location", cited_text: "x", document_index: 0, document_title: "t", start_block_index: 2, end_block_index: 4 },
+            { type: "content_block_location", cited_text: "y", document_index: 0, document_title: "t", start_block_index: 2, end_block_index: 3 },
+          ],
+        },
+      ],
+    });
+    const { deps } = setup(reply);
+    const note = await (await post(deps)).json();
+    expect(note.blocks).toStrictEqual([{ text: "範囲の外", cites: [{ start: 2, end: 3, citedText: "y" }] }]);
+  });
+
   it("handover_notes に 1 行保存し、GET で同じものが返る", async () => {
     const { deps, testDb } = setup();
     const created = await (await post(deps)).json();
