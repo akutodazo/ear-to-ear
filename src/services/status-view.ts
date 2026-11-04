@@ -133,6 +133,16 @@ export function withLocalChanges(
     }, [...events]);
 }
 
+/** ISO の時刻を日本時間の「月/日 時:分」にする（例 7/21 10:05、0 時は 0:30）。読めなければ「日時不明」 */
+export function jstDateTimeLabel(_iso: string): string {
+  return "";
+}
+
+/** メモの字数の表示（例「12/200字」）。数え方は送る前の確かめ（parseStatusInput）と同じく、前後の空白を除いた文字の数 */
+export function noteCountLabel(_note: string): string {
+  return "";
+}
+
 /** 地図のピンの状態。判断が無ければ none */
 export function pinState(summary: FieldSummary): PinState {
   return { status: summary.latest?.status ?? "none", unconfirmed: summary.hasUnconfirmed };

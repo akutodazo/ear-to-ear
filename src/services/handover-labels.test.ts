@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { HandoverNote } from "@/types";
 import type { CreateHandoverOutcome, HandoverOutcome } from "@/repositories/interfaces/i-handover-repository";
-import { createHandoverOutcomeLabel, handoverOutcomeLabel } from "./handover-labels";
+import { createHandoverOutcomeLabel, handoverCreatedLabel, handoverOutcomeLabel } from "./handover-labels";
 
 const note: HandoverNote = {
   fieldId: "A-06",
@@ -58,5 +58,15 @@ describe("createHandoverOutcomeLabel（作った結果）", () => {
     const labels = all.map(createHandoverOutcomeLabel);
     expect(new Set(labels).size).toBe(all.length);
     for (const label of labels) expect(label).not.toBe("");
+  });
+});
+
+describe("handoverCreatedLabel（作った時刻）", () => {
+  it("日本時間の「月/日 時:分 に作成」", () => {
+    expect(handoverCreatedLabel({ ...note, createdAt: "2026-07-22T01:30:00.000Z" })).toBe("7/22 10:30 に作成");
+  });
+
+  it("読めない時刻は「作成日時不明」", () => {
+    expect(handoverCreatedLabel({ ...note, createdAt: "?" })).toBe("作成日時不明");
   });
 });

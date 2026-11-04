@@ -5,6 +5,8 @@ import type { StatusInputReason } from "./status-reason";
 import type { PostStatusOutcome, RevokeOutcome } from "@/repositories/interfaces/i-field-status-repository";
 import {
   inputErrorLabel,
+  jstDateTimeLabel,
+  noteCountLabel,
   pinState,
   postOutcomeLabel,
   reasonsLabel,
@@ -268,6 +270,34 @@ describe("withLocalChanges（遅れて届いた履歴に、手元の変更を重
     expect(changes).toStrictEqual(changesCopy);
     expect(withLocalChanges(events, [], 0)).not.toBe(events);
     expect(result).not.toBe(events);
+  });
+});
+
+describe("jstDateTimeLabel（判断の時刻）", () => {
+  it("日本時間の「月/日 時:分」。月・日・時に 0 を付けず、分は 2 桁", () => {
+    expect(jstDateTimeLabel("2026-07-21T01:05:00.000Z")).toBe("7/21 10:05");
+    expect(jstDateTimeLabel("2026-11-03T14:59:00.000Z")).toBe("11/3 23:59");
+  });
+
+  it("日本時間で日付が変わる時刻は次の日の 0 時", () => {
+    expect(jstDateTimeLabel("2026-07-20T15:30:00.000Z")).toBe("7/21 0:30");
+    expect(jstDateTimeLabel("2026-12-31T15:00:00.000Z")).toBe("1/1 0:00");
+  });
+
+  it("読めない時刻は「日時不明」", () => {
+    expect(jstDateTimeLabel("")).toBe("日時不明");
+    expect(jstDateTimeLabel("きのう")).toBe("日時不明");
+  });
+});
+
+describe("noteCountLabel（メモの字数）", () => {
+  it("前後の空白を除いた文字の数と上限（config の値）", () => {
+    expect(noteCountLabel("")).toBe(`0/${STATUS_NOTE_MAX_CHARS}字`);
+    expect(noteCountLabel("  穂が黄色い　")).toBe(`5/${STATUS_NOTE_MAX_CHARS}字`);
+  });
+
+  it("絵文字などは 1 字に数える（送る前の確かめと同じ）", () => {
+    expect(noteCountLabel("🌾🌾a")).toBe(`3/${STATUS_NOTE_MAX_CHARS}字`);
   });
 });
 
