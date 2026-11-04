@@ -5,6 +5,7 @@
 import { patchAssignment } from "./assignment";
 import type { Route } from "./deps";
 import { errorResponse, json } from "./http";
+import { postFieldStatus } from "./field-status";
 import { getFieldsSummary } from "./fields";
 import { getPhotoFile } from "./photo-files";
 import { getPhotosByField, getRecentPhotos } from "./photos";
@@ -36,4 +37,6 @@ export const routes: readonly Route[] = [
   { method: "DELETE", pattern: "/api/status-events/:id", auth: "member", handler: deleteStatusEvent },
   // L1 の地図（T24）
   { method: "GET", pattern: "/api/fields/summary", auth: "none", handler: getFieldsSummary },
+  // L1 の判断を残す（T25）
+  { method: "POST", pattern: "/api/fields/:id/status", auth: "member", handler: postFieldStatus },
 ];
