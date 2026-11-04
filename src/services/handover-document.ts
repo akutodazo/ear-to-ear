@@ -54,15 +54,14 @@ function statusText(event: StatusEvent): string {
 
 /** 根拠にした判断は、そのシーズンのもの（取り消し済みも含む）を番号の小さい順に書く */
 function photoText(photo: UploadedPhoto, events: readonly StatusEvent[]): string {
-  if (photo.takenAt === null) {
-    return `[写真] 撮影日不明（${jstDate(photo.uploadedAt)} に送信）。`;
-  }
   const refIds = events
     .filter((e) => e.refPhotoIds.includes(photo.id))
     .map((e) => e.id)
     .sort((a, b) => a - b);
   const refs = refIds.length === 0 ? "" : `判断 ${refIds.join("・")} の根拠。`;
-  return `[写真] ${photo.takenAt} 撮影。${refs}`;
+  const head =
+    photo.takenAt === null ? `撮影日不明（${jstDate(photo.uploadedAt)} に送信）` : `${photo.takenAt} 撮影`;
+  return `[写真] ${head}。${refs}`;
 }
 
 type Entry =
