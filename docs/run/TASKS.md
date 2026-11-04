@@ -359,7 +359,10 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **担当**: 先輩
 
 ## T26 `GET /api/fields/:id/status-events`（圃場ページの判断の履歴。認証なし、L1）
-- **状態**: RED 凍結（11-04）。GREEN は檻リレーで無人
+- **状態**: 検査済み・人の確認待ち（11-04）
+- **運転の記録（1104 の列車の 4 本目、`--skip T23 --skip T24 --skip T25`）**: START `b1872ed` → GREEN `d83b7b2` → REPORT `7751d66`。モデル Opus、`claude -p`、道具は檻の5つだけ、11 手、$0.52。ゲート G0〜G7 は green。変更は許可した 1 ファイルだけ。QUESTIONS なし。C1〜C5 合格（C3 35 件、C4 テスト全体 1682 件、lint エラー 0・警告 2）。REPORT に手元のパスなし。SQL で並べ、列は `STATUS_EVENT_COLUMNS`（3 回目の攻撃役の残りも合格条件どおり）。この日の 1 日の上限は $3 から $4 に上げた（週次 21%、この日の上限 33%）
+- **Claude の確認（11-04、人の確認の前）**: 実装を 9 通りに壊して 9 通りとも落ちる（圃場の一覧を見ない 5・WHERE を外す 16・at の昇順 4・id の昇順 1・at だけで並べる 1・取り消しを除く 3・上限 200 が 1・行を写さない 8・404 を 400 に 5）。手元の `wrangler dev`（使い捨ての値と D1）で、判断なしは 200 `[]`・no-store、T25 で A-06 に 3 件・A-07 に 1 件残し T23 で 2 番を取り消すと、Cookie なしで A-06 の 3 件だけが 3・2（取り消し）・1 の順に 9 項目ずつ、Z-99 は 404、POST は 405 Allow: GET
+- **人の確認**: まだ（先輩が差分を読んでからマージ。CLAUDE.md の無人運転の PR の例外）
 - **Issue**: #99（本人が見つけた設計の抜け）
 - **依存**: T23（`STATUS_EVENT_COLUMNS`・`statusEventFromRow`）、T11、T18
 - **変えてよいファイル**: `worker/status-history.ts`（＋ `docs/run/REPORT-T26.md`、止まったときは `docs/run/QUESTIONS.md`）
