@@ -34,10 +34,24 @@ export const STATUS_REF_PHOTOS_MAX = 5;
 export const FIELD_ID_PATTERN = /^[A-Z]-\d{2}$/;
 
 /**
- * 架空の圃場を置く範囲（P15。北海道の沖合の海の上、約 1.7km 四方）。端を含む。
- * 実在の農地と結び付けないため、圃場の一覧（src/data/fields.json）の座標はすべてこの中に置く（K10）。
+ * 架空の圃場を置く範囲（P15。11-04 夜の本人決定で書き換え）。端を含む。
+ * 北海道の空知の公開の農地の上、約 1.7km × 1.6km。本人の実家とは無関係の場所で、区画（src/data/parcels.json）は
+ * 実在の畑の境界をなぞらず、機械的に置いた架空の形。圃場の一覧（src/data/fields.json）の座標はすべてこの中に置く（K10）。
+ * 地図の下地は地理院タイル（MAP_TILES）で、デモも本番も同じ仕組み。
  */
-export const FICTIONAL_AREA = { latMin: 41.8, latMax: 41.815, lngMin: 144.5, lngMax: 144.52 } as const;
+export const FICTIONAL_AREA = { latMin: 43.235, latMax: 43.25, lngMin: 141.74, lngMax: 141.76 } as const;
+
+/**
+ * 地図の下地（11-04 夜の本人決定: デモも地理院タイルの空中写真）。
+ * 出典表記（「地理院タイル」とリンク）は必須。タイルは実行時にブラウザが読み、リポジトリには入れない。
+ */
+export const MAP_TILES = {
+  url: "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
+  attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>',
+  /** 全圃場が入る倍率〜1 圃場が画面の半分になる倍率 */
+  minZoom: 14,
+  maxZoom: 18,
+} as const;
 
 /**
  * 判断の理由の選択肢（L1）。画面にはこの順で出す。
