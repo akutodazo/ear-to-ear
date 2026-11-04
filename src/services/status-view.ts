@@ -117,11 +117,14 @@ export interface LocalStatusChange {
  * 遅れて届いた読み込みで、送った判断や取り消しが消えないようにする。元の配列は変えない
  */
 export function withLocalChanges(
-  _events: readonly StatusEvent[],
-  _changes: readonly LocalStatusChange[],
-  _since: number,
+  events: readonly StatusEvent[],
+  changes: readonly LocalStatusChange[],
+  since: number,
 ): StatusEvent[] {
-  return [];
+  return changes
+    .filter((c) => c.stamp > since)
+    .sort((a, b) => a.stamp - b.stamp)
+    .reduce<StatusEvent[]>((history, c) => withStatusEvent(history, c.event), [...events]);
 }
 
 /** 地図のピンの状態。判断が無ければ none */
