@@ -227,6 +227,22 @@ describe("withLocalChanges（遅れて届いた履歴に、手元の変更を重
     }
   });
 
+  it("読んだ履歴で取り消し済みなら、手元の取り消し前の形で戻さない（取り消しは戻らない）", () => {
+    // 読み込みを始める → 手元で送る → 別の端末が取り消す → サーバーが答える、の順
+    const sent = event({ id: 3, at: at3 });
+    const revokedOnServer = event({ id: 3, at: at3, revokedAt: "2026-07-23T00:00:00.000Z" });
+    const result = withLocalChanges([revokedOnServer, ...server], [change(1, sent)], 0);
+    expect(result.map((e) => e.id)).toStrictEqual([3, 2, 1]);
+    expect(result[0]).toBe(revokedOnServer);
+  });
+
+  it("どちらも取り消し済みなら手元の形、手元だけ取り消し済みなら手元の形", () => {
+    const serverRevoked = event({ id: 1, at: at1, revokedAt: "2026-07-23T00:00:00.000Z" });
+    const localRevoked = event({ id: 1, at: at1, revokedAt: "2026-07-24T00:00:00.000Z" });
+    expect(withLocalChanges([serverRevoked], [change(1, localRevoked)], 0)[0]).toBe(localRevoked);
+    expect(withLocalChanges([event({ id: 1, at: at1 })], [change(1, localRevoked)], 0)[0]).toBe(localRevoked);
+  });
+
   it("読んだ履歴が空でも、手元の変更は入る", () => {
     const sent = event({ id: 3, at: at3 });
     expect(withLocalChanges([], [change(1, sent)], 0)).toStrictEqual([sent]);
