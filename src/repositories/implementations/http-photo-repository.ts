@@ -87,6 +87,11 @@ export function createHttpPhotoRepository(fetchFn: FetchLike, baseUrl = ""): IPh
       }
     },
 
+    async listFieldPhotos(fieldId: string): Promise<RecentOutcome> {
+      void fieldId;
+      throw new Error("not implemented");
+    },
+
     async getRole(): Promise<RoleOutcome> {
       const response = await send(fetchFn, `${baseUrl}/api/session`, { method: "GET" });
       if (response === null) return { kind: "network-error" };
