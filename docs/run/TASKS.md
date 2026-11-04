@@ -256,3 +256,28 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **書き方の注意（`scripts/cage/policy.mjs`）**: import は Service が `@/types`、worker が `@/services/...`・`./...`。`Response.json()` を使わず `http.ts` の `json()`・`errorResponse()`
 - **参照**: `docs/spec.md` §6
 - **担当**: 先輩
+
+## T24 `GET /api/fields/summary`（地図用の各圃場のまとめ。認証なし、L1）
+- **状態**: RED 凍結（11-04）。GREEN は檻リレーで無人
+- **Issue**: #90
+- **依存**: T23（`STATUS_EVENT_COLUMNS`・`statusEventFromRow`。PR #93 の上に積む）、T11、T18
+- **変えてよいファイル**: `src/services/field-summary.ts`・`worker/fields.ts`（＋ `docs/run/REPORT-T24.md`、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結）**: `src/services/field-summary.test.ts`・`worker/fields.test.ts`・`worker/routes.test.ts`（GET の経路を足した）
+- **人が RED で置いたもの（凍結）**: `src/types` の `FieldSummary`（11-04 本人承認）、`field-summary.ts` の `UnconfirmedPhotoRow` と `summarizeFields` の空の実装、`worker/fields.ts` の `getFieldsSummary` の空の実装、`routes.ts` の配線（表の末尾）
+- **関数**: `summarizeFields(fieldIds, events: StatusEvent[], unconfirmed: UnconfirmedPhotoRow[]): FieldSummary[]`（純粋関数）、`getFieldsSummary: Handler`
+- **合格条件**:
+  - 本文は `json(200, { fields })`。圃場と順は `[...deps.knownFieldIds]`
+  - `latest` は取り消していない判断のうち `at` が新しいもの、同じなら id の大きい方。無ければ null。判断の行は全部 `statusEventFromRow` を通す（列は `STATUS_EVENT_COLUMNS`、`*` を使わない）。壊れた行は 500（握らない）
+  - `hasUnconfirmed` は、`state = 'unconfirmed'` の写真の候補（全部）か委員が選んだ番号に含まれるか（本人承認の A）。番号は完全に一致するときだけ。候補の列が壊れた未確定の写真は 500、確定済みの写真の候補は読まない
+  - 一覧に無い番号の判断・写真は返さない
+  - 認証なし（Cookie を読まない）。D1 を書き換えない。`console`・`Date`・`crypto`・R2・`newId`・`nowMs` を使わない。`cache-control` を触らない
+- **決めたこと（本人、11-04、先輩経由で対面）**: 返す形 `{ fields: [{ fieldId, latest, hasUnconfirmed }] }`、最新の決め方、印は候補（最大3）か委員の番号（A）
+- **RED の確かめ（11-04）**: 空の実装で 37 件が失敗・10 件が成功（経路の表・500・405）。仮の実装で 47 件と src・worker の 1116 件が通り、檻の純粋さの検査も通ることを確かめてから空に戻した。攻撃役の後の 63 件も、同じ仮の実装で通ることを確かめた
+- **攻撃役（Sonnet、檻の中、仕様・決まりのファイルを消した複製で。文面に「素直な実装を先に書かない」を足した）**:
+  - 1 回目（12 手、$0.15）: 47 件を、Worker で判断の行を `statusEventFromRow` に通さず `JSON.parse` だけで写す手抜きで通した。JSON として正しい非配列が 200 で素通り。6 件を足した
+  - 2 回目（13 手、$0.15）: 53 件を、判断も候補も先頭の 1 行だけ検査する手抜きで通した。壊れた行を 2 行目以降に置くテスト 9 件と、確定済みの写真の候補を読まないテスト 1 件を足した
+  - 3 回目（11 手、$0.13）: 63 件を通せたのは、仕様の外の点だけ（下）
+  - 入れなかった指摘: 取り消し済みの壊れた行（読まなくてよい。500 にも 200 にも縛らない）。`at` の書き方の違い（`toISOString()` だけが書く。T23）。`chosen_field_id`・`state` の型（表の型と CHECK）。数百行の負荷（12 圃場の規模）
+- **書き方の注意（`scripts/cage/policy.mjs`）**: import は Service が `@/types`、worker が `@/services/...`・`./...`。`Response.json()` を使わず `http.ts` の `json()`
+- **参照**: `docs/spec.md` §6
+- **担当**: 先輩
