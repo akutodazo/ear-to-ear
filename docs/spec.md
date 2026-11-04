@@ -191,7 +191,7 @@ Next.js（App Router、`output: 'export'`）＋ Leaflet。デモと開発の地�
 ## 10. 公開リポジトリの安全
 - 入れてはいけないもの: 実写真、実在の圃場の座標、委員会シート、番号対応表、合言葉、API キー、`.dev.vars`、`.env*`、個人名・住所、既存プロジェクトのコード
 - `.gitignore`: `.dev.vars`、`.env*`、`/private/`、`*.local.*`
-- GitHub の設定（外から見える設定は本人が承認してから）: Secret scanning と Push protection をオン／コミットのメールは noreply／main は Ruleset で守る（削除禁止・force push 禁止・PR 必須・CI の status check 必須）／マージ後のブランチを自動削除／Dependabot alerts だけオン（自動の更新 PR はオフ）／GitHub Pages・Wiki・Projects は使わない／Actions に Cloudflare の秘密を置かない（デプロイは本人の手元から。期間中は自動デプロイにしない）／ライセンスは MIT の予定（先輩に確認中。決まるまで LICENSE は置かない）
+- GitHub の設定（外から見える設定は本人が承認してから）: Secret scanning と Push protection をオン／コミットのメールは noreply／main は Ruleset で守る（削除禁止・force push 禁止・PR 必須・CI の status check 必須）／マージ後のブランチを自動削除／Dependabot alerts だけオン（自動の更新 PR はオフ）／GitHub Pages・Wiki・Projects は使わない／Actions に Cloudflare の秘密を置かない（デプロイは手元の PC から。本人か、bot のトークンを使う Claude（11-04、`docs/dev/cloudflare-bot.md`）。期間中は自動デプロイにしない）／ライセンスは MIT の予定（先輩に確認中。決まるまで LICENSE は置かない）
 - `npm run check:safety`（手元と CI）: コミットされた全ファイル（`git ls-files`）を対象に、画像の APP1〜15、CSV、`.dev.vars` に似た名前、合言葉らしい文字列、架空データの座標の範囲を検査する。T17（11-03）で中身まで: 判定は `scripts/safety-rules.ts`。**JPEG は `public/demo/` の下だけ許し、APP1〜15 が無いことを T03 の `inspectJpeg` で確かめる**。**座標は圃場の一覧 `src/data/fields.json` だけ**を `FICTIONAL_AREA`（`src/config.ts`）と比べる（端を含む）。秘密らしい文字列は値を表示せず、ファイル・行・種類だけ出す
 - 架空の圃場は 12 圃場（A-01〜A-12、4列×3行）、座標は沖合の四角（北緯 41.800〜41.815、東経 144.500〜144.520）の中に機械的に並べる（P15、11-02 決定）。合成写真は `node scripts/make-fixtures.mjs` で `/private/fixtures/` に出す（コミットしない。T10、11-03）。8種類（XMP 位置あり・EXIF 位置あり・0/0・位置なし・日時なし・APP2 付き・壊れた画像・重複）と、期待の一覧 `README.md`。JPEG は依存なしの書き出し（`scripts/fixtures/jpeg-encoder.ts`）で作る
 
