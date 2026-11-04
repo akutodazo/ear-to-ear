@@ -19,7 +19,7 @@ const CREATE_LABELS: Record<CreateHandoverOutcome["kind"], string> = {
   "no-records": "判断や写真の記録がまだ無いので、メモを作れません",
   "usage-limit": "今日はもうメモを作れません（1日の回数の上限）。明日もう一度",
   "upstream-error": "Claude の返事を受け取れませんでした。時間をおいてもう一度",
-  disabled: "",
+  disabled: "いまは Claude を止めているので、メモを作れません。管理者に確かめてください",
   "network-error": "つながりませんでした。電波のよい所でもう一度",
   error: "メモを作れませんでした。時間をおいてもう一度",
 };

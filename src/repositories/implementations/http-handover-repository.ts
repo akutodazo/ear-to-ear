@@ -58,6 +58,8 @@ export function createHttpHandoverRepository(fetchFn: FetchLike, baseUrl = ""): 
           return { kind: "usage-limit" };
         case 502:
           return { kind: "upstream-error" };
+        case 503:
+          return { kind: "disabled" };
         default:
           return { kind: "error" };
       }
