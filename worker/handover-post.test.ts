@@ -4,7 +4,7 @@ import { HANDOVER_SYSTEM_PROMPT } from "@/services/handover-prompt";
 import { handleRequest } from "./app";
 import type { ClaudePort, ClaudeReply, DbPort, Deps } from "./deps";
 import { createTestDb, type TestDb } from "./test-db";
-import { NOW_MS, fakeDeps, request, sessionToken } from "./test-helpers";
+import { NOW_MS, NOW_SEC, fakeDeps, request, sessionToken } from "./test-helpers";
 
 // NOW_MS は日本時間で 2026-10-26（シーズン 2026、回数の key は claude:2026-10-26）
 const COUNTER_KEY = "claude:2026-10-26";
@@ -109,8 +109,8 @@ function setup(reply: ClaudeReply | (() => Promise<ClaudeReply>) = apiReply(), o
   return { deps, testDb, claude };
 }
 
-async function post(deps: Deps, field = "A-06", role: "admin" | "member" | null = "admin"): Promise<Response> {
-  const cookie = role === null ? undefined : `session=${await sessionToken(role)}`;
+async function post(deps: Deps, field = "A-06", role: "admin" | "member" | null = "admin", exp = NOW_SEC + 60): Promise<Response> {
+  const cookie = role === null ? undefined : `session=${await sessionToken(role, exp)}`;
   return handleRequest(request("POST", `/api/fields/${field}/handover`, cookie), deps);
 }
 
@@ -223,6 +223,37 @@ describe("POST /api/fields/:id/handover: 作って保存する（T31）", () => 
     ]);
   });
 
+  // 攻撃役（T31 の 1 回目）: 時刻が 1 点・圃場が 1 つで、記録の固定・key の固定でも通った
+  it("年の境（日本時間の 2027 年元日）に、写真だけの別の圃場で作る（key・期限・シーズン・題・保存先が変わる）", async () => {
+    const now = Date.parse("2026-12-31T15:10:00.000Z");
+    const testDb = createTestDb();
+    seed(testDb);
+    insertPhoto(testDb, { id: "p-a03", field_id: "A-03", taken_at: null, taken_at_source: "none", content_hash: "d".repeat(64), r2_key: "uploads/p-a03.jpg", uploaded_at: "2026-12-31T15:05:00.000Z" });
+    insertEvent(testDb, { id: 20, field_id: "A-03", at: "2026-12-30T01:00:00.000Z" });
+    const claude = vi.fn<ClaudePort>(async () => apiReply({ content: [{ type: "text", text: "写真が 1 枚" }] }));
+    const deps = fakeDeps({ db: testDb.db, claude, nowMs: () => now });
+    const response = await post(deps, "A-03", "admin", Math.floor(now / 1000) + 60);
+    expect(response.status).toBe(200);
+    const note = await response.json();
+    expect([note.fieldId, note.season, note.createdAt]).toStrictEqual(["A-03", "2027", new Date(now).toISOString()]);
+    expect(note.records).toStrictEqual([{ kind: "photo", id: "p-a03", text: "[写真] 撮影日不明（2027-01-01 に送信）。" }]);
+    const body = claude.mock.calls[0][0] as { messages: { content: { title?: string }[] }[] };
+    expect(body.messages[0].content[0].title).toBe("A-03 の 2027 年の記録");
+    expect(counter(testDb)).toStrictEqual([{ key: "claude:2027-01-01", count: 1, expires_at: "2027-01-01T15:00:00.000Z" }]);
+    expect(notes(testDb).map((r) => [r.field_id, r.season])).toStrictEqual([["A-03", "2027"]]);
+  });
+
+  it("取り消した判断だけの圃場も記録があるので作る", async () => {
+    const testDb = createTestDb();
+    insertEvent(testDb, { id: 30, field_id: "A-05", revoked_at: "2026-07-21T02:00:00.000Z" });
+    const deps = fakeDeps({ db: testDb.db, claude: async () => apiReply({ content: [{ type: "text", text: "取り消し" }] }) });
+    const response = await post(deps, "A-05");
+    expect(response.status).toBe(200);
+    expect((await response.json()).records).toStrictEqual([
+      { kind: "status", id: "30", text: "[判断 30] 2026-07-21 収穫可能。理由: 穂の色。（2026-07-21 に取り消し）" },
+    ]);
+  });
+
   it("回数を 1 つ数える（key は日本時間の日付、期限は翌日の日本時間 0 時）", async () => {
     const { deps, testDb } = setup();
     await post(deps);
@@ -292,7 +323,7 @@ describe("POST /api/fields/:id/handover: 止める（T31）", () => {
     expect(await response.json()).toStrictEqual({ error: "too_many_requests" });
     expect(response.headers.get("retry-after")).toBe(String(Math.ceil((Date.parse("2026-10-26T15:00:00.000Z") - NOW_MS) / 1000)));
     expect(claude).not.toHaveBeenCalled();
-    expect(counter(testDb)[0].count).toBe(CLAUDE_DAILY_LIMIT);
+    expect(counter(testDb)).toStrictEqual([{ key: COUNTER_KEY, count: CLAUDE_DAILY_LIMIT, expires_at: "2026-10-26T15:00:00.000Z" }]);
   });
 
   it("上限の 1 つ手前なら呼べて、ちょうど上限まで数える", async () => {
@@ -337,6 +368,7 @@ describe("POST /api/fields/:id/handover: 止める（T31）", () => {
     expect(response.status).toBe(502);
     expect(await response.json()).toStrictEqual({ error: "bad_gateway", reason: "http" });
     expect(notes(testDb)).toStrictEqual([]);
+    expect(counter(testDb)[0].count).toBe(1);
   });
 
   it("失敗したとき、前に保存したメモはそのまま残る", async () => {

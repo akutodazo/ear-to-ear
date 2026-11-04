@@ -14,6 +14,19 @@ describe("claudeCounterKey（T31）", () => {
   });
 });
 
+// 攻撃役（T31 の 1 回目）: テストに出る 5 つの時刻の表で返しても通った
+describe("claudeCounterKey: どの時刻でも日本時間の日付（T31）", () => {
+  it("2 日分を 37 分ずつと、日本時間 0 時の前後 1 ミリ秒", () => {
+    const jstDate = (ms: number) => new Date(ms + 9 * 3600_000).toISOString().slice(0, 10);
+    for (let ms = Date.parse("2026-12-30T00:00:00.000Z"); ms < Date.parse("2027-01-02T00:00:00.000Z"); ms += 37 * 60_000) {
+      expect(claudeCounterKey(ms)).toBe(`claude:${jstDate(ms)}`);
+    }
+    const midnight = Date.parse("2026-12-31T15:00:00.000Z");
+    expect(claudeCounterKey(midnight - 1)).toBe("claude:2026-12-31");
+    expect(claudeCounterKey(midnight)).toBe("claude:2027-01-01");
+  });
+});
+
 describe("claudeDayEndsAt（T31）", () => {
   it.each([
     ["2026-11-04T14:59:59.999Z", "2026-11-04T15:00:00.000Z"],
