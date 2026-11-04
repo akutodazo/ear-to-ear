@@ -112,7 +112,8 @@ describe("createNote（POST /api/fields/:id/handover）", () => {
       [502, { kind: "upstream-error" }],
       [400, { kind: "error" }],
       [500, { kind: "error" }],
-      [503, { kind: "error" }],
+      [503, { kind: "disabled" }],
+      [504, { kind: "error" }],
       [201, { kind: "error" }],
     ];
     for (const [status, expected] of cases) {
