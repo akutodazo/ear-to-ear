@@ -2,7 +2,9 @@
  * 引き継ぎメモ（L6）を読んだ・作った結果の言葉。Presenter（use-handover）が使う。
  * 読めたときと作れたときの言葉以外は、何をすればよいかが分かる言葉にする。
  */
+import type { HandoverNote } from "@/types";
 import type { CreateHandoverOutcome, HandoverOutcome } from "@/repositories/interfaces/i-handover-repository";
+import { jstDateTimeLabel } from "@/services/status-view";
 
 const READ_LABELS: Record<HandoverOutcome["kind"], string | null> = {
   ok: null,
@@ -23,6 +25,12 @@ const CREATE_LABELS: Record<CreateHandoverOutcome["kind"], string> = {
   "network-error": "つながりませんでした。電波のよい所でもう一度",
   error: "メモを作れませんでした。時間をおいてもう一度",
 };
+
+/** メモを作った時刻の言葉（例「7/22 10:30 に作成」） */
+export function handoverCreatedLabel(note: HandoverNote): string {
+  const at = jstDateTimeLabel(note.createdAt);
+  return at === "日時不明" ? "作成日時不明" : `${at} に作成`;
+}
 
 /** 読んだ結果の言葉。読めたら言葉なし（null） */
 export function handoverOutcomeLabel(outcome: HandoverOutcome): string | null {

@@ -133,6 +133,23 @@ export function withLocalChanges(
     }, [...events]);
 }
 
+/** 日本時間（UTC+9）。夏時間は無い */
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+/** ISO の時刻を日本時間の「月/日 時:分」にする（例 7/21 10:05、0 時は 0:30）。読めなければ「日時不明」 */
+export function jstDateTimeLabel(iso: string): string {
+  const ms = Date.parse(iso);
+  if (Number.isNaN(ms)) return "日時不明";
+  const jst = new Date(ms + JST_OFFSET_MS);
+  const minutes = String(jst.getUTCMinutes()).padStart(2, "0");
+  return `${jst.getUTCMonth() + 1}/${jst.getUTCDate()} ${jst.getUTCHours()}:${minutes}`;
+}
+
+/** メモの字数の表示（例「12/200字」）。数え方は送る前の確かめ（parseStatusInput）と同じく、前後の空白を除いた文字の数 */
+export function noteCountLabel(note: string): string {
+  return `${Array.from(note.trim()).length}/${STATUS_NOTE_MAX_CHARS}字`;
+}
+
 /** 地図のピンの状態。判断が無ければ none */
 export function pinState(summary: FieldSummary): PinState {
   return { status: summary.latest?.status ?? "none", unconfirmed: summary.hasUnconfirmed };
