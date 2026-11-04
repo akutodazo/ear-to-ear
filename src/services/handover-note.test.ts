@@ -51,6 +51,16 @@ describe("handoverSeason: 日本時間の年（T29）", () => {
   });
 });
 
+// 攻撃役（T29 の 2 回目）: 2024〜2031 年の元日の表を持っても通った
+describe("handoverSeason: どの年でも元日の境で変わる（T29）", () => {
+  it.each([1971, 1999, 2000, 2024, 2040, 2063, 2099, 2100])("%s 年", (year) => {
+    const newYear = Date.UTC(year, 0, 1) - 9 * 3600_000;
+    expect(handoverSeason(newYear - 1)).toBe(String(year - 1));
+    expect(handoverSeason(newYear)).toBe(String(year));
+    expect(handoverSeason(Date.UTC(year, 6, 15))).toBe(String(year));
+  });
+});
+
 describe("handoverNoteFromRow: 行を HandoverNote に戻す（T29）", () => {
   it("列と body の records・blocks を写す", () => {
     const expected: HandoverNote = {
@@ -140,6 +150,29 @@ describe("handoverNoteFromRow: 壊れた行は例外（中身はメッセージ�
     ["列の body が null", row({ body: null as unknown as string })],
     ["cite の end が整数でない", row({}, bodyWith({ blocks: [{ text: "b", cites: [{ start: 0, end: 1.5, citedText: "c" }] }] }))],
     ["cite の end が NaN", row({}, bodyWith({ blocks: [{ text: "b", cites: [{ start: 0, end: Number.NaN, citedText: "c" }] }] }))],
+    // 攻撃役（T29 の 2 回目）: テストに出る値（memo・数・undefined）だけを弾いても通った
+    ["record の kind が無い", row({}, bodyWith({ records: [{ id: "1", text: "t" }] }))],
+    ["record の kind が数", row({}, bodyWith({ records: [{ kind: 1, id: "1", text: "t" }] }))],
+    ["record の kind が空", row({}, bodyWith({ records: [{ kind: "", id: "1", text: "t" }] }))],
+    ["record の kind が大文字", row({}, bodyWith({ records: [{ kind: "Photo", id: "1", text: "t" }] }))],
+    ["record の kind が別の語", row({}, bodyWith({ records: [{ kind: "assignment", id: "1", text: "t" }] }))],
+    ["record の id が null", row({}, bodyWith({ records: [{ kind: "status", id: null, text: "t" }] }))],
+    ["record の id が真偽値", row({}, bodyWith({ records: [{ kind: "status", id: true, text: "t" }] }))],
+    ["record の id がオブジェクト", row({}, bodyWith({ records: [{ kind: "status", id: {}, text: "t" }] }))],
+    ["record の text が null", row({}, bodyWith({ records: [{ kind: "status", id: "1", text: null }] }))],
+    ["record の text がオブジェクト", row({}, bodyWith({ records: [{ kind: "status", id: "1", text: {} }] }))],
+    ["record が文字列", row({}, bodyWith({ records: ["[判断 1]"] }))],
+    ["block の text が null", row({}, bodyWith({ blocks: [{ text: null, cites: [] }] }))],
+    ["block の text が配列", row({}, bodyWith({ blocks: [{ text: ["b"], cites: [] }] }))],
+    ["block が null", row({}, bodyWith({ blocks: [null] }))],
+    ["block の cites がオブジェクト", row({}, bodyWith({ blocks: [{ text: "b", cites: {} }] }))],
+    ["block の cites が文字列", row({}, bodyWith({ blocks: [{ text: "b", cites: "x" }] }))],
+    ["cite が null", row({}, bodyWith({ blocks: [{ text: "b", cites: [null] }] }))],
+    ["cite が文字列", row({}, bodyWith({ blocks: [{ text: "b", cites: ["0-1"] }] }))],
+    ["cite の citedText が null", row({}, bodyWith({ blocks: [{ text: "b", cites: [{ start: 0, end: 1, citedText: null }] }] }))],
+    ["cite の citedText が数", row({}, bodyWith({ blocks: [{ text: "b", cites: [{ start: 0, end: 1, citedText: 1 }] }] }))],
+    ["body が数", row({}, 5)],
+    ["body が文字列", row({}, "records")],
     ["cite の start が文字列", row({}, bodyWith({ blocks: [{ text: "b", cites: [{ start: "0", end: 1, citedText: "c" }] }] }))],
   ])("%s", (_name, bad) => {
     expect(() => handoverNoteFromRow(bad)).toThrow(/handover_notes/);

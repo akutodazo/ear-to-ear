@@ -384,3 +384,27 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **書き方の注意（`scripts/cage/policy.mjs`）**: import は `@/services/...`・`./...`。`Response.json()` を使わず `http.ts` の `json()`・`errorResponse()`
 - **参照**: `docs/spec.md` §6、`docs/privacy.md`
 - **担当**: 先輩
+
+## T29 `0002_handover` と `GET /api/fields/:id/handover`（L6 の引き継ぎメモを読む。認証なし）
+- **状態**: RED 凍結（11-04）。無人の GREEN の待ち
+- **人の確認**: まだ
+- **Issue**: #106（L6 のサーバー側は先輩。11-04 本人と先輩の合意）
+- **依存**: 共有の型 `HandoverNote`・`HandoverRecord`、T11（経路・`http.ts`）
+- **変えてよいファイル**: `src/services/handover-note.ts`・`worker/handover.ts`（＋ `docs/run/REPORT-T29.md`、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結）**: `src/services/handover-note.test.ts`・`worker/handover.test.ts`・`worker/migrations-0002.test.ts`・`worker/routes.test.ts`（GET の経路を足した）
+- **人が RED で置いたもの（凍結）**: `migrations/0002_handover.sql`（`handover_notes`、主キーは field_id と season、body は `json_valid`）、`handover-note.ts` の `HANDOVER_NOTE_COLUMNS`・`HandoverNoteRow` と空の関数、`handover.ts` の空のハンドラ、`routes.ts` の配線（表の末尾）
+- **関数**: `handoverSeason(nowMs): string`、`handoverNoteFromRow(row): HandoverNote`、`getFieldHandover: Handler`
+- **合格条件**:
+  - `handoverSeason`: 日本時間の年（どの年でも元日の 0 時で変わる。表を持たない）
+  - `handoverNoteFromRow`: 5 つの列はすべて文字列。body は JSON の `{ records, blocks }`。record は `kind` が `status`・`photo` のどちらか、`id`・`text` は文字列。block は `text` が文字列、`cites` が配列。cite は `start`・`end` が整数で `0 <= start < end <= records の数`、`citedText` が文字列。余分な項目は写さない。どれかが違えば例外で、メッセージに `handover_notes` を含み、body の中身を入れない
+  - `getFieldHandover`: `:id` が `deps.knownFieldIds` に無ければ 404 `{ error: "not_found" }` で D1 を触らない。SQL は 1 文 `SELECT <HANDOVER_NOTE_COLUMNS> FROM handover_notes WHERE field_id = ? AND season = ?`（`*` を使わない、番号とシーズンは bind、シーズンは `handoverSeason(deps.nowMs())`）。行が無ければ 404。あれば `json(200, handoverNoteFromRow(row))`。壊れた行は 500（握らない）
+  - 認証なし（Cookie を読まない）。D1 を書き換えない。`console`・`crypto`・R2・`newId` を使わない。`cache-control` を触らない
+- **決めたこと（先輩、11-04、#106）**: GET は今のシーズン（日本時間の年）のメモだけ。前のシーズンを読む口は作らない（要るようになったら `?season=` を足す）。settings の表は L8 のときに足す
+- **RED の確かめ（11-04）**: 空の実装で 41 件が失敗（空でも通るのは表・経路の表・405）。仮の実装で、攻撃役の後の 104 件と src・worker の全件が通り、檻の純粋さの検査も通ることを確かめた
+- **攻撃役（Sonnet、檻の中、仕様・決まりのファイルを消した複製で）**:
+  - 1 回目（13 手、$0.14）: 59 件を、一覧を見ずに `A-NN` の形で判定・2 つの年の境目だけで場合分け・`field_id` の型と `end` が整数かを見ない手抜きで通した。形は合うが一覧に無い番号、`knownFieldIds` を差し替える、ほかの年、型の違う列・`end` を足した
+  - 2 回目（15 手、$0.17）: 74 件を、2024〜2031 年の元日の表・テストに出る値だけを弾く手抜きで通した。1971〜2100 年の 8 つの年の元日の境、`kind`・`id`・`text`・`citedText`・cite・cites の型の違いを 22 通り足した
+  - 入れなかった指摘: D1 が例外を投げたときの 500（共通の作り）、`created_at` の日付の正しさ・空の `model`（書くのはサーバーだけ）、例外のメッセージがどこが壊れたかを表すこと
+- **書き方の注意（`scripts/cage/policy.mjs`）**: import は `@/services/...`・`@/types`・`./...`。`Response.json()` を使わず `http.ts` の `json()`・`errorResponse()`。`Date.now()` を使わず `deps.nowMs()`
+- **参照**: `docs/spec.md` §5・§6
+- **担当**: 先輩
