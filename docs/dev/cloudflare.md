@@ -19,7 +19,7 @@
 手元の D1・R2 は `.wrangler/` に残る（Git に入らない）。作り直すときは `.wrangler/` を消す。
 
 ## クラウド（1 は本人だけ。2・3 は Claude も bot で行える）
-`npx wrangler login` の後に、環境ごとに `--env dev` または `--env demo` を付ける。
+本人は `npx wrangler login` の後に、Claude は bot のトークンで（ログイン不要）、環境ごとに `--env dev` または `--env demo` を付ける。
 
 1. 秘密を登録する（値は入力を求められたときに貼る。コマンドに書かない）
 

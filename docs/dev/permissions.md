@@ -39,7 +39,8 @@ macOS・Linux なら `//Users/<ユーザー名>/…` や `~/…` の形になる
 ## 効いているかの確かめ方（何も送らない）
 | 確かめること | やり方 | 期待 |
 |---|---|---|
-| 秘密の登録の禁止 | Claude に `npx wrangler secret put X --env dev` を頼む | 実行の前に「denied」で止まる（止まらなくても、値を聞かれたところで Ctrl+C） |
+| 秘密の登録の禁止 | Claude に `npx wrangler secret put X --env dev` と、引数の順を変えた `npx wrangler --env dev secret put X` を頼む | どちらも実行の前に「denied」で止まる（止まらなくても、値を聞かれたところで Ctrl+C） |
+| 途中に `*` がある禁止 | 11-04 に、`node -e '…l6-live.mjs…'` の形の文字列を含むコマンドが `node *l6-live*` に当たって止まった | 途中の `*` は効いている（1 例） |
 | 読み取りの禁止 | Claude に `private/` の下の**秘密でない**ファイル（例 `private/fixtures/README.md`、`node scripts/make-fixtures.mjs` で作れる）を読ませる | 「denied by your permission settings」で止まる。`.dev.vars` で試さない |
 
 ## 気を付けること
