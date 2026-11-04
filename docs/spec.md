@@ -120,6 +120,7 @@ CREATE TABLE settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);  -- 
 | `PATCH /api/photos/:id/assignment` | admin | `{fieldId}`（圃場の一覧にある番号だけ） | 200 更新した写真（新着と同じ 11 項目）＋履歴1行。確定済みと同じ番号なら何も変えずに 200（履歴なし） | 400（形の違う本文）／401／403／404／413／415／422（一覧に無い番号・文字列でない番号） | L0 |
 | `POST /api/fields/:id/status` | member 以上 | `{status, reasons[], note?, refPhotoIds[]}`（根拠はその圃場の確定済みの写真だけ） | 201 残した判断（`StatusEvent`） | 400（JSON でない）／401／413（2048 バイト超）／415／422 `{error, reason}`（一覧に無い圃場は `unknown_field`、中身は T12 の理由のコード）（11-04 先輩決定、T25） | L1 |
 | `DELETE /api/status-events/:id` | member 以上 | — | 200 | 401／404 | L1 |
+| `GET /api/fields/:id/status-events` | なし | — | 200 `StatusEvent[]`（その圃場の判断を取り消したものも含めて全件、`at` の新しい順・同じなら id の大きい順。件数の上限なし） | 404（一覧に無い圃場）（11-04 先輩決定、T26、#99） | L1 |
 | `GET /api/fields/summary` | なし | — | 200 `{ fields: FieldSummary[] }`（全圃場を一覧の順）。各圃場の有効な最新の判断（取り消していないもので `at` が新しいもの、同じなら id の大きい方）と、未確定の写真の候補（最大3）か委員が選んだ番号に含まれるか（11-04 本人承認、#90） | — | L1 |
 | `POST /api/fields/:id/handover` | admin | — | 200 `HandoverNote`（作り直して保存） | 401／429／502 | L6 |
 | `GET /api/fields/:id/handover` | なし | — | 200 `HandoverNote`／404 | — | L6 |
