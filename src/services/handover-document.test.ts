@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { STATUS_REASONS } from "@/config";
 import type { HandoverRecord, StatusEvent, UploadedPhoto } from "@/types";
 import { buildHandoverRecords, handoverContent } from "./handover-document";
 
@@ -79,6 +80,14 @@ describe("buildHandoverRecords: 判断の文（T27）", () => {
     expect(record.text).not.toMatch(/ja_stop|other/);
   });
 
+  // 攻撃役（T27 の 1 回目）: テストに出る 5 つのコードだけの表を手で書いても通った
+  it("理由のラベルは設定の STATUS_REASONS のとおり（全部のコード）", () => {
+    for (const { code, label } of STATUS_REASONS) {
+      const [record] = buildHandoverRecords("A-06", "2026", [event(1, "2026-07-21T01:00:00.000Z", { reasons: [code] })], []);
+      expect(record.text).toBe(`[判断 1] 2026-07-21 収穫可能。理由: ${label}。`);
+    }
+  });
+
   it("取り消した判断は末尾に取り消した日を書く（日本時間）", () => {
     const [record] = buildHandoverRecords(
       "A-06",
@@ -116,6 +125,17 @@ describe("buildHandoverRecords: 写真の文（T27）", () => {
       { kind: "photo", id: "p-a", text: "[写真] 2026-07-20 撮影。判断 3・12 の根拠。" },
       { kind: "photo", id: "p-b", text: "[写真] 2026-07-20 撮影。判断 3 の根拠。" },
     ]);
+  });
+
+  // 攻撃役（T27 の 1 回目）: 取り消した判断を根拠に数えるかを決めていなかった
+  it("取り消した判断も根拠に数える（判断の要素にも取り消しとして残るので、たどれるように）", () => {
+    const records = buildHandoverRecords(
+      "A-06",
+      "2026",
+      [event(4, "2026-07-21T01:00:00.000Z", { refPhotoIds: ["p-a"], revokedAt: "2026-07-21T05:00:00.000Z" })],
+      [photo("p-a", "2026-07-20")],
+    );
+    expect(records[0]).toStrictEqual({ kind: "photo", id: "p-a", text: "[写真] 2026-07-20 撮影。判断 4 の根拠。" });
   });
 
   it("どの判断の根拠でもない写真は撮影日だけ", () => {
@@ -171,6 +191,23 @@ describe("buildHandoverRecords: 並び（T27）", () => {
       [photo("p-z", "2026-07-21"), photo("p-m", "2026-07-21")],
     );
     expect(order(records)).toStrictEqual(["photo:p-m", "photo:p-z", "status:9", "status:10", "status:11"]);
+  });
+
+  // 攻撃役（T27 の 1 回目）: id を決めた桁の文字列にして並べても通った
+  it("同じ時刻の判断の id は数として比べる（桁が違っても）", () => {
+    const at = "2026-07-21T03:00:00.000Z";
+    const records = buildHandoverRecords(
+      "A-06",
+      "2026",
+      [event(10_000_000_000_000, at), event(99, at), event(9_999_999_999_999, at), event(100, at)],
+      [],
+    );
+    expect(order(records)).toStrictEqual([
+      "status:99",
+      "status:100",
+      "status:9999999999999",
+      "status:10000000000000",
+    ]);
   });
 
   it("並びは日本時間の日付で決まる（UTC の日付ではない）", () => {
