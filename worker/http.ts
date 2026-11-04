@@ -12,7 +12,11 @@ export type ErrorCode =
   | "payload_too_large"
   | "unsupported_media_type"
   | "unprocessable"
-  | "internal";
+  | "internal"
+  // L6（T31）: Claude の 1 日の上限・Claude の失敗・Claude を止めている
+  | "too_many_requests"
+  | "bad_gateway"
+  | "claude_disabled";
 
 /** Content-Type: application/json; charset=utf-8 */
 export function json(status: number, body: unknown): Response {
