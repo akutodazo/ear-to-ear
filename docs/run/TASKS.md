@@ -414,6 +414,32 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **参照**: `docs/spec.md` §3・§9、K17
 - **担当**: 先輩
 
+## T28 `handover-citations`（L6 の 2 段目。返事の引用を記録に対応付ける）
+- **状態**: 検査済み・人の確認待ち（11-04）
+- **運転の記録（1104 の列車の 6 本目、`--skip T23〜T27`）**: START `1b9f71f` → GREEN `7602f6e` → REPORT `c4efa6b`。モデル Opus、道具は檻の5つだけ、8 手、$0.49。1 回目の起動は使用量の記録が 3 時間より古く、起動前のゲートで止まった（一手も動いていない）。使用量を書いて起動し直した。この日の 1 日の上限は $4 から $5 に上げた（先輩、週次 22%）。C1〜C5 合格（C3 26 件、C4 テスト全体 1746 件）。変更は許可した 1 ファイルだけ。QUESTIONS なし。REPORT に手元のパスなし
+- **Claude の確認（11-04、人の確認の前）**: 差分を読んで抜けは見つからなかった。実装を 14 通りに壊して 13 通りが落ち、残った「ブロックの type を見ない」は、type の無いブロックだけの返事が「text が無い」でも例外になるためだった。正しいブロックと混ぜたテストを 1 件足し（`36136a5`）、14 通りとも落ちる
+- **人の確認**: まだ
+- **Issue**: #105（L6 のサーバー側は先輩。11-04 本人と先輩の合意）
+- **依存**: 共有の型 `HandoverNote`。T27 とは独立（要素の数だけを受け取る）
+- **変えてよいファイル**: `src/services/handover-citations.ts`（＋ `docs/run/REPORT-T28.md`、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結）**: `src/services/handover-citations.test.ts`
+- **人が RED で置いたもの（凍結）**: `handover-citations.ts` の空の実装と `HandoverBlock` の型
+- **関数**: `toHandoverBlocks(content: unknown, recordCount: number): HandoverBlock[]`
+- **合格条件**:
+  - 返事の形（11-04 に公式の文書で確かめた）: `content` は配列。`text` のブロックの `citations` の各要素は `{ type: "content_block_location", cited_text, document_index, document_title, start_block_index, end_block_index }`、番号は 0 始まり、end は含まない
+  - `text` のブロックごとに `{ text, cites }`。`cites` は `{ start, end, citedText }` だけ、返事の順のまま
+  - 捨てる引用: 種類が `content_block_location` でない・`document_index` が数の 0 でない・`cited_text` が文字列でない・番号が整数でない・`0 <= start < end <= recordCount` でない・オブジェクトでない。全部捨てたブロックも `cites: []` で残す
+  - `citations` が無い・null は `cites: []`。text 以外のブロック（thinking など）は捨てる
+  - 例外（メッセージに「返事の形」）: content が配列でない・ブロックがオブジェクトでない・`type` が文字列でない・text が文字列でない・citations が配列でも null でもない・text のブロックが 1 つも無い
+  - 渡したものを書き換えない
+- **RED の確かめ（11-04）**: 空の実装で 26 件すべてが失敗。仮の実装で 26 件と src・worker の全件が通り、檻の純粋さの検査も通ることを確かめた
+- **攻撃役（Sonnet、檻の中、仕様・決まりのファイルを消した複製で）**:
+  - 1 回目（5 手、$0.07）: 26 件を、ほぼ正しい実装で通した（固定値・要素の数の決め打ち・先頭だけを見る手抜きは落ちた）
+  - 入れなかった指摘: thinking のブロックの中身の検査（捨てるだけ）、空の `cited_text`・空の文（そのまま残す）、重なる・重複する引用（そのまま残す）、`recordCount` が負・小数（呼ぶ側は records の数を渡す）、`-0`（`Number.isInteger(-0)` は true で 0 と同じ）
+- **書き方の注意（`scripts/cage/policy.mjs`）**: import は `@/types` だけ。`JSON.parse` は呼ぶ側（T30）で行う
+- **参照**: `docs/spec.md` §3・§9、K17
+- **担当**: 先輩
+
 ## T29 `0002_handover` と `GET /api/fields/:id/handover`（L6 の引き継ぎメモを読む。認証なし）
 - **状態**: 検査済み・人の確認待ち（11-04）
 - **運転の記録（1104 の列車の 7 本目、`--skip T23〜T28`）**: START `3ccbb93` → GREEN `809599f` → REPORT `dcfc818`。モデル Opus、道具は檻の5つだけ、15 手、$0.66。ゲートは green。変更は許可した 2 ファイルだけ。QUESTIONS なし。C1〜C5 合格（C3 104 件、C4 テスト全体 1816 件）。REPORT に手元のパスなし
