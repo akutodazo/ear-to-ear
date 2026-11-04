@@ -232,12 +232,12 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **担当**: 先輩
 
 ## T12 `status-reason.ts`（判断と理由・根拠の入力の検証。L1）
-- **状態**: RED済み・攻撃役済み（11-04 朝）。凍結は `src/config.ts` の先輩の確認の後
+- **状態**: 凍結（11-04）。RED済み・攻撃役済み。`src/config.ts` の変更は先輩の確認済み（11-04）
 - **運転の予定**: 11-04、檻リレー（ハーネス v0.6。Service だけのパケット、11-03 決定①）
 - **依存**: なし（`@/types` の `StatusEvent`、`src/config.ts` の定数）
 - **変えてよいファイル**: `src/services/status-reason.ts` のみ（＋ `docs/run/REPORT-T12.md`、止まったときは `docs/run/QUESTIONS.md`）
-- **テスト（凍結の予定）**: `src/services/status-reason.test.ts`（52 件）・`src/services/status-reason-config.test.ts`（3 件、設定を差し替えて上限と選択肢に従うかを見る）
-- **人が RED で置いたもの**: `src/config.ts`（**共有ファイル、先輩の確認が要る**）の `STATUS_REASONS` を P21 の答えの 5 つに（穂の色・黄色い穂の割合・農協の判定で中止（水分超過）・同（砕けなどの傷）・その他、この順）、`STATUS_REF_PHOTOS_MAX = 5`、`STATUS_NOTE_MAX_CHARS` のコメント。`src/config.test.ts` に 2 件。`status-reason.ts` の型（`StatusInputReason`・`StatusInput`・`StatusInputResult`）と空の関数 `parseStatusInput(body, confirmedPhotoIds)`
+- **テスト（凍結）**: `src/services/status-reason.test.ts`（52 件）・`src/services/status-reason-config.test.ts`（3 件、設定を差し替えて上限と選択肢に従うかを見る）
+- **人が RED で置いたもの**: `src/config.ts`（共有ファイル。11-04 先輩の確認済み）の `STATUS_REASONS` を P21 の答えの 5 つに（穂の色・黄色い穂の割合・農協の判定で中止（水分超過）・同（砕けなどの傷）・その他、この順）、`STATUS_REF_PHOTOS_MAX = 5`、`STATUS_NOTE_MAX_CHARS` のコメント。`src/config.test.ts` に 2 件。`status-reason.ts` の型（`StatusInputReason`・`StatusInput`・`StatusInputResult`）と空の関数 `parseStatusInput(body, confirmedPhotoIds)`
 - **RED の確かめ**: 41 件すべてが not implemented で落ちる。仮の実装で 41 件が通り、檻の純粋関数の検査も通ることを確かめてから空に戻した。lint・型・安全検査はそれぞれ単独で通る。攻撃役の後の 55 件も、空の実装で全件が落ち、仮の実装で全件が通り、純粋関数の検査も通る（11-04）
 - **攻撃役（Sonnet、檻の中、仕様・決まりのファイルを消し、空の実装の説明を除いた複製で。11-04）**:
   - 1 回目（6 手、$0.08）: 41 件を全部通す手抜きが書けた。使った手抜きは config の値（200 字・5 枚・選択肢の 5 つ）の直書き。設定を差し替える別のファイル（3 件）と、境目（status が null・数値、理由が空文字・前後に空白、メモが空文字・全角の空白やタブだけ、絵文字と普通の字が混ざった 200／201 字）の 6 件を足して 50 件
