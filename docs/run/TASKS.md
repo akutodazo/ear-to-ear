@@ -465,3 +465,25 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **書き方の注意（`scripts/cage/policy.mjs`）**: import は `@/services/...`・`@/types`・`./...`。`Response.json()` を使わず `http.ts` の `json()`・`errorResponse()`。`Date.now()` を使わず `deps.nowMs()`
 - **参照**: `docs/spec.md` §5・§6
 - **担当**: 先輩
+
+## T30 `handover-request`（L6 の Claude への要求の本文と返事の判定）
+- **状態**: RED 凍結（11-04）。無人の GREEN の待ち
+- **人の確認**: まだ
+- **Issue**: #107（決めたことは #107 のコメント。ハンドラは T31 #111）
+- **依存**: T27 `handoverContent`、T28 `toHandoverBlocks`、設定の `CLAUDE_MODEL`・`CLAUDE_MAX_TOKENS`
+- **変えてよいファイル**: `src/services/handover-request.ts`（＋ `docs/run/REPORT-T30.md`、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結）**: `src/services/handover-request.test.ts`・`src/services/handover-request-delegate.test.ts`（`handoverContent`・`toHandoverBlocks`・設定を差し替えて、それに従うことを確かめる）
+- **人が RED で置いたもの（凍結）**: `src/services/handover-prompt.ts`（指示文。人が書く）、`handover-request.ts` の型（`HandoverRequestBody`・`HandoverReply`）と空の関数
+- **関数**: `buildHandoverRequest(fieldId, season, records): HandoverRequestBody`、`readHandoverReply(status, body, recordCount): HandoverReply`
+- **合格条件**:
+  - 要求の本文は `{ model: CLAUDE_MODEL, max_tokens: CLAUDE_MAX_TOKENS, thinking: { type: "between_tools" }, system: HANDOVER_SYSTEM_PROMPT, messages: [{ role: "user", content: [文書, { type: "text", text: HANDOVER_USER_TEXT }] }] }` の 5 項目だけ。文書は `{ type: "document", source: { type: "content", content: handoverContent(records) }, title: "<圃場> の <シーズン> 年の記録", citations: { enabled: true } }`。records が空なら例外（メッセージに「記録が無い」）
+  - 返事の判定は例外を出さない。順に: 200 でなければ `http` → 本文がオブジェクトでなければ `shape` → `stop_reason` が `refusal` なら `refusal`、`max_tokens` なら `truncated`、`end_turn` 以外は `shape` → `toHandoverBlocks(content, recordCount)` の戻りを `blocks`、例外なら `shape`
+  - 要素・引用の写しを自前で書かない（T27・T28 に任せる）。設定を直書きしない
+- **決めたこと（先輩、11-04、#107 のコメント）**: SDK を入れず fetch で直接呼ぶ。秘密は `CLAUDE_API_KEY`。thinking は between_tools。断られたら 502（fallbacks なし）。記録 0 件は 422。指示文は人が書く。ハンドラは T31 に分ける。キーが入るまで claude.ai のアーティファクトを試作台にする
+- **RED の確かめ（11-04）**: 空の実装で 39 件が失敗。仮の実装で全件と src・worker の全件が通り、檻の純粋さの検査も通ることを確かめた
+- **攻撃役（Sonnet、檻の中、仕様・決まりのファイルを消した複製で）**:
+  - 1 回目（6 手、$0.09）: 40 件を、ほぼ正しい実装（判定の多くを T28 に任せる）で通した。判定の順（200 以外は本文を見ない・refusal と max_tokens は content より先）と、空の content を 3 件足した
+  - 入れなかった指摘: `recordCount` と records の数の食い違い（呼ぶ側が同じ records から渡す）、題の特殊文字（番号は一覧の中だけ）、指示文の中身（人が書いて凍結）
+- **書き方の注意（`scripts/cage/policy.mjs`）**: import は `@/config`・`@/types`・`./handover-citations`・`./handover-document`・`./handover-prompt`。fetch・Date を使わない
+- **参照**: `docs/spec.md` §6、K17、#107
+- **担当**: 先輩

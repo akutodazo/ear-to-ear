@@ -170,6 +170,24 @@ describe("readHandoverReply: 返事の判定（T30）", () => {
     });
   });
 
+  // 攻撃役（T30 の 1 回目）: 判定の順を確かめるテストが無かった
+  it("200 でなければ、本文が refusal・max_tokens でも http", () => {
+    expect(readHandoverReply(500, reply({ stop_reason: "refusal" }), 2)).toStrictEqual({ ok: false, reason: "http" });
+    expect(readHandoverReply(429, reply({ stop_reason: "max_tokens" }), 2)).toStrictEqual({ ok: false, reason: "http" });
+  });
+
+  it("refusal・max_tokens は content が壊れていてもその理由（shape より先）", () => {
+    expect(readHandoverReply(200, reply({ stop_reason: "refusal", content: [] }), 2)).toStrictEqual({ ok: false, reason: "refusal" });
+    expect(readHandoverReply(200, reply({ stop_reason: "max_tokens", content: "x" }), 2)).toStrictEqual({
+      ok: false,
+      reason: "truncated",
+    });
+  });
+
+  it("200・end_turn でも content が空なら shape", () => {
+    expect(readHandoverReply(200, reply({ content: [] }), 2)).toStrictEqual({ ok: false, reason: "shape" });
+  });
+
   it("thinking のブロックは捨て、text だけを写す", () => {
     const body = reply({ content: [{ type: "thinking", thinking: "", signature: "s" }, { type: "text", text: "一文" }] });
     expect(readHandoverReply(200, body, 2)).toStrictEqual({ ok: true, blocks: [{ text: "一文", cites: [] }] });
