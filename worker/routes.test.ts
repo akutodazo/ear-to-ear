@@ -4,6 +4,7 @@ import { getFieldsSummary } from "./fields";
 import { getPhotosByField } from "./photos";
 import { health, notImplemented, routes } from "./routes";
 import { deleteStatusEvent } from "./status-events";
+import { getFieldStatusEvents } from "./status-history";
 
 describe("経路の表（docs/spec.md §6 の L0）", () => {
   it("メソッド・パス・認証の組が仕様どおり", () => {
@@ -19,6 +20,7 @@ describe("経路の表（docs/spec.md §6 の L0）", () => {
       ["DELETE", "/api/status-events/:id", "member"],
       ["GET", "/api/fields/summary", "none"],
       ["POST", "/api/fields/:id/status", "member"],
+      ["GET", "/api/fields/:id/status-events", "none"],
     ]);
   });
 
@@ -34,6 +36,12 @@ describe("経路の表（docs/spec.md §6 の L0）", () => {
 
   it("POST /api/fields/:id/status は postFieldStatus（T25）", () => {
     expect(routes.find((r) => r.method === "POST" && r.pattern === "/api/fields/:id/status")?.handler).toBe(postFieldStatus);
+  });
+
+  it("GET /api/fields/:id/status-events は getFieldStatusEvents（T26）", () => {
+    expect(routes.find((r) => r.method === "GET" && r.pattern === "/api/fields/:id/status-events")?.handler).toBe(
+      getFieldStatusEvents,
+    );
   });
 
   it("GET /api/photos は getPhotosByField（T22。501 の経路は無い）", () => {
