@@ -5,6 +5,7 @@
 import { patchAssignment } from "./assignment";
 import type { Route } from "./deps";
 import { errorResponse, json } from "./http";
+import { getFieldsSummary } from "./fields";
 import { getPhotoFile } from "./photo-files";
 import { getPhotosByField, getRecentPhotos } from "./photos";
 import { getSession, postSession } from "./session";
@@ -33,4 +34,6 @@ export const routes: readonly Route[] = [
   { method: "GET", pattern: "/api/session", auth: "member", handler: getSession },
   // L1 の判断の取り消し（T23）
   { method: "DELETE", pattern: "/api/status-events/:id", auth: "member", handler: deleteStatusEvent },
+  // L1 の地図（T24）
+  { method: "GET", pattern: "/api/fields/summary", auth: "none", handler: getFieldsSummary },
 ];
