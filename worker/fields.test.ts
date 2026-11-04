@@ -226,6 +226,22 @@ describe("GET /api/fields/summary（地図用のまとめ、T24）", () => {
     expect(JSON.parse(text)).toStrictEqual({ error: "internal" });
   });
 
+  // 攻撃役（T24 の 1 回目）: statusEventFromRow を通さず JSON.parse だけで写すと、配列でない値が 200 で素通りした
+  it.each([
+    ["reasons が null", { reasons: "null" }],
+    ["reasons が配列でない", { reasons: '{"secret":1}' }],
+    ["reasons の要素が文字列でない", { reasons: "[1]" }],
+    ["ref_photo_ids が JSON でない", { ref_photo_ids: "secret-not-json" }],
+    ["ref_photo_ids が配列でない", { ref_photo_ids: '"secret"' }],
+    ["ref_photo_ids の要素が文字列でない", { ref_photo_ids: "[null]" }],
+  ])("有効な判断の %s なら 500 で、中身を漏らさない", async (_label, overrides) => {
+    const { deps, testDb } = setup();
+    insertEvent(testDb, overrides);
+    const response = await handleRequest(request("GET", "/api/fields/summary"), deps);
+    expect(response.status).toBe(500);
+    expect(await response.text()).not.toMatch(/secret/);
+  });
+
   it("未確定の写真の候補の列が壊れていれば 500 で、中身を漏らさない", async () => {
     const { deps, testDb } = setup();
     insertPhoto(testDb, { candidate_field_ids: "secret-not-json" });
