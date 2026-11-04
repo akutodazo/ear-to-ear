@@ -98,6 +98,13 @@ describe("sourceLabel（T27 の書き方を読む）", () => {
     );
   });
 
+  it("取り消しの書き方がメモの途中にあるだけなら、印を付けない（文末だけを見る）", () => {
+    const withNote = realRecord({
+      event: event(11, "2026-07-21T01:00:00.000Z", { note: "雨なら（2026-07-22 に取り消し）にする" }),
+    });
+    expect(sourceLabel(withNote)).toBe("判断 7/21");
+  });
+
   it("写真は「写真 月/日」（撮影日）、撮影日が無ければ「写真（撮影日不明）」", () => {
     expect(sourceLabel(photoA)).toBe("写真 7/20");
     expect(sourceLabel(photoB)).toBe("写真 8/3");
@@ -202,6 +209,13 @@ describe("handoverSentences", () => {
       const [sentence] = handoverSentences(note(records, [{ text: "文", cites: [c] }]));
       expect(sentence).toStrictEqual({ text: "文", sources: [], uncited: true });
     }
+  });
+
+  it("start だけが整数でない引用も無いものとする（end が整数でも）", () => {
+    const records = [status7, status12];
+    const c = { start: 0.5, end: 2, citedText: "x" };
+    const [sentence] = handoverSentences(note(records, [{ text: "文", cites: [c] }]));
+    expect(sentence).toStrictEqual({ text: "文", sources: [], uncited: true });
   });
 
   it("大きな範囲でも記録の数までしか見ない", () => {
