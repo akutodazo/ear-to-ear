@@ -362,3 +362,72 @@ a:focus-visible {
 .photo-grid .thumb {
   display: block;
 }
+
+/* 圃場ページ: 判断を残す・判断の履歴・引き継ぎメモ（L1・L6） */
+fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+/* 根拠に選んだ写真。色だけに頼らず、枠の太さでも分ける */
+button.thumb {
+  padding: 0;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+.thumb-selected {
+  border: 4px solid var(--brand);
+}
+
+/* 取り消しの 2 段目（DS §12-13 の危険）。枠と文字を --assertive */
+.button-danger {
+  border-color: var(--assertive);
+  color: var(--assertive);
+}
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* 取り消した判断。消さずに残し、薄くして線を引く */
+.card-revoked {
+  color: var(--text-3);
+  background: var(--background-2);
+}
+
+.card-revoked .badge {
+  text-decoration: line-through;
+}
+
+/* 印から戻ってきた項目を見失わないように */
+.card:target {
+  box-shadow: var(--focus-ring);
+}
+
+.memo-sentence {
+  margin: 0;
+  line-height: 1.7;
+}
+
+/* 根拠の無い文は灰色で「根拠なし」（合格条件 13） */
+.memo-uncited {
+  color: var(--text-3);
+}
+
+.memo-uncited .badge {
+  background: var(--background-2);
+  color: var(--text-3);
+}
+
+/* 根拠の印。押すと元の記録へ */
+.badge-source {
+  margin-left: var(--space-4);
+  border: 1px solid var(--brand);
+  color: var(--brand);
+  text-decoration: none;
+}

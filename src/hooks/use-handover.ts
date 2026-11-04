@@ -3,13 +3,14 @@
  * 作り直すのは管理者だけ（守るのはサーバーの 401／403）。合言葉は最初に聞かない。
  * 作るときに 401／403 が返ったときだけ聞く（新着の確定と同じ流れ。委員の端末から管理者で入り直せる）。
  * Claude を呼ぶのは 1 回押すごとに 1 回（作っている間は押せない。1 日の上限はサーバー）。
- * 文と根拠の印への分け方（handover-view）と画面の配置は後でつなぐので、ここはメモと状態だけを返す。
+ * メモは画面の文と根拠の印（handover-view、T32）に分けて返す。
  */
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { HandoverNote } from "@/types";
 import { createHandoverOutcomeLabel, handoverOutcomeLabel } from "@/services/handover-labels";
+import { handoverSentences, type HandoverSentence } from "@/services/handover-view";
 import { loginOutcomeLabel } from "@/services/login-label";
 import { createHandoverRepository } from "@/repositories/create-handover-repository";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
@@ -103,8 +104,11 @@ export function useHandover(
     [photoRepo, loggingIn],
   );
 
+  const sentences = useMemo<HandoverSentence[]>(() => (note === null ? [] : handoverSentences(note)), [note]);
+
   return {
     note,
+    sentences,
     loading,
     message,
     refresh,
