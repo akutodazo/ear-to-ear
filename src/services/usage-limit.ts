@@ -44,3 +44,13 @@ export function loginCounterKey(ipHash: string, slot: string): string {
 export function retryAfterSec(window: LoginWindow, nowMs: number): number {
   return Math.max(1, Math.ceil((window.endMs - nowMs) / 1000));
 }
+
+/** Claude の 1 日の回数の key。`claude:<日本時間の日付 YYYY-MM-DD>`（環境全体で 1 つ、T31） */
+export function claudeCounterKey(_nowMs: number): string {
+  throw new Error("未実装");
+}
+
+/** nowMs を含む日本時間の日の終わり（翌日の日本時間 0 時）の ISO 8601（usage_counters.expires_at、T31） */
+export function claudeDayEndsAt(_nowMs: number): string {
+  throw new Error("未実装");
+}

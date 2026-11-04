@@ -28,6 +28,15 @@ export interface BucketPort {
   delete(key: string): Promise<void>;
 }
 
+/** Claude の返事（状態コードと JSON の本文）。通信の失敗・時間切れは status 0・body null */
+export interface ClaudeReply {
+  status: number;
+  body: unknown;
+}
+
+/** Messages API（POST /v1/messages）を 1 回呼ぶ。キー・版・30 秒の打ち切りは env.ts が持つ。再試行しない（T31） */
+export type ClaudePort = (requestBody: unknown) => Promise<ClaudeReply>;
+
 export interface Deps {
   /** D1（バインディング名 DB） */
   db: DbPort;
@@ -51,6 +60,8 @@ export interface Deps {
   newId: () => string;
   /** 架空の圃場の番号の一覧（src/data/fields.json）。meta の候補・選んだ番号を確かめる */
   knownFieldIds: ReadonlySet<string>;
+  /** Claude を呼ぶ口（L6、T31）。CLAUDE_ENABLED が "false"、または CLAUDE_API_KEY が無いなら null（呼ばない） */
+  claude: ClaudePort | null;
 }
 
 export type AuthLevel = "none" | "member" | "admin";
