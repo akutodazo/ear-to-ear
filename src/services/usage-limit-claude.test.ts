@@ -25,6 +25,16 @@ describe("claudeCounterKey: どの時刻でも日本時間の日付（T31）", (
     expect(claudeCounterKey(midnight - 1)).toBe("claude:2026-12-31");
     expect(claudeCounterKey(midnight)).toBe("claude:2027-01-01");
   });
+
+  // 攻撃役（T31 の 2 回目）: 2029 年より前だけを計算しても通った
+  it.each([1971, 1999, 2029, 2050, 2099])("%s 年の 3 月 1 日の日本時間 0 時の前後と、日の終わり", (year) => {
+    const midnight = Date.UTC(year, 2, 1) - 9 * 3600_000;
+    const prevDay = new Date(Date.UTC(year, 2, 0)).toISOString().slice(0, 10);
+    expect(claudeCounterKey(midnight - 1)).toBe(`claude:${prevDay}`);
+    expect(claudeCounterKey(midnight)).toBe(`claude:${year}-03-01`);
+    expect(claudeDayEndsAt(midnight - 1)).toBe(new Date(midnight).toISOString());
+    expect(claudeDayEndsAt(midnight + 5 * 3600_000)).toBe(new Date(midnight + 24 * 3600_000).toISOString());
+  });
 });
 
 describe("claudeDayEndsAt（T31）", () => {

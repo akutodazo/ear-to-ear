@@ -254,6 +254,64 @@ describe("POST /api/fields/:id/handover: 作って保存する（T31）", () => 
     ]);
   });
 
+  // 攻撃役（T31 の 2 回目）: 一覧を見ずに A-01〜A-12 の形で判定・写真の state を見なくても通った
+  it("圃場の一覧は deps.knownFieldIds に従う", async () => {
+    const testDb = createTestDb();
+    seed(testDb);
+    insertEvent(testDb, { id: 40, field_id: "B-01" });
+    const claude = vi.fn<ClaudePort>(async () => apiReply({ content: [{ type: "text", text: "B" }] }));
+    const deps = fakeDeps({ db: testDb.db, claude, knownFieldIds: new Set(["B-01"]) });
+    expect((await post(deps, "B-01")).status).toBe(200);
+    expect((await post(deps, "A-06")).status).toBe(404);
+    expect(claude).toHaveBeenCalledTimes(1);
+  });
+
+  it("番号の入った未確定の写真は記録に入れない（確定済みだけ）", async () => {
+    const { deps, testDb, claude } = setup();
+    insertPhoto(testDb, { id: "p-unconf-a06", field_id: "A-06", state: "unconfirmed", content_hash: "e".repeat(64), r2_key: "uploads/p-unconf-a06.jpg", taken_at: "2026-07-19" });
+    const note = await (await post(deps)).json();
+    expect(note.records.map((r: { id: string }) => r.id)).toStrictEqual(["p-1", "3", "4"]);
+    expect(JSON.stringify(claude.mock.calls[0][0])).not.toContain("2026-07-19");
+  });
+
+  // 攻撃役（T31 の 2 回目）: 回数を読んでから書く・上書きを消してから入れる 2 文でも通った
+  it("上限の 1 つ手前で 2 つ同時に来ても、通るのは 1 つだけ（Claude は 1 回）", async () => {
+    const { deps, claude, testDb } = setup();
+    testDb.raw
+      .prepare("INSERT INTO usage_counters (key, count, expires_at) VALUES (?, ?, ?)")
+      .run(COUNTER_KEY, CLAUDE_DAILY_LIMIT - 1, "2026-10-26T15:00:00.000Z");
+    const statuses = (await Promise.all([post(deps), post(deps)])).map((r) => r.status).sort();
+    expect(statuses).toStrictEqual([200, 429]);
+    expect(claude).toHaveBeenCalledTimes(1);
+    expect(counter(testDb)[0].count).toBe(CLAUDE_DAILY_LIMIT);
+  });
+
+  it("SQL は 4 文（判断・写真・回数・保存）。回数は 1 文で数え、保存は 1 文の上書きで DELETE を使わない", async () => {
+    const testDb = createTestDb();
+    seed(testDb);
+    const sqls: string[] = [];
+    const db: DbPort = {
+      prepare: (sql) => {
+        sqls.push(sql);
+        return testDb.db.prepare(sql);
+      },
+      batch: async () => {
+        throw new Error("batch は使わない");
+      },
+    };
+    const response = await post(fakeDeps({ db, claude: async () => apiReply() }));
+    expect(response.status).toBe(200);
+    expect(sqls).toHaveLength(4);
+    expect(sqls.some((s) => /DELETE/i.test(s))).toBe(false);
+    expect(sqls.filter((s) => /usage_counters/.test(s))).toHaveLength(1);
+    expect(sqls.filter((s) => /handover_notes/.test(s))).toHaveLength(1);
+    expect(sqls.find((s) => /handover_notes/.test(s))).toMatch(/ON CONFLICT/i);
+    for (const s of sqls) {
+      expect(s).not.toContain("A-06");
+      expect(s).not.toContain("*");
+    }
+  });
+
   it("回数を 1 つ数える（key は日本時間の日付、期限は翌日の日本時間 0 時）", async () => {
     const { deps, testDb } = setup();
     await post(deps);
