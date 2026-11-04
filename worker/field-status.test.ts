@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { handleRequest } from "./app";
+import { STATUS_BODY_MAX_BYTES } from "@/services/status-request";
 import type { DbPort, Deps } from "./deps";
 import { createTestDb, type TestDb } from "./test-db";
 import { fakeDeps, jsonRequest, NOW_MS, repeatChunks, request, sessionToken, streamRequest } from "./test-helpers";
@@ -273,7 +274,7 @@ describe("POST /api/fields/:id/status（判断と理由・根拠を残す、T25�
   );
 
   // 攻撃役（T25 の 1 回目）: Content-Type を完全一致で見ても通った
-  it.each([["application/json; charset=utf-8"], ["Application/JSON"]])("Content-Type %s は受け付ける", async (type) => {
+  it.each([["application/json; charset=utf-8"], ["Application/JSON"], ["application/json ; charset=utf-8"]])("Content-Type %s は受け付ける", async (type) => {
     const { deps } = setup();
     expect((await post(deps, READY, { headers: { "content-type": type } })).status).toBe(201);
   });
@@ -303,6 +304,28 @@ describe("POST /api/fields/:id/status（判断と理由・根拠を残す、T25�
     const big = JSON.stringify({ ...READY, note: "a".repeat(3000) });
     expect((await post(deps, big)).status).toBe(413);
     expect((await post(deps, READY, { headers: { "content-length": "100000" } })).status).toBe(413);
+  });
+
+  // 攻撃役（T25 の 3 回目）: 上限ちょうどの境目を縛るテストが無かった
+  it("本文がちょうど上限（2048 バイト）なら読み、1 バイト超えると 413", async () => {
+    const { deps } = setup();
+    const base = JSON.stringify({ ...READY, note: "" });
+    const exact = JSON.stringify({ ...READY, note: " ".repeat(STATUS_BODY_MAX_BYTES - base.length) });
+    const over = JSON.stringify({ ...READY, note: " ".repeat(STATUS_BODY_MAX_BYTES - base.length + 1) });
+    expect(new TextEncoder().encode(exact).byteLength).toBe(STATUS_BODY_MAX_BYTES);
+    expect((await post(deps, exact)).status).toBe(201);
+    expect((await post(deps, over)).status).toBe(413);
+  });
+
+  it("Content-Type が無ければ 415", async () => {
+    const { deps } = setup({ db: untouchable });
+    const cookie = `session=${await sessionToken("member")}`;
+    const req = new Request("https://example.test/api/fields/A-03/status", {
+      method: "POST",
+      headers: { cookie },
+      body: new TextEncoder().encode(JSON.stringify(READY)),
+    });
+    expect((await handleRequest(req, deps)).status).toBe(415);
   });
 
   it("content-length の無い大きな本文は、上限の近くで読むのをやめて 413", async () => {
