@@ -123,7 +123,7 @@ CREATE TABLE settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);  -- 
 | `GET /api/fields/:id/status-events` | なし | — | 200 `StatusEvent[]`（その圃場の判断を取り消したものも含めて全件、`at` の新しい順・同じなら id の大きい順。件数の上限なし） | 404（一覧に無い圃場）（11-04 先輩決定、T26、#99） | L1 |
 | `GET /api/fields/summary` | なし | — | 200 `{ fields: FieldSummary[] }`（全圃場を一覧の順）。各圃場の有効な最新の判断（取り消していないもので `at` が新しいもの、同じなら id の大きい方）と、未確定の写真の候補（最大3）か委員が選んだ番号に含まれるか（11-04 本人承認、#90） | — | L1 |
 | `POST /api/fields/:id/handover` | admin | — | 200 `HandoverNote`（作り直して保存） | 401／429／502 | L6 |
-| `GET /api/fields/:id/handover` | なし | — | 200 `HandoverNote`／404 | — | L6 |
+| `GET /api/fields/:id/handover` | なし | — | 200 `HandoverNote`（今のシーズン＝日本時間の年のメモ） | 404（メモが無い・一覧に無い圃場）（11-04 先輩決定、T29、#106） | L6 |
 | `POST /api/line/webhook` | LINE の署名 | LINE のイベント | 200（`join` だけ処理してグループ ID を保存） | 401 | L8 |
 | `POST /api/photos/:id/suggest` | admin | `{candidateFieldIds}`（人が選んだ2〜3圃場） | 200 `{suggestions:[{fieldId, reason}]}` | 401／422／429／502 | L5 |
 
