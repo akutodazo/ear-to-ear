@@ -162,6 +162,49 @@ describe("GET /api/fields/:id/status-events（圃場ページの判断の履歴�
     expect((await history(deps, odd)).body.map((e) => e.id)).toEqual([2]);
   });
 
+  // 攻撃役（T26 の 2 回目）: 全件を読んで JS で絞り・並べても結果は同じで通った（spec §6・AGENTS.md §4: SQL は 1 文、番号は bind）
+  it("SQL は 1 文で、番号は bind で渡し、読むのはその圃場の行だけ", async () => {
+    const { testDb } = setup();
+    insertEvent(testDb, { id: 1, field_id: "A-06" });
+    insertEvent(testDb, { id: 2, field_id: "A-06", at: "2026-07-22T01:00:00.000Z" });
+    for (let i = 3; i <= 40; i++) insertEvent(testDb, { id: i, field_id: "A-07" });
+    const sqls: string[] = [];
+    const binds: unknown[][] = [];
+    let rowsRead = 0;
+    const db: DbPort = {
+      prepare(sql) {
+        sqls.push(sql);
+        const wrap = (stmt: ReturnType<DbPort["prepare"]>): ReturnType<DbPort["prepare"]> => ({
+          bind: (...values: unknown[]) => {
+            binds.push(values);
+            return wrap(stmt.bind(...values));
+          },
+          first: async <T>() => {
+            const row = await stmt.first<T>();
+            if (row !== null) rowsRead += 1;
+            return row;
+          },
+          all: async <T>() => {
+            const result = await stmt.all<T>();
+            rowsRead += result.results.length;
+            return result;
+          },
+          run: () => stmt.run(),
+        });
+        return wrap(testDb.db.prepare(sql));
+      },
+      batch: (statements) => testDb.db.batch(statements),
+    };
+    const deps = fakeDeps({ db, newId: fail("newId"), nowMs: fail("nowMs"), hmac: async () => fail("hmac")() });
+    const { body } = await history(deps);
+    expect(body.map((e) => e.id)).toEqual([2, 1]);
+    expect(sqls).toHaveLength(1);
+    expect(sqls[0]).not.toContain("A-06");
+    expect(sqls[0]).not.toContain("*");
+    expect(binds).toEqual([["A-06"]]);
+    expect(rowsRead).toBe(2);
+  });
+
   it.each([["Z-99"], ["a-06"], ["A-6"], ["summary"]])(
     "AT-3 一覧に無い圃場 %s は 404 { error: not_found } で、D1 を触らない（11-04 先輩決定）",
     async (field) => {
