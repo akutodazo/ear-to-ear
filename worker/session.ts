@@ -46,8 +46,14 @@ export const postSession: Handler = async (request, { deps }) => {
   }
 
   const role = await deps.matchPassphrase(body.passphrase);
-  // 不一致は取った枠をそのまま失敗として残す
-  if (role === null) return errorResponse(401, "unauthorized");
+  // 不一致は取った枠をそのまま失敗として残す。ついでに期限の過ぎた行（合言葉の枠・前の日の Claude の回数）を消す（#59）
+  if (role === null) {
+    await deps.db
+      .prepare("DELETE FROM usage_counters WHERE expires_at < ?")
+      .bind(new Date(nowMs).toISOString())
+      .run();
+    return errorResponse(401, "unauthorized");
+  }
 
   // 一致したら取った枠を戻す（成功は数えない）。0 になった行は消す
   await deps.db.batch([
