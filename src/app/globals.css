@@ -530,9 +530,8 @@ a:focus-visible {
   stroke-width: 5;
 }
 
-/* 縮小しているときは札を番号だけに（重なりを減らす。選んでいる圃場は全部出す） */
-.map-zoom-compact .map-label:not(.map-label-selected) .map-label-name,
-.map-zoom-compact .map-label:not(.map-label-selected) .map-label-benchmark {
+/* 縮小しているときは札の名前を隠して番号だけに（重なりを減らす。目安の札と判断は残す。選んでいる圃場は全部出す） */
+.map-zoom-compact .map-label:not(.map-label-selected) .map-label-name {
   display: none;
 }
 
