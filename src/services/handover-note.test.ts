@@ -130,10 +130,10 @@ describe("handoverNoteFromRow: 壊れた行は例外（中身はメッセージ�
     ["blocks が無い", row({}, { records: [] })],
     ["records が配列でない", row({}, bodyWith({ records: {} }))],
     ["blocks が配列でない", row({}, bodyWith({ blocks: "x" }))],
-    ["record の kind が違う", row({}, bodyWith({ records: [{ kind: "memo", id: "1", text: "t" }] }))],
-    ["record の id が文字列でない", row({}, bodyWith({ records: [{ kind: "status", id: 3, text: "t" }] }))],
-    ["record の text が無い", row({}, bodyWith({ records: [{ kind: "status", id: "3" }] }))],
-    ["record が null", row({}, bodyWith({ records: [null] }))],
+    ["record の kind が違う", row({}, bodyWith({ blocks: [], records: [{ kind: "memo", id: "1", text: "t" }] }))],
+    ["record の id が文字列でない", row({}, bodyWith({ blocks: [], records: [{ kind: "status", id: 3, text: "t" }] }))],
+    ["record の text が無い", row({}, bodyWith({ blocks: [], records: [{ kind: "status", id: "3" }] }))],
+    ["record が null", row({}, bodyWith({ blocks: [], records: [null] }))],
     ["block の text が文字列でない", row({}, bodyWith({ blocks: [{ text: 1, cites: [] }] }))],
     ["block の cites が無い", row({}, bodyWith({ blocks: [{ text: "b" }] }))],
     ["cite の citedText が無い", row({}, bodyWith({ blocks: [{ text: "b", cites: [{ start: 0, end: 1 }] }] }))],
@@ -151,17 +151,17 @@ describe("handoverNoteFromRow: 壊れた行は例外（中身はメッセージ�
     ["cite の end が整数でない", row({}, bodyWith({ blocks: [{ text: "b", cites: [{ start: 0, end: 1.5, citedText: "c" }] }] }))],
     ["cite の end が NaN", row({}, bodyWith({ blocks: [{ text: "b", cites: [{ start: 0, end: Number.NaN, citedText: "c" }] }] }))],
     // 攻撃役（T29 の 2 回目）: テストに出る値（memo・数・undefined）だけを弾いても通った
-    ["record の kind が無い", row({}, bodyWith({ records: [{ id: "1", text: "t" }] }))],
-    ["record の kind が数", row({}, bodyWith({ records: [{ kind: 1, id: "1", text: "t" }] }))],
-    ["record の kind が空", row({}, bodyWith({ records: [{ kind: "", id: "1", text: "t" }] }))],
-    ["record の kind が大文字", row({}, bodyWith({ records: [{ kind: "Photo", id: "1", text: "t" }] }))],
-    ["record の kind が別の語", row({}, bodyWith({ records: [{ kind: "assignment", id: "1", text: "t" }] }))],
-    ["record の id が null", row({}, bodyWith({ records: [{ kind: "status", id: null, text: "t" }] }))],
-    ["record の id が真偽値", row({}, bodyWith({ records: [{ kind: "status", id: true, text: "t" }] }))],
-    ["record の id がオブジェクト", row({}, bodyWith({ records: [{ kind: "status", id: {}, text: "t" }] }))],
-    ["record の text が null", row({}, bodyWith({ records: [{ kind: "status", id: "1", text: null }] }))],
-    ["record の text がオブジェクト", row({}, bodyWith({ records: [{ kind: "status", id: "1", text: {} }] }))],
-    ["record が文字列", row({}, bodyWith({ records: ["[判断 1]"] }))],
+    ["record の kind が無い", row({}, bodyWith({ blocks: [], records: [{ id: "1", text: "t" }] }))],
+    ["record の kind が数", row({}, bodyWith({ blocks: [], records: [{ kind: 1, id: "1", text: "t" }] }))],
+    ["record の kind が空", row({}, bodyWith({ blocks: [], records: [{ kind: "", id: "1", text: "t" }] }))],
+    ["record の kind が大文字", row({}, bodyWith({ blocks: [], records: [{ kind: "Photo", id: "1", text: "t" }] }))],
+    ["record の kind が別の語", row({}, bodyWith({ blocks: [], records: [{ kind: "assignment", id: "1", text: "t" }] }))],
+    ["record の id が null", row({}, bodyWith({ blocks: [], records: [{ kind: "status", id: null, text: "t" }] }))],
+    ["record の id が真偽値", row({}, bodyWith({ blocks: [], records: [{ kind: "status", id: true, text: "t" }] }))],
+    ["record の id がオブジェクト", row({}, bodyWith({ blocks: [], records: [{ kind: "status", id: {}, text: "t" }] }))],
+    ["record の text が null", row({}, bodyWith({ blocks: [], records: [{ kind: "status", id: "1", text: null }] }))],
+    ["record の text がオブジェクト", row({}, bodyWith({ blocks: [], records: [{ kind: "status", id: "1", text: {} }] }))],
+    ["record が文字列", row({}, bodyWith({ blocks: [], records: ["[判断 1]"] }))],
     ["block の text が null", row({}, bodyWith({ blocks: [{ text: null, cites: [] }] }))],
     ["block の text が配列", row({}, bodyWith({ blocks: [{ text: ["b"], cites: [] }] }))],
     ["block が null", row({}, bodyWith({ blocks: [null] }))],
@@ -188,7 +188,7 @@ describe("handoverNoteFromRow: 壊れた行は例外（中身はメッセージ�
   it("例外のメッセージに body の中身を入れない", () => {
     const secret = "dev-secret-9f3";
     try {
-      handoverNoteFromRow(row({}, bodyWith({ records: [{ kind: "memo", id: secret, text: secret }] })));
+      handoverNoteFromRow(row({}, bodyWith({ blocks: [], records: [{ kind: "memo", id: secret, text: secret }] })));
       expect.unreachable("例外にならなかった");
     } catch (error) {
       expect(String(error)).not.toContain(secret);

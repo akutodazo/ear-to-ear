@@ -110,6 +110,15 @@ describe("GET /api/fields/:id/handover（引き継ぎメモ、T29）", () => {
     expect(body.season).toBe("2026");
   });
 
+  // 人の確認（T29 の GREEN の後）: どのテストの時刻も日本時間で 2026 年で、シーズンを "2026" に固定しても通った
+  it("2027 年の時刻なら 2027 年のメモを読む（2026 年のメモがあっても）", async () => {
+    const { deps, testDb } = setup({ nowMs: () => Date.parse("2027-08-01T00:00:00.000Z") });
+    insertNote(testDb, "A-06", "2026");
+    insertNote(testDb, "A-06", "2027", { records: [], blocks: [{ text: "2027", cites: [] }] });
+    const body = (await (await get(deps)).json()) as { season: string };
+    expect(body.season).toBe("2027");
+  });
+
   it("今のシーズンのメモが無ければ 404 not_found（前のシーズンがあっても）", async () => {
     const { deps, testDb } = setup();
     insertNote(testDb, "A-06", "2025");
