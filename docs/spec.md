@@ -167,8 +167,8 @@ Next.js（App Router、`output: 'export'`）＋ Leaflet。デモと開発の地�
 | 9 | 父の試用（架空データ）: 見つける比較（LINE のトーク vs このサイト、各3問）、送る・見つける・確定・判断の成否と助言回数。試用の後に提案し、引き出された声も記録 | L0〜L1 | — | — | 試用（P5） | 予定 |
 | 10 | リポジトリに実データ・秘密が無い（手元の検査＋CI＋提出前に履歴全体の検査） | L0 | `scripts/safety-rules`（`npm run check:safety`、CI） | PR #39・#42 | 自動（毎回）＋提出前の履歴全体 | **一部**: 手元と CI は済。提出前の履歴全体の検査は予定 |
 | 11 | 動画に、期間中に作ったもの・架空データだけが映る。冒頭1分で「A が送る → B の画面で見える」 | — | — | — | 録画を人が見る | 予定 |
-| 12 | 判断ボタンで理由と根拠（写真）を残せ、取り消しも残る。根拠に他の圃場の記録は選べない | L1 | （予定）`status-reason` | — | 自動＋実機 | 予定 |
-| 13 | 引き継ぎメモの各文に引用で根拠が付き、タップで元の記録に戻れる。根拠の無い文は「根拠なし」と区別する | L6 | （予定）`handover-document`・`handover-citations` | — | 自動＋実機 | 予定 |
+| 12 | 判断ボタンで理由と根拠（写真）を残せ、取り消しも残る。根拠に他の圃場の記録は選べない | L1 | `services/status-reason`・`status-request`・`status-events`、`worker/field-status`・`status-events`・`status-history` | PR #93・#96・#100・#101・#102・#115・#120 | 自動＋実機 | **一部**: 自動は済（他の圃場の写真は 422）。dev の実機は予定 |
+| 13 | 引き継ぎメモの各文に引用で根拠が付き、タップで元の記録に戻れる。根拠の無い文は「根拠なし」と区別する | L6 | `services/handover-document`・`handover-citations`・`handover-request`・`handover-view`、`worker/handover`・`handover-post` | PR #108〜#110・#112・#113・#116・#119・#120 | 自動＋実機（`docs/dev/l6-live.md`） | **一部**: 自動は済（引用は渡した記録の範囲だけ。範囲の外の引用は捨て、返事の形が違えば 502）。指示文は試作台の疑似で確かめた（#119）。本物の API と実機は予定（dev のデプロイと `CLAUDE_API_KEY` の後） |
 | 14 | LINE の通知が失敗しても、写真の保存・判断の記録は成功する。月の送信数が上限の手前で止まる | L8 | `services/usage-limit`（回数の部分） | — | 自動 | 予定（L8 は時間があれば） |
 | 15 | 送信内容に撮影位置の座標も候補までの距離も無い | L0 | `services/upload-meta`（受け側で拒否）・`upload-request`、`lib/upload-steps`（送る meta に座標なし） | PR #41・#51・#57 | 自動＋画面（送る中身を内蔵ブラウザで確認） | **済** |
 
