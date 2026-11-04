@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getPhotosByField } from "./photos";
 import { health, notImplemented, routes } from "./routes";
+import { deleteStatusEvent } from "./status-events";
 
 describe("経路の表（docs/spec.md §6 の L0）", () => {
   it("メソッド・パス・認証の組が仕様どおり", () => {
@@ -13,7 +14,14 @@ describe("経路の表（docs/spec.md §6 の L0）", () => {
       ["GET", "/api/photo-files/:id", "none"],
       ["PATCH", "/api/photos/:id/assignment", "admin"],
       ["GET", "/api/session", "member"],
+      ["DELETE", "/api/status-events/:id", "member"],
     ]);
+  });
+
+  it("DELETE /api/status-events/:id は deleteStatusEvent（T23）", () => {
+    expect(routes.find((r) => r.method === "DELETE" && r.pattern === "/api/status-events/:id")?.handler).toBe(
+      deleteStatusEvent,
+    );
   });
 
   it("GET /api/photos は getPhotosByField（T22。501 の経路は無い）", () => {

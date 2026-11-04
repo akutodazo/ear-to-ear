@@ -8,6 +8,7 @@ import { errorResponse, json } from "./http";
 import { getPhotoFile } from "./photo-files";
 import { getPhotosByField, getRecentPhotos } from "./photos";
 import { getSession, postSession } from "./session";
+import { deleteStatusEvent } from "./status-events";
 import { postUploads } from "./uploads";
 
 /** 未実装の経路。501 */
@@ -30,4 +31,6 @@ export const routes: readonly Route[] = [
   { method: "PATCH", pattern: "/api/photos/:id/assignment", auth: "admin", handler: patchAssignment },
   // 画面が役割を知る（11-03 本人決定）。表の添字を変えないよう末尾に足す。Allow は "POST, GET"
   { method: "GET", pattern: "/api/session", auth: "member", handler: getSession },
+  // L1 の判断の取り消し（T23）
+  { method: "DELETE", pattern: "/api/status-events/:id", auth: "member", handler: deleteStatusEvent },
 ];
