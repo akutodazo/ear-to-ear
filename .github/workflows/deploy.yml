@@ -21,9 +21,30 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    # 手で押すときも main からだけ
+  # リポジトリのコード（テスト・lint・build）を動かすジョブ。秘密を持たない
+  build:
     if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - uses: actions/upload-artifact@v7
+        with:
+          name: out
+          path: out/
+          retention-days: 1
+
+  # 秘密を持つジョブ。リポジトリのコードを実行しない（依存の install スクリプトも止める）。
+  # wrangler は worker/ を esbuild でまとめるだけで、実行はしない
+  deploy:
+    needs: build
     runs-on: ubuntu-latest
     # 秘密は GitHub の Environment（dev・demo）ごとに置く。demo は人の承認を付ける
     environment: ${{ github.event_name == 'push' && 'dev' || inputs.target }}
@@ -36,10 +57,11 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-          cache: npm
-      # 秘密は wrangler の 2 つの段にだけ渡す（依存の install・build には渡さない）
-      - run: npm ci
-      - run: npm run check
+      - run: npm ci --ignore-scripts
+      - uses: actions/download-artifact@v8
+        with:
+          name: out
+          path: out/
       - name: D1 の migration（main にある SQL だけ）
         run: npx wrangler d1 migrations apply DB --remote --env "$TARGET"
         env:
