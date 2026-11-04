@@ -50,6 +50,32 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **参照**: `docs/spec.md` §6、K17、#107
 - **担当**: 先輩
 
+## T31 `POST /api/fields/:id/handover`（L6 の引き継ぎメモを作り直して保存する。admin だけ）
+- **状態**: 検査済み・人の確認待ち（11-04）
+- **運転の記録（1104 の列車、`--skip T23〜T30`）**: START `32823bd` → GREEN `3fc5f02` → REPORT `8af8137`。Opus、道具は檻の5つだけ、22 手、$0.63。C1〜C5 合格（C3 58 件、C4 テスト全体 1974 件）。変更は許可した 2 ファイルだけ。QUESTIONS なし。REPORT に手元のパスなし
+- **Claude の確認（11-04、人の確認の前）**: 差分を読んで抜けは見つからなかった。実装を 15 通りに壊して 14 通りが落ち、残った「要素の数を渡さない」は、テストの返事の引用がどれも範囲の内側だったため。範囲の外を指す引用のテストを足し（人）、15 通りとも落ちる。手元の `wrangler dev`（使い捨ての合言葉、キーなし）で、Cookie なし 401・委員 403・管理者 503 `claude_disabled`・Z-99 404
+- **人の確認**: まだ。**撮影位置・実データ・秘密に関わる PR**（Claude に送る経路と `CLAUDE_API_KEY`）なので、別のセッションのレビュー（AGENTS.md §3）を受ける
+- **Issue**: #111（決めたことは #107 のコメント）
+- **依存**: T27 `buildHandoverRecords`、T29 `handoverSeason`、T30 `buildHandoverRequest`・`readHandoverReply`、T22 `photoFromRow`、T23 `statusEventFromRow`
+- **変えてよいファイル**: `src/services/usage-limit.ts`・`worker/handover-post.ts`（＋ `docs/run/REPORT-T31.md`、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結）**: `src/services/usage-limit-claude.test.ts`・`worker/handover-post.test.ts`・`worker/routes.test.ts`（POST の経路を足した）
+- **人が RED で置いたもの（凍結）**: `worker/deps.ts` の `ClaudePort`・`ClaudeReply`・`Deps.claude`、`worker/env.ts` の配線（fetch・`CLAUDE_API_KEY`・`CLAUDE_ENABLED`・版 `2026-10-21`・30 秒・再試行なし、テスト `worker/env-claude.test.ts`）、`worker/http.ts` のエラーの種類（`too_many_requests`・`bad_gateway`・`claude_disabled`）、`worker/test-helpers.ts` の `claude: null`、`routes.ts` の配線、空の `postFieldHandover`・`claudeCounterKey`・`claudeDayEndsAt`
+- **関数**: `claudeCounterKey(nowMs)`、`claudeDayEndsAt(nowMs)`、`postFieldHandover: Handler`
+- **合格条件**:
+  - `claudeCounterKey`: `claude:<日本時間の日付>`。`claudeDayEndsAt`: その日本時間の日の終わり（翌日の日本時間 0 時）の ISO。どの年でも計算する（表を持たない）
+  - 順: `:id` が `deps.knownFieldIds` に無ければ 404 `not_found`（D1・Claude を触らない）→ `deps.claude` が null なら 503 `claude_disabled`（D1 を触らない）→ その圃場の判断（取り消しを含む全部、`STATUS_EVENT_COLUMNS`）と確定済みの写真（`state = 'confirmed' AND field_id = ?`、`PHOTO_LIST_COLUMNS`）を読み、`statusEventFromRow`・`photoFromRow` で写して `buildHandoverRecords(fieldId, handoverSeason(nowMs), …)` → 0 件なら 422 `{ error: "unprocessable", reason: "no_records" }`（数えない）→ 回数を 1 文で数える（`INSERT … ON CONFLICT(key) DO UPDATE SET count = count + 1 WHERE count < CLAUDE_DAILY_LIMIT RETURNING count`、`expires_at` は `claudeDayEndsAt`）。返らなければ 429 `too_many_requests`、`Retry-After` は日の終わりまでの秒（切り上げ、最小 1）→ `deps.claude(buildHandoverRequest(…))`（例外は `{ status: 0, body: null }` と同じ）→ `readHandoverReply` が失敗なら 502 `{ error: "bad_gateway", reason }`（保存しない。回数は数えたまま）→ `handover_notes` に 1 文の UPSERT（`ON CONFLICT(field_id, season)`、DELETE を使わない）で `{ records, blocks }` を保存し、200 で `HandoverNote`（`model` は `CLAUDE_MODEL`、`createdAt` は `nowMs` の ISO）
+  - SQL は 4 文だけ（判断・写真・回数・保存）。`*` を使わない、番号は bind。`errorResponse`・`json` を使う
+  - Claude に送るのは T30 の本文だけ（端末 ID・写真の id・候補・大きさ・R2 の鍵は T27 が文に入れない）。応答に Claude の返事の生の中身（id・usage）を出さない
+- **決めたこと（先輩、11-04、#107 のコメント）**: 503 は `claude_disabled`。回数は呼ぶ前に数え、失敗も数える。保存する `model` は送ったモデル（fallbacks を使わないので答えるモデルと同じ）
+- **RED の確かめ（11-04）**: 空の実装で 33 件が失敗。仮の実装で、攻撃役の後の 58 件と src・worker の全件が通り、檻の純粋さの検査も通ることを確かめた
+- **攻撃役（Sonnet、檻の中、仕様・決まりのファイルを消した複製で）**:
+  - 1 回目（15 手、$0.20）: 46 件を、回数の key をテストの時刻の表で返す・記録を読まず決まった 3 件を返す手抜きで通した。key の総当たり、年の境の別の圃場（写真だけ）、取り消しだけの圃場、429 で期限を変えない、例外でも数えるを足した
+  - 2 回目（17 手、$0.25）: 49 件を、`A-01〜A-12` の形で判定・写真の state を見ない・回数を読んでから書く・上書きを消して入れる・2029 年より前だけ計算する手抜きで通した。1971〜2099 年、`knownFieldIds` の差し替え、番号の入った未確定の写真、2 つ同時、SQL 4 文・UPSERT・DELETE なしを足した
+  - 入れなかった指摘: 保存の INSERT だけが失敗したとき（1 文の UPSERT で、失敗すれば前の行は残る）、返事の `model` を保存すること（送ったモデルを保存すると決めた）
+- **書き方の注意（`scripts/cage/policy.mjs`）**: import は `@/config`・`@/services/...`・`./deps`・`./http`。`Date.now()` を使わず `deps.nowMs()`、fetch を使わず `deps.claude`。`src/services/usage-limit.ts` は今ある import（`../config`）を変えない
+- **参照**: `docs/spec.md` §6、K17、#107・#111
+- **担当**: 先輩
+
 ## T32 `handover-view`（L6 の引き継ぎメモを、画面の文と根拠の印に分ける）
 - **状態**: 取り込み済み（11-04、#116）
 - **運転の記録**: 1104 の列車の 3 本目（T06・T12 は済みで飛ばした）。START `43b43c7` → GREEN `ce0ae68` → REPORT `9560953`。Opus、9 手、$0.34。ゲート G0〜G7 と C1〜C5 がすべて合格（C3 24 件、C4 テスト全体）。変更は許可した 1 ファイルと REPORT だけ。QUESTIONS なし。REPORT に手元のパスなし。列車の前に `.dev.vars` が無いことと wrangler が未ログインであることを確かめた

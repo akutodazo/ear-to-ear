@@ -8,6 +8,7 @@ import { errorResponse, json } from "./http";
 import { postFieldStatus } from "./field-status";
 import { getFieldsSummary } from "./fields";
 import { getFieldHandover } from "./handover";
+import { postFieldHandover } from "./handover-post";
 import { getPhotoFile } from "./photo-files";
 import { getPhotosByField, getRecentPhotos } from "./photos";
 import { getSession, postSession } from "./session";
@@ -45,4 +46,6 @@ export const routes: readonly Route[] = [
   { method: "GET", pattern: "/api/fields/:id/status-events", auth: "none", handler: getFieldStatusEvents },
   // L6 の引き継ぎメモを読む（T29）
   { method: "GET", pattern: "/api/fields/:id/handover", auth: "none", handler: getFieldHandover },
+  // L6 の引き継ぎメモを作り直す（T31）。Claude を呼ぶので admin だけ
+  { method: "POST", pattern: "/api/fields/:id/handover", auth: "admin", handler: postFieldHandover },
 ];

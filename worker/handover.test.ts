@@ -196,11 +196,11 @@ describe("GET /api/fields/:id/handover（引き継ぎメモ、T29）", () => {
     expect((await get(deps)).headers.get("cache-control")).toBe("no-store");
   });
 
-  it("POST・DELETE は 405（GET だけ。POST は T30 で足す）", async () => {
+  it("DELETE は 405（GET と POST だけ。POST は T31 で足した）", async () => {
     const { deps } = setup();
     const response = await handleRequest(request("DELETE", "/api/fields/A-06/handover"), deps);
     expect(response.status).toBe(405);
-    expect(response.headers.get("allow")).toBe("GET");
+    expect(response.headers.get("allow")).toBe("GET, POST");
   });
 });
 

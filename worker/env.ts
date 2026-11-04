@@ -2,10 +2,12 @@
  * Worker の環境（バインディングと Secret）から Deps を作る（人が書く。檻の外）。
  * crypto.subtle・crypto.randomUUID・Date.now に触るのはここだけ。
  * バインディング名は wrangler.jsonc（本人が作る）との約束: DB・PHOTOS・ASSETS。
+ * fetch で Claude の Messages API を呼ぶのもここだけ（T31。SDK は使わない、11-04 先輩決定 #107）。
  */
+import { CLAUDE_TIMEOUT_MS } from "@/config";
 import fields from "@/data/fields.json";
 import type { Role } from "@/types";
-import type { BucketPort, DbPort, Deps } from "./deps";
+import type { BucketPort, ClaudePort, DbPort, Deps } from "./deps";
 
 export interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> };
@@ -14,6 +16,42 @@ export interface Env {
   MEMBER_PASSPHRASE: string;
   ADMIN_PASSPHRASE: string;
   SESSION_SECRET: string;
+  /** Claude API のキー（Worker の秘密、本人が登録）。無ければ Claude を呼ばない */
+  CLAUDE_API_KEY?: string;
+  /** "false" なら Claude を全部止める（docs/spec.md §6） */
+  CLAUDE_ENABLED?: string;
+}
+
+const CLAUDE_URL = "https://api.anthropic.com/v1/messages";
+const ANTHROPIC_VERSION = "2026-10-21";
+
+/**
+ * Messages API を 1 回呼ぶ口。30 秒で打ち切り、再試行しない。通信の失敗・時間切れは { status: 0, body: null }、
+ * JSON でない本文は body null。キーは見出しにだけ入れ、例外やログに出さない
+ */
+function createClaude(env: Env): ClaudePort | null {
+  const key = env.CLAUDE_API_KEY;
+  // 大文字小文字と前後の空白は見ない（"FALSE"・" false " でも止まる。レビュー #113 の指摘 5）
+  if (env.CLAUDE_ENABLED?.trim().toLowerCase() === "false" || !key) return null;
+  return async (requestBody) => {
+    try {
+      const response = await fetch(CLAUDE_URL, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": ANTHROPIC_VERSION },
+        body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(CLAUDE_TIMEOUT_MS),
+      });
+      let body: unknown = null;
+      try {
+        body = await response.json();
+      } catch {
+        body = null;
+      }
+      return { status: response.status, body };
+    } catch {
+      return { status: 0, body: null };
+    }
+  };
 }
 
 /** Workers の crypto.subtle には timingSafeEqual がある。lib dom の型には無いので広げる */
@@ -81,5 +119,6 @@ export function createDeps(env: Env): Deps {
     nowMs: () => Date.now(),
     newId: () => crypto.randomUUID(),
     knownFieldIds,
+    claude: createClaude(env),
   };
 }

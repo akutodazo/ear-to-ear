@@ -45,6 +45,7 @@ export function fakeDeps(overrides: Partial<Deps> = {}): Deps {
     nowMs: () => NOW_MS,
     newId: () => "00000000-0000-4000-8000-000000000001",
     knownFieldIds: new Set(Array.from({ length: 12 }, (_, i) => `A-${String(i + 1).padStart(2, "0")}`)),
+    claude: null,
     ...overrides,
   };
 }
