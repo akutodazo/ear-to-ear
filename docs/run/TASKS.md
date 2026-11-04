@@ -232,11 +232,11 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **担当**: 先輩
 
 ## T06 `photo-groups.ts`（圃場ページの写真を撮影日ごとにまとめる。L1）
-- **状態**: RED済み・攻撃役済み（11-04 朝）。凍結できる
+- **状態**: 凍結（11-04）。RED済み・攻撃役済み
 - **運転の予定**: 11-04、檻リレー（ハーネス v0.6。Service だけのパケット、11-03 決定①）
 - **依存**: なし（`@/types` の `UploadedPhoto` だけ）
 - **変えてよいファイル**: `src/services/photo-groups.ts` のみ（＋ `docs/run/REPORT-T06.md`、止まったときは `docs/run/QUESTIONS.md`）
-- **テスト（凍結の予定）**: `src/services/photo-groups.test.ts`（15 件）
+- **テスト（凍結）**: `src/services/photo-groups.test.ts`（15 件）
 - **人が RED で置いたもの**: `PhotoGroup` の型（`takenAt: string | null`・`photos: UploadedPhoto[]`）と空の関数 `groupFieldPhotos(photos, fieldId)`。共有ファイルは変えていない
 - **RED の確かめ**: 13 件すべてが not implemented で落ちる。仮の実装で 13 件が通り、檻の純粋関数の検査も通ることを確かめてから空に戻した。lint・型・安全検査はそれぞれ単独で通る。攻撃役の後の 15 件も、空の実装で全件が落ち、仮の実装で全件が通り、純粋関数の検査も通る（11-04）
 - **攻撃役（Sonnet、檻の中、仕様・決まりのファイルを消し、空の実装の説明を除いた複製で。11-04）**:
