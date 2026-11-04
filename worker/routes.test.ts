@@ -4,6 +4,7 @@ import { getFieldsSummary } from "./fields";
 import { getPhotosByField } from "./photos";
 import { health, notImplemented, routes } from "./routes";
 import { deleteStatusEvent } from "./status-events";
+import { getFieldHandover } from "./handover";
 import { getFieldStatusEvents } from "./status-history";
 
 describe("経路の表（docs/spec.md §6 の L0）", () => {
@@ -21,6 +22,7 @@ describe("経路の表（docs/spec.md §6 の L0）", () => {
       ["GET", "/api/fields/summary", "none"],
       ["POST", "/api/fields/:id/status", "member"],
       ["GET", "/api/fields/:id/status-events", "none"],
+      ["GET", "/api/fields/:id/handover", "none"],
     ]);
   });
 
@@ -42,6 +44,10 @@ describe("経路の表（docs/spec.md §6 の L0）", () => {
     expect(routes.find((r) => r.method === "GET" && r.pattern === "/api/fields/:id/status-events")?.handler).toBe(
       getFieldStatusEvents,
     );
+  });
+
+  it("GET /api/fields/:id/handover は getFieldHandover（T29）", () => {
+    expect(routes.find((r) => r.method === "GET" && r.pattern === "/api/fields/:id/handover")?.handler).toBe(getFieldHandover);
   });
 
   it("GET /api/photos は getPhotosByField（T22。501 の経路は無い）", () => {
