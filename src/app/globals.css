@@ -342,3 +342,23 @@ a:focus-visible {
   /* 日本語を文節で折り返す（対応していないブラウザは今までどおり） */
   word-break: auto-phrase;
 }
+
+/* 圃場ページ: 撮影日の見出しと、写真の並び（スマホの幅で 3 枚） */
+.day-heading {
+  margin: 0;
+  font-size: 1.2rem;
+  line-height: 1.4;
+}
+
+.photo-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: var(--space-8);
+}
+
+.photo-grid .thumb {
+  display: block;
+}

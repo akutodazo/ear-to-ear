@@ -34,6 +34,19 @@ async function readId(response: Response): Promise<string | null> {
   }
 }
 
+/** 写真の一覧の応答（200 で配列）を読む。それ以外は error、つながらなければ network-error */
+async function readPhotos(response: Response | null): Promise<RecentOutcome> {
+  if (response === null) return { kind: "network-error" };
+  if (response.status !== 200) return { kind: "error" };
+  try {
+    const body: unknown = await response.json();
+    if (!Array.isArray(body)) return { kind: "error" };
+    return { kind: "ok", photos: body as UploadedPhoto[] };
+  } catch {
+    return { kind: "error" };
+  }
+}
+
 export function createHttpPhotoRepository(fetchFn: FetchLike, baseUrl = ""): IPhotoRepository {
   return {
     async login(passphrase: string): Promise<LoginOutcome> {
@@ -75,16 +88,11 @@ export function createHttpPhotoRepository(fetchFn: FetchLike, baseUrl = ""): IPh
     },
 
     async listRecent(limit: number): Promise<RecentOutcome> {
-      const response = await send(fetchFn, `${baseUrl}/api/photos/recent?limit=${limit}`);
-      if (response === null) return { kind: "network-error" };
-      if (response.status !== 200) return { kind: "error" };
-      try {
-        const body: unknown = await response.json();
-        if (!Array.isArray(body)) return { kind: "error" };
-        return { kind: "ok", photos: body as UploadedPhoto[] };
-      } catch {
-        return { kind: "error" };
-      }
+      return readPhotos(await send(fetchFn, `${baseUrl}/api/photos/recent?limit=${limit}`));
+    },
+
+    async listFieldPhotos(fieldId: string): Promise<RecentOutcome> {
+      return readPhotos(await send(fetchFn, `${baseUrl}/api/photos?fieldId=${encodeURIComponent(fieldId)}`));
     },
 
     async getRole(): Promise<RoleOutcome> {

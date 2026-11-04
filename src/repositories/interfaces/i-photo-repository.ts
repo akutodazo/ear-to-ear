@@ -17,7 +17,7 @@ export type UploadOutcome =
   | { kind: "network-error" }
   | { kind: "error" };
 
-/** GET /api/photos/recent の結果 */
+/** GET /api/photos/recent・GET /api/photos?fieldId= の結果 */
 export type RecentOutcome = { kind: "ok"; photos: UploadedPhoto[] } | { kind: "network-error" } | { kind: "error" };
 
 /** GET /api/session の結果。入っていない（401）ときは role が null */
@@ -40,6 +40,8 @@ export interface IPhotoRepository {
   upload(image: Blob, meta: UploadMeta): Promise<UploadOutcome>;
   /** 未確定を含む新着 */
   listRecent(limit: number): Promise<RecentOutcome>;
+  /** その圃場に確定済みの写真（圃場ページ。並びはサーバーの順のまま） */
+  listFieldPhotos(fieldId: string): Promise<RecentOutcome>;
   /** この端末の役割（画面が「確定・変更」を出すかを決める。守るのはサーバー） */
   getRole(): Promise<RoleOutcome>;
   /** 管理者が番号を確定・変更する（履歴はサーバーが残す） */

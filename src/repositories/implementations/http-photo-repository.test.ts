@@ -129,6 +129,55 @@ describe("listRecent（GET /api/photos/recent）", () => {
   });
 });
 
+describe("listFieldPhotos（GET /api/photos?fieldId=。圃場ごとの確定済み）", () => {
+  const confirmed = {
+    id: "p2",
+    fieldId: "A-06",
+    chosenFieldId: null,
+    state: "confirmed",
+    candidateFieldIds: ["A-06"],
+    takenAt: "2026-07-21",
+    takenAtSource: "xmp",
+    width: 1600,
+    height: 1200,
+    uploadedAt: "2026-11-03T01:00:00.000Z",
+    uploaderDevice: "d1",
+  };
+
+  it("圃場の番号を付けて読む（番号は URL の形に直す）", async () => {
+    const { fn, calls } = fakeFetch(() => Response.json([]));
+    await createHttpPhotoRepository(fn).listFieldPhotos("A-06");
+    await createHttpPhotoRepository(fn).listFieldPhotos("A 06&x=1");
+    expect(calls.map((c) => c.url)).toStrictEqual(["/api/photos?fieldId=A-06", "/api/photos?fieldId=A%2006%26x%3D1"]);
+    expect(calls[0].init?.method ?? "GET").toBe("GET");
+  });
+
+  it("200 は写真の一覧", async () => {
+    const { fn } = fakeFetch(() => Response.json([confirmed]));
+    expect(await createHttpPhotoRepository(fn).listFieldPhotos("A-06")).toEqual({ kind: "ok", photos: [confirmed] });
+  });
+
+  it("配列でない応答・読めない本文は error", async () => {
+    const { fn } = fakeFetch(() => Response.json({ photos: [] }));
+    expect(await createHttpPhotoRepository(fn).listFieldPhotos("A-06")).toEqual({ kind: "error" });
+    const broken = fakeFetch(() => new Response("{", { status: 200 }));
+    expect(await createHttpPhotoRepository(broken.fn).listFieldPhotos("A-06")).toEqual({ kind: "error" });
+  });
+
+  it("400（一覧に無い番号）・500 は error、つながらなければ network-error", async () => {
+    for (const status of [400, 500]) {
+      const { fn } = fakeFetch(() => Response.json({ error: "bad_request" }, { status }));
+      expect(await createHttpPhotoRepository(fn).listFieldPhotos("A-99")).toEqual({ kind: "error" });
+    }
+    expect(await createHttpPhotoRepository(offline).listFieldPhotos("A-06")).toEqual({ kind: "network-error" });
+  });
+
+  it("200 以外なら、本文が配列でも error（読まない）", async () => {
+    const { fn } = fakeFetch(() => Response.json([confirmed], { status: 500 }));
+    expect(await createHttpPhotoRepository(fn).listFieldPhotos("A-06")).toEqual({ kind: "error" });
+  });
+});
+
 describe("getRole（GET /api/session。この端末の役割）", () => {
   it("GET で読む", async () => {
     const { fn, calls } = fakeFetch(() => Response.json({ role: "admin" }));
