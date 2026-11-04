@@ -41,6 +41,11 @@ describe("handoverSeason: 日本時間の年（T29）", () => {
     [Date.parse("2025-12-31T14:59:59.999Z"), "2025"],
     [Date.parse("2025-12-31T15:00:00.000Z"), "2026"],
     [Date.parse("2026-12-31T15:00:00.000Z"), "2027"],
+    // 攻撃役（T29 の 1 回目）: 2 つの年の境目だけで場合分けしても通った
+    [Date.parse("2024-06-01T00:00:00.000Z"), "2024"],
+    [Date.parse("2028-02-29T14:59:59.999Z"), "2028"],
+    [Date.parse("2031-03-01T00:00:00.000Z"), "2031"],
+    [Date.parse("2029-12-31T14:59:59.999Z"), "2029"],
   ])("%s → %s", (ms, season) => {
     expect(handoverSeason(ms)).toBe(season);
   });
@@ -59,6 +64,18 @@ describe("handoverNoteFromRow: 行を HandoverNote に戻す（T29）", () => {
     expect(handoverNoteFromRow(row())).toStrictEqual(expected);
   });
 
+  // 攻撃役（T29 の 1 回目）: 値が 1 組しかなく、固定値に近い写しでも通った
+  it("列の値は行から写す（別の圃場・シーズン・モデル・時刻）", () => {
+    const note = handoverNoteFromRow(
+      row({ field_id: "B-03", season: "2031", model: "m-x", created_at: "2031-08-01T00:00:00.000Z" }, {
+        records: [{ kind: "status", id: "77", text: "t" }],
+        blocks: [{ text: "b", cites: [{ start: 0, end: 1, citedText: "c" }] }],
+      }),
+    );
+    expect([note.fieldId, note.season, note.model, note.createdAt]).toStrictEqual(["B-03", "2031", "m-x", "2031-08-01T00:00:00.000Z"]);
+    expect(note.records).toStrictEqual([{ kind: "status", id: "77", text: "t" }]);
+  });
+
   it("records・blocks・cites が空でも戻せる", () => {
     const note = handoverNoteFromRow(row({}, { records: [], blocks: [] }));
     expect(note.records).toStrictEqual([]);
@@ -70,14 +87,26 @@ describe("handoverNoteFromRow: 行を HandoverNote に戻す（T29）", () => {
       row(
         {},
         {
-          records: [{ kind: "status", id: "3", text: "t", actorDevice: "dev-secret" }],
-          blocks: [{ text: "b", cites: [{ start: 0, end: 1, citedText: "c", document_title: "x" }], extra: 1 }],
+          records: [
+            { kind: "status", id: "3", text: "t" },
+            { kind: "photo", id: "p", text: "u", actorDevice: "dev-secret" },
+          ],
+          blocks: [
+            { text: "a", cites: [] },
+            { text: "b", cites: [{ start: 0, end: 1, citedText: "c" }, { start: 1, end: 2, citedText: "d", document_title: "x" }], extra: 1 },
+          ],
           prompt: "秘密の指示",
         },
       ),
     );
-    expect(note.records).toStrictEqual([{ kind: "status", id: "3", text: "t" }]);
-    expect(note.blocks).toStrictEqual([{ text: "b", cites: [{ start: 0, end: 1, citedText: "c" }] }]);
+    expect(note.records).toStrictEqual([
+      { kind: "status", id: "3", text: "t" },
+      { kind: "photo", id: "p", text: "u" },
+    ]);
+    expect(note.blocks).toStrictEqual([
+      { text: "a", cites: [] },
+      { text: "b", cites: [{ start: 0, end: 1, citedText: "c" }, { start: 1, end: 2, citedText: "d" }] },
+    ]);
     expect(JSON.stringify(note)).not.toMatch(/dev-secret|秘密の指示|document_title|extra/);
   });
 });
@@ -105,6 +134,13 @@ describe("handoverNoteFromRow: 壊れた行は例外（中身はメッセージ�
     ["列の model が文字列でない", row({ model: 5 as unknown as string })],
     ["列の created_at が null", row({ created_at: null as unknown as string })],
     ["列の season が文字列でない", row({ season: 2026 as unknown as string })],
+    // 攻撃役（T29 の 1 回目）: field_id の型・end が整数かを見なくても通った
+    ["列の field_id が null", row({ field_id: null as unknown as string })],
+    ["列の field_id が数", row({ field_id: 6 as unknown as string })],
+    ["列の body が null", row({ body: null as unknown as string })],
+    ["cite の end が整数でない", row({}, bodyWith({ blocks: [{ text: "b", cites: [{ start: 0, end: 1.5, citedText: "c" }] }] }))],
+    ["cite の end が NaN", row({}, bodyWith({ blocks: [{ text: "b", cites: [{ start: 0, end: Number.NaN, citedText: "c" }] }] }))],
+    ["cite の start が文字列", row({}, bodyWith({ blocks: [{ text: "b", cites: [{ start: "0", end: 1, citedText: "c" }] }] }))],
   ])("%s", (_name, bad) => {
     expect(() => handoverNoteFromRow(bad)).toThrow(/handover_notes/);
   });

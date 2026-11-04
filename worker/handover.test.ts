@@ -125,6 +125,22 @@ describe("GET /api/fields/:id/handover（引き継ぎメモ、T29）", () => {
     expect(await response.json()).toStrictEqual({ error: "not_found" });
   });
 
+  // 攻撃役（T29 の 1 回目）: 一覧を見ずに A-NN の形だけで判定しても通った
+  it.each(["A-13", "A-00", "A-99"])("形は合うが一覧に無い番号 %s も 404 で、D1 を触らない", async (field) => {
+    const { deps } = setup({ db: untouchable });
+    expect((await get(deps, field)).status).toBe(404);
+  });
+
+  it("番号の一覧は deps.knownFieldIds に従う（形の違う番号でも、一覧にあれば読む）", async () => {
+    const { deps, testDb } = setup({ knownFieldIds: new Set(["B-01"]) });
+    insertNote(testDb, "B-01", SEASON, { records: [], blocks: [{ text: "B-01 のメモ", cites: [] }] });
+    insertNote(testDb, "A-06", SEASON);
+    const response = await get(deps, "B-01");
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { fieldId: string }).fieldId).toBe("B-01");
+    expect((await get(deps, "A-06")).status).toBe(404);
+  });
+
   it("SQL は 1 文で、番号とシーズンは bind（文字列に埋め込まない）。書き込まない", async () => {
     const testDb = createTestDb();
     insertNote(testDb, "A-06", SEASON);
