@@ -4,6 +4,7 @@
  */
 import type { HandoverNote } from "@/types";
 import type { CreateHandoverOutcome, HandoverOutcome } from "@/repositories/interfaces/i-handover-repository";
+import { jstDateTimeLabel } from "@/services/status-view";
 
 const READ_LABELS: Record<HandoverOutcome["kind"], string | null> = {
   ok: null,
@@ -26,8 +27,9 @@ const CREATE_LABELS: Record<CreateHandoverOutcome["kind"], string> = {
 };
 
 /** メモを作った時刻の言葉（例「7/22 10:30 に作成」） */
-export function handoverCreatedLabel(_note: HandoverNote): string {
-  return "";
+export function handoverCreatedLabel(note: HandoverNote): string {
+  const at = jstDateTimeLabel(note.createdAt);
+  return at === "日時不明" ? "作成日時不明" : `${at} に作成`;
 }
 
 /** 読んだ結果の言葉。読めたら言葉なし（null） */
