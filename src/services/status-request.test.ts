@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { parseStatusInput } from "./status-reason";
 import { parseStatusBody, STATUS_BODY_MAX_BYTES } from "./status-request";
 
 const CONFIRMED = new Set(["p1", "p2"]);
@@ -46,6 +47,46 @@ describe("parseStatusBody（POST /api/fields/:id/status の本文、T25）", () 
     const text = '{"status":"ready","reasons":[],"refPhotoIds":["p1"]}';
     expect(parseStatusBody(text, new Set())).toStrictEqual({ ok: false, status: 422, reason: "ref_photo_not_in_field" });
     expect(parseStatusBody(text, new Set(["p1"]))).toMatchObject({ ok: true });
+  });
+
+  // 攻撃役（T25 の 1 回目）: parseStatusInput を呼ばず、テストの値（"maybe"・201 字・6 枚など）だけ見ても通った。
+  // 中身の検証は T12 の parseStatusInput と同じ結果になること（JSON の後はそのまま任せる）を、多くの入力で確かめる
+  const SAMPLES: unknown[] = [
+    { status: "done", reasons: [], refPhotoIds: [] },
+    { status: "foo", reasons: [], refPhotoIds: [] },
+    { status: "", reasons: [], refPhotoIds: [] },
+    { status: 1, reasons: [], refPhotoIds: [] },
+    { status: null, reasons: [], refPhotoIds: [] },
+    { reasons: [], refPhotoIds: [] },
+    { status: "ready", reasons: "ear_color", refPhotoIds: [] },
+    { status: "ready", reasons: null, refPhotoIds: [] },
+    { status: "ready", refPhotoIds: [] },
+    { status: "ready", reasons: ["ear_color", 1], refPhotoIds: [] },
+    { status: "ready", reasons: ["rain"], refPhotoIds: [] },
+    { status: "ready", reasons: ["ear_color", "other", "ear_color"], refPhotoIds: [] },
+    { status: "ready", reasons: [], note: 5, refPhotoIds: [] },
+    { status: "ready", reasons: [], note: ["a"], refPhotoIds: [] },
+    { status: "ready", reasons: [], note: "い".repeat(200), refPhotoIds: [] },
+    { status: "ready", reasons: [], note: "い".repeat(202), refPhotoIds: [] },
+    { status: "ready", reasons: [], note: "🌾".repeat(200), refPhotoIds: [] },
+    { status: "ready", reasons: [], note: "🌾".repeat(201), refPhotoIds: [] },
+    { status: "ready", reasons: [] },
+    { status: "ready", reasons: [], refPhotoIds: "p1" },
+    { status: "ready", reasons: [], refPhotoIds: [""] },
+    { status: "ready", reasons: [], refPhotoIds: ["p1", 2] },
+    { status: "ready", reasons: [], refPhotoIds: ["p1", "p2", "p1"] },
+    { status: "ready", reasons: [], refPhotoIds: ["p1", "p2", "p3", "p4", "p5", "p6", "p7"] },
+    { status: "ready", reasons: [], refPhotoIds: ["p2", "p3"] },
+    { status: "ready", reasons: ["other"], note: "x", refPhotoIds: ["p1"], extra: 1 },
+    "ready",
+    true,
+  ];
+  it.each(SAMPLES.map((s) => [JSON.stringify(s)]))("JSON の後の結果は parseStatusInput と同じ（%s）", (text) => {
+    const confirmed = new Set(["p1", "p2", "p3", "p4", "p5", "p6", "p7"].slice(0, 2));
+    const expected = parseStatusInput(JSON.parse(text), confirmed);
+    expect(parseStatusBody(text, confirmed)).toStrictEqual(
+      expected.ok ? { ok: true, value: expected.value } : { ok: false, status: 422, reason: expected.reason },
+    );
   });
 
   it("__proto__ のキーも知らないキーとして数える", () => {

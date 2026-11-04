@@ -194,6 +194,23 @@ describe("POST /api/fields/:id/status（判断と理由・根拠を残す、T25�
       expect(events(testDb)).toEqual([]);
     });
 
+    // 攻撃役（T25 の 1 回目）: SQL から state = 'confirmed' を外しても、未確定の写真がどれも field_id: null だったので通った
+    it("番号が入っていても未確定の写真は 422 ref_photo_not_in_field", async () => {
+      const { deps, testDb } = setup();
+      insertPhoto(testDb, "p1", { field_id: "A-03", state: "unconfirmed" });
+      const response = await post(deps, { ...READY, refPhotoIds: ["p1"] });
+      expect(response.status).toBe(422);
+      expect(await response.json()).toStrictEqual({ error: "unprocessable", reason: "ref_photo_not_in_field" });
+      expect(events(testDb)).toEqual([]);
+    });
+
+    it("重なる根拠は 422 duplicate_ref_photo", async () => {
+      const { deps, testDb } = setup();
+      insertPhoto(testDb, "p1");
+      const response = await post(deps, { ...READY, refPhotoIds: ["p1", "p1"] });
+      expect(await response.json()).toStrictEqual({ error: "unprocessable", reason: "duplicate_ref_photo" });
+    });
+
     it("無い写真は 422 ref_photo_not_in_field", async () => {
       const { deps, testDb } = setup();
       insertPhoto(testDb, "p1");
@@ -254,6 +271,23 @@ describe("POST /api/fields/:id/status（判断と理由・根拠を残す、T25�
       expect(events(testDb)).toEqual([]);
     },
   );
+
+  // 攻撃役（T25 の 1 回目）: Content-Type を完全一致で見ても通った
+  it.each([["application/json; charset=utf-8"], ["Application/JSON"]])("Content-Type %s は受け付ける", async (type) => {
+    const { deps } = setup();
+    expect((await post(deps, READY, { headers: { "content-type": type } })).status).toBe(201);
+  });
+
+  it("多バイトの文字がチャンクの境目で切れても、つないでから読む", async () => {
+    const { deps, testDb } = setup();
+    const cookie = `session=${await sessionToken("member")}`;
+    const bytes = new TextEncoder().encode(JSON.stringify({ ...READY, note: "穂の色🌾が黄色い" }));
+    const chunks = Array.from({ length: bytes.length }, (_, i) => bytes.slice(i, i + 1));
+    const { req } = streamRequest("/api/fields/A-03/status", chunks, { "content-type": "application/json", cookie });
+    const response = await handleRequest(req, deps);
+    expect(response.status).toBe(201);
+    expect(events(testDb)[0].note).toBe("穂の色🌾が黄色い");
+  });
 
   it("Content-Type が JSON でなければ 415 で、D1 を触らない", async () => {
     const { deps } = setup({ db: untouchable });
