@@ -171,6 +171,11 @@ describe("listFieldPhotos（GET /api/photos?fieldId=。圃場ごとの確定済�
     }
     expect(await createHttpPhotoRepository(offline).listFieldPhotos("A-06")).toEqual({ kind: "network-error" });
   });
+
+  it("200 以外なら、本文が配列でも error（読まない）", async () => {
+    const { fn } = fakeFetch(() => Response.json([confirmed], { status: 500 }));
+    expect(await createHttpPhotoRepository(fn).listFieldPhotos("A-06")).toEqual({ kind: "error" });
+  });
 });
 
 describe("getRole（GET /api/session。この端末の役割）", () => {
