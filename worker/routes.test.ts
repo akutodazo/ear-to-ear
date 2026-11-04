@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { getFieldsSummary } from "./fields";
 import { getPhotosByField } from "./photos";
 import { health, notImplemented, routes } from "./routes";
 import { deleteStatusEvent } from "./status-events";
@@ -15,6 +16,7 @@ describe("経路の表（docs/spec.md §6 の L0）", () => {
       ["PATCH", "/api/photos/:id/assignment", "admin"],
       ["GET", "/api/session", "member"],
       ["DELETE", "/api/status-events/:id", "member"],
+      ["GET", "/api/fields/summary", "none"],
     ]);
   });
 
@@ -22,6 +24,10 @@ describe("経路の表（docs/spec.md §6 の L0）", () => {
     expect(routes.find((r) => r.method === "DELETE" && r.pattern === "/api/status-events/:id")?.handler).toBe(
       deleteStatusEvent,
     );
+  });
+
+  it("GET /api/fields/summary は getFieldsSummary（T24）", () => {
+    expect(routes.find((r) => r.method === "GET" && r.pattern === "/api/fields/summary")?.handler).toBe(getFieldsSummary);
   });
 
   it("GET /api/photos は getPhotosByField（T22。501 の経路は無い）", () => {
