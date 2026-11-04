@@ -33,6 +33,8 @@
 3. デプロイ: `npm run build` の後に `npx wrangler deploy --env dev`
 4. 終わったら、無人運転の前に `npx wrangler logout`（ハーネス §4-3）
 
+引き継ぎメモ（L6）を本物の Claude で通すときは、1〜4 と確かめをまとめた `node scripts/ops/l6-live.mjs` を使う（`docs/dev/l6-live.md`）。
+
 ## やらないこと
 - GitHub Actions に Cloudflare の秘密を置く・自動デプロイ（spec §10）
 - 実在の写真・座標を dev・demo に入れる（K10）
