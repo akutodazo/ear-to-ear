@@ -31,8 +31,11 @@ describe("Claude の口（T31、人が書く配線）", () => {
     expect(createDeps(fakeEnv({ [KEY_NAME]: "" })).claude).toBeNull();
   });
 
-  it("CLAUDE_ENABLED が false なら、キーがあっても null", () => {
-    expect(createDeps(fakeEnv({ [KEY_NAME]: KEY_VALUE, CLAUDE_ENABLED: "false" })).claude).toBeNull();
+  it("CLAUDE_ENABLED が false なら、キーがあっても null（大文字小文字・前後の空白は見ない）", () => {
+    for (const value of ["false", "FALSE", " False "]) {
+      expect(createDeps(fakeEnv({ [KEY_NAME]: KEY_VALUE, CLAUDE_ENABLED: value })).claude).toBeNull();
+    }
+    expect(createDeps(fakeEnv({ [KEY_NAME]: KEY_VALUE, CLAUDE_ENABLED: "true" })).claude).not.toBeNull();
   });
 
   it("Messages API に POST する（キー・版・JSON の本文・30 秒の打ち切り）", async () => {

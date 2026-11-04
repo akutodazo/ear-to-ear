@@ -31,7 +31,8 @@ const ANTHROPIC_VERSION = "2026-10-21";
  */
 function createClaude(env: Env): ClaudePort | null {
   const key = env.CLAUDE_API_KEY;
-  if (env.CLAUDE_ENABLED === "false" || !key) return null;
+  // 大文字小文字と前後の空白は見ない（"FALSE"・" false " でも止まる。レビュー #113 の指摘 5）
+  if (env.CLAUDE_ENABLED?.trim().toLowerCase() === "false" || !key) return null;
   return async (requestBody) => {
     try {
       const response = await fetch(CLAUDE_URL, {
