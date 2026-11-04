@@ -11,6 +11,26 @@ export interface UnconfirmedPhotoRow {
   chosen_field_id: string | null;
 }
 
+/** 候補の列を文字列の配列に戻す。違えば列の名前の例外（中身はメッセージに入れない） */
+function parseCandidates(text: string): string[] {
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    throw new Error("candidate_field_ids が JSON ではない");
+  }
+  if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) {
+    throw new Error("candidate_field_ids が文字列の配列ではない");
+  }
+  return value;
+}
+
+/** a が b より新しいか（at が新しい、同じなら id が大きい） */
+function isNewer(a: StatusEvent, b: StatusEvent): boolean {
+  if (a.at !== b.at) return a.at > b.at;
+  return a.id > b.id;
+}
+
 /**
  * fieldIds の順に 1 圃場ずつまとめる。fieldIds に無い圃場の判断・写真は見ない。
  * latest は revokedAt が null の判断のうち at が新しいもの（同じなら id の大きい方）。無ければ null。
@@ -22,5 +42,22 @@ export function summarizeFields(
   events: readonly StatusEvent[],
   unconfirmed: readonly UnconfirmedPhotoRow[],
 ): FieldSummary[] {
-  throw new Error("not implemented");
+  const marked = new Set<string>();
+  for (const row of unconfirmed) {
+    for (const id of parseCandidates(row.candidate_field_ids)) marked.add(id);
+    if (row.chosen_field_id !== null) marked.add(row.chosen_field_id);
+  }
+
+  const latestByField = new Map<string, StatusEvent>();
+  for (const e of events) {
+    if (e.revokedAt !== null) continue;
+    const current = latestByField.get(e.fieldId);
+    if (current === undefined || isNewer(e, current)) latestByField.set(e.fieldId, e);
+  }
+
+  return fieldIds.map((fieldId) => ({
+    fieldId,
+    latest: latestByField.get(fieldId) ?? null,
+    hasUnconfirmed: marked.has(fieldId),
+  }));
 }
