@@ -193,6 +193,21 @@ describe("buildHandoverRecords: 並び（T27）", () => {
     expect(order(records)).toStrictEqual(["photo:p-m", "photo:p-z", "status:9", "status:10", "status:11"]);
   });
 
+  // 攻撃役（T27 の 2 回目）: 撮影日不明が 1 枚の場合しか無かった
+  it("撮影日不明の写真どうしは送った順、同じなら id の順（撮影日のある記録の後）", () => {
+    const records = buildHandoverRecords(
+      "A-06",
+      "2026",
+      [event(1, "2026-12-30T01:00:00.000Z")],
+      [
+        photo("u-b", null, { uploadedAt: "2026-07-02T00:00:00.000Z" }),
+        photo("u-c", null, { uploadedAt: "2026-07-01T00:00:00.000Z" }),
+        photo("u-a", null, { uploadedAt: "2026-07-02T00:00:00.000Z" }),
+      ],
+    );
+    expect(order(records)).toStrictEqual(["status:1", "photo:u-c", "photo:u-a", "photo:u-b"]);
+  });
+
   // 攻撃役（T27 の 1 回目）: id を決めた桁の文字列にして並べても通った
   it("同じ時刻の判断の id は数として比べる（桁が違っても）", () => {
     const at = "2026-07-21T03:00:00.000Z";

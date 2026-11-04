@@ -384,3 +384,30 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **書き方の注意（`scripts/cage/policy.mjs`）**: import は `@/services/...`・`./...`。`Response.json()` を使わず `http.ts` の `json()`・`errorResponse()`
 - **参照**: `docs/spec.md` §6、`docs/privacy.md`
 - **担当**: 先輩
+
+## T27 `handover-document`（L6 の 1 段目。記録を引用用の要素に並べる）
+- **状態**: RED 凍結（11-04）。無人の GREEN の待ち
+- **人の確認**: まだ
+- **Issue**: #104（L6 のサーバー側は先輩。11-04 本人と先輩の合意。続きは #105〜#107）
+- **依存**: 共有の型 `HandoverRecord`・`StatusEvent`・`UploadedPhoto`、設定の `STATUS_REASONS`
+- **変えてよいファイル**: `src/services/handover-document.ts`（＋ `docs/run/REPORT-T27.md`、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結）**: `src/services/handover-document.test.ts`・`src/services/handover-document-config.test.ts`（設定の理由を差し替えて追従を確かめる）
+- **人が RED で置いたもの（凍結）**: `handover-document.ts` の空の実装と `HandoverContentBlock` の型
+- **関数**: `buildHandoverRecords(fieldId, season, events, photos): HandoverRecord[]`、`handoverContent(records): HandoverContentBlock[]`
+- **合格条件**:
+  - 1 記録＝1 要素。判断は `kind: "status"`・`id` は番号の文字列、写真は `kind: "photo"`・`id` は写真の id
+  - 判断の文: `[判断 3] 2026-07-21 収穫可能。理由: 穂の色・黄色い穂の割合。メモ: …。根拠の写真: 2 枚。`。理由が空は `理由の記録なし`、メモ・根拠の写真が無ければその節を書かない、取り消し済みは末尾に `（2026-07-23 に取り消し）`。`ready`＝収穫可能、`done`＝収穫済。ラベルは `STATUS_REASONS`（呼ぶたびに設定から引く）。一覧に無いコードは例外
+  - 写真の文: `[写真] 2026-07-20 撮影。判断 3・12 の根拠。`（そのシーズンの判断の番号の小さい順、取り消し済みも数える）。撮影日不明は `[写真] 撮影日不明（2026-07-24 に送信）。`
+  - 日付はすべて日本時間。シーズンは日本時間の年（判断は `at`、写真は撮影日、撮影日不明は送った日）
+  - 並び: 日付の古い順。同じ日は写真が先、写真どうしは送った時刻・id、判断どうしは `at`・id（数として）。撮影日不明の写真は最後
+  - 端末 ID・写真の id・大きさ・候補は文に入れない。他の圃場の記録・確定していない写真は、シーズンで絞る前に例外
+  - 渡した配列を書き換えない。`handoverContent` は同じ順・同じ数の `{ type: "text", text }`
+- **決めたこと（先輩、11-04、#104 の推奨どおり）**: シーズン＝日本時間の年。写真も要素にする（画像は送らない）。端末 ID を送らない。混ざった記録は例外
+- **RED の確かめ（11-04）**: 空の実装で 30 件すべてが失敗。仮の実装で 30 件と src・worker の全件が通り、檻の純粋さの検査も通ることを確かめた
+- **攻撃役（Sonnet、檻の中、仕様・決まりのファイルを消した複製で）**:
+  - 1 回目（5 手、$0.10）: 24 件を、理由のラベルを手で書いた表・id を 12 桁の文字列にして並べる手抜きで通した。設定を差し替えるテスト、13 桁と 14 桁の id、取り消した判断も根拠に数えるテストを足した
+  - 2 回目（6 手、$0.11）: 29 件を、ほぼ正しい実装で通した。撮影日不明が 2 枚以上のときの並びを足した
+  - 入れなかった指摘: `at`・`uploadedAt` の書き方の違い（`toISOString()` だけが書く）、撮影日の形（T09 の meta の検証で `YYYY-MM-DD`）、`refPhotoIds` の重複（T12 で拒否）、型の外の `status`、シーズン外の判断の理由のコード
+- **書き方の注意（`scripts/cage/policy.mjs`）**: import は `@/config`・`@/types`。`Date.now()`・引数なしの `new Date()` を使わない（`Date.parse` と、引数ありの `new Date(ms)` は可）
+- **参照**: `docs/spec.md` §3・§9、K17
+- **担当**: 先輩
