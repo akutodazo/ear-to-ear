@@ -133,13 +133,14 @@ describe("GET /api/fields/:id/status-events（圃場ページの判断の履歴�
     expect(body.map((e) => e.id)).toEqual([8, 5, 3]);
   });
 
-  it("件数の上限は付けない（250 件ならすべて返す、11-04 先輩決定）", async () => {
+  // 攻撃役（T26 の 1 回目）: LIMIT 1000 を決め打ちしても 250 件では通った
+  it("件数の上限は付けない（1200 件ならすべて返す、11-04 先輩決定）", async () => {
     const { deps, testDb } = setup();
-    for (let i = 1; i <= 250; i++) {
+    for (let i = 1; i <= 1200; i++) {
       insertEvent(testDb, { id: i, at: `2026-07-${String((i % 28) + 1).padStart(2, "0")}T01:00:00.000Z` });
     }
     const { body } = await history(deps);
-    expect(body).toHaveLength(250);
+    expect(body).toHaveLength(1200);
   });
 
   it("圃場の番号は経路の :id を bind で渡す（ほかの圃場の判断は混ざらない）", async () => {
@@ -149,6 +150,16 @@ describe("GET /api/fields/:id/status-events（圃場ページの判断の履歴�
     expect((await history(deps, "A-11")).body.map((e) => e.id)).toEqual([2]);
     expect((await history(deps, "A-06")).body.map((e) => e.id)).toEqual([1]);
     expect((await history(deps, "A-01")).body).toEqual([]);
+  });
+
+  // 攻撃役（T26 の 1 回目）: 番号を SQL に文字列で埋め込んでも、一覧の番号が素直なので通った
+  it("番号は SQL に埋め込まない（引用符を含む番号でも、その番号の判断だけ）", async () => {
+    // 経路のパラメータは復号しないので、URL でそのまま残る文字だけで作る（' は残り、-- から後ろは SQL の注釈）
+    const odd = "A-06'--";
+    const { deps, testDb } = setup({ knownFieldIds: new Set([odd, "A-06"]) });
+    insertEvent(testDb, { id: 1, field_id: "A-06" });
+    insertEvent(testDb, { id: 2, field_id: odd });
+    expect((await history(deps, odd)).body.map((e) => e.id)).toEqual([2]);
   });
 
   it.each([["Z-99"], ["a-06"], ["A-6"], ["summary"]])(
@@ -180,6 +191,8 @@ describe("GET /api/fields/:id/status-events（圃場ページの判断の履歴�
     ["先頭の行の理由が JSON でない", 1, { reasons: "secret-not-json" }],
     ["2 行目以降の理由が配列でない", 3, { reasons: '{"secret":1}' }],
     ["2 行目以降の根拠の要素が文字列でない", 3, { ref_photo_ids: "[1]" }],
+    // 攻撃役（T26 の 1 回目）: 理由の要素の型を見なくても通った
+    ["2 行目以降の理由の要素が文字列でない", 3, { reasons: "[1]" }],
     ["取り消した行の根拠が JSON でない", 2, { ref_photo_ids: "secret-not-json" }],
   ])("%s なら 500 で、中身を漏らさない", async (_label, brokenId, broken) => {
     const { deps, testDb } = setup();
