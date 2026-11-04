@@ -51,7 +51,9 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 - **担当**: 先輩
 
 ## T31 `POST /api/fields/:id/handover`（L6 の引き継ぎメモを作り直して保存する。admin だけ）
-- **状態**: RED 凍結（11-04）。無人の GREEN の待ち
+- **状態**: 検査済み・人の確認待ち（11-04）
+- **運転の記録（1104 の列車、`--skip T23〜T30`）**: START `32823bd` → GREEN `3fc5f02` → REPORT `8af8137`。Opus、道具は檻の5つだけ、22 手、$0.63。C1〜C5 合格（C3 58 件、C4 テスト全体 1974 件）。変更は許可した 2 ファイルだけ。QUESTIONS なし。REPORT に手元のパスなし
+- **Claude の確認（11-04、人の確認の前）**: 差分を読んで抜けは見つからなかった。実装を 15 通りに壊して 14 通りが落ち、残った「要素の数を渡さない」は、テストの返事の引用がどれも範囲の内側だったため。範囲の外を指す引用のテストを足し（人）、15 通りとも落ちる。手元の `wrangler dev`（使い捨ての合言葉、キーなし）で、Cookie なし 401・委員 403・管理者 503 `claude_disabled`・Z-99 404
 - **人の確認**: まだ。**撮影位置・実データ・秘密に関わる PR**（Claude に送る経路と `CLAUDE_API_KEY`）なので、別のセッションのレビュー（AGENTS.md §3）を受ける
 - **Issue**: #111（決めたことは #107 のコメント）
 - **依存**: T27 `buildHandoverRecords`、T29 `handoverSeason`、T30 `buildHandoverRequest`・`readHandoverReply`、T22 `photoFromRow`、T23 `statusEventFromRow`
