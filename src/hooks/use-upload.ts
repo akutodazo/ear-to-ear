@@ -11,6 +11,7 @@ import type { Field } from "@/types";
 import { candidateFieldIds, distanceMeters } from "@/services/candidates";
 import { sendSummaryLabel, sendingProgressLabel, uploadOutcomeLabel } from "@/services/photo-labels";
 import { buildUploadMeta } from "@/services/upload-request";
+import { loginOutcomeLabel } from "@/services/login-label";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
 import type { IPhotoRepository, LoginOutcome } from "@/repositories/interfaces/i-photo-repository";
 import {
@@ -37,14 +38,6 @@ export interface UploadItem {
   status: ItemStatus;
   message: string | null;
 }
-
-const LOGIN_MESSAGES: Record<LoginOutcome, string | null> = {
-  ok: null,
-  wrong: "合言葉が違います",
-  "too-many": "何度も間違えたので、10分ほどおいてからもう一度",
-  "network-error": "つながりませんでした。電波のよい所でもう一度",
-  error: "うまくいきませんでした。時間をおいてもう一度",
-};
 
 let nextKey = 0;
 
@@ -207,7 +200,7 @@ export function useUpload(repository?: IPhotoRepository) {
       } finally {
         setLoggingIn(false);
       }
-      setLoginMessage(LOGIN_MESSAGES[outcome]);
+      setLoginMessage(loginOutcomeLabel(outcome));
       if (outcome !== "ok") return;
       setNeedsPassphrase(false);
       // 入れたら、押し直さなくても送り直す（委員の手間を増やさない。K1）
