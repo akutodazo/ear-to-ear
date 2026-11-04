@@ -70,6 +70,10 @@ describe("parseStatusBody（POST /api/fields/:id/status の本文、T25）", () 
     { status: "ready", reasons: [], note: "い".repeat(202), refPhotoIds: [] },
     { status: "ready", reasons: [], note: "🌾".repeat(200), refPhotoIds: [] },
     { status: "ready", reasons: [], note: "🌾".repeat(201), refPhotoIds: [] },
+    // 攻撃役（T25 の 2 回目）: 前後の空白を除く前に字数を数える写し方でも、空白付きの長いメモが無くて通った
+    { status: "ready", reasons: [], note: `  ${"あ".repeat(200)}
+ `, refPhotoIds: [] },
+    { status: "ready", reasons: [], note: `${"あ".repeat(201)} `, refPhotoIds: [] },
     { status: "ready", reasons: [] },
     { status: "ready", reasons: [], refPhotoIds: "p1" },
     { status: "ready", reasons: [], refPhotoIds: [""] },

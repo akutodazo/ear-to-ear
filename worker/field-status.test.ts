@@ -289,11 +289,14 @@ describe("POST /api/fields/:id/status（判断と理由・根拠を残す、T25�
     expect(events(testDb)[0].note).toBe("穂の色🌾が黄色い");
   });
 
-  it("Content-Type が JSON でなければ 415 で、D1 を触らない", async () => {
-    const { deps } = setup({ db: untouchable });
-    const response = await post(deps, READY, { headers: { "content-type": "text/plain" } });
-    expect(response.status).toBe(415);
-  });
+  it.each([["text/plain"], ["text/json"], ["application/x-ndjson"], ["application/jsonx"], ["text/plain; x=application/json"]])(
+    "Content-Type %s は 415 で、D1 を触らない",
+    async (type) => {
+      const { deps } = setup({ db: untouchable });
+      const response = await post(deps, READY, { headers: { "content-type": type } });
+      expect(response.status).toBe(415);
+    },
+  );
 
   it("大きすぎる本文は 413 で、D1 を触らない（実際の長さでも、content-length の申告でも）", async () => {
     const { deps } = setup({ db: untouchable });
