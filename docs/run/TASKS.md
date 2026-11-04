@@ -329,3 +329,28 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
   - 返す値は 4 つの項目だけで、配列は入力の順を保った写し。元の入力を変えない。例外を出さない
 - **書き方の注意（`scripts/cage/policy.mjs`）**: import は `@/types`・`../config` だけ
 - **担当**: 本人
+
+## T25 `POST /api/fields/:id/status`（判断と理由・根拠を残す。委員以上、L1）
+- **状態**: RED 凍結（11-04）。GREEN は檻リレーで無人
+- **Issue**: #91
+- **依存**: T12（`parseStatusInput`、本人、#96）、T23（`STATUS_EVENT_COLUMNS`・`statusEventFromRow`）、T11、T18、T19（`body.ts`・`isJsonContentType`）
+- **変えてよいファイル**: `src/services/status-request.ts`・`worker/field-status.ts`（＋ `docs/run/REPORT-T25.md`、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結）**: `src/services/status-request.test.ts`・`src/services/status-request-delegate.test.ts`（`parseStatusInput` を差し替えて任せていることを確かめる）・`worker/field-status.test.ts`・`worker/routes.test.ts`（POST の経路を足した）
+- **人が RED で置いたもの（凍結）**: `status-request.ts` の `STATUS_BODY_MAX_BYTES`（2048）・`StatusBodyResult` と `parseStatusBody` の空の実装、`worker/field-status.ts` の `postFieldStatus` の空の実装、`routes.ts` の配線（表の末尾）
+- **関数**: `parseStatusBody(text: string, confirmedPhotoIds: ReadonlySet<string>): StatusBodyResult`（JSON でなければ 400、読めたら `parseStatusInput` に任せて 422 と理由）、`postFieldStatus: Handler`
+- **合格条件**:
+  - Content-Type が JSON でなければ 415（`isJsonContentType`）。申告・実際の長さが 2048 バイトを超えれば 413（`declaredTooLarge`・`readBodyLimited`）
+  - 経路の `:id` が `deps.knownFieldIds` に無ければ 422 `{ error: "unprocessable", reason: "unknown_field" }` で、D1 を触らない
+  - 根拠の判定に渡す集合は、その圃場で `state = 'confirmed'` の写真の id（値は bind）。中身の誤りは 422 と T12 の理由のコード、JSON でなければ 400 `{ error: "bad_request" }`。どちらも行を足さない
+  - 通れば `field_status_events` に 1 行（理由・根拠は JSON の配列、メモは T12 が整えた値、端末は Cookie の端末、時刻は `deps.nowMs`）。`RETURNING` の行を `statusEventFromRow` で写して 201
+  - `console`・`Date.now`・`crypto`・R2・`newId` を使わない。`cache-control` を触らない
+- **決めたこと（先輩、11-04）**: 成功の本文は残した `StatusEvent`。一覧に無い圃場は 404 ではなく 422 `unknown_field`（T22 と同じく spec §6 の誤りの欄に合わせる）。JSON でない本文は 400、Content-Type 415、大きすぎる 413（PATCH assignment と同じ）。本文の上限 2048 バイト（メモ 200 字×4 バイト・理由 5 つ・UUID 5 枚が収まる）
+- **RED の確かめ（11-04）**: 空の実装で 49 件が失敗・11 件が成功（経路の表・401・500・405・上限の大きさ）。仮の実装で、攻撃役の後の 105 件と src・worker の全件が通り、檻の純粋さの検査も通ることを確かめた
+- **攻撃役（Sonnet、檻の中、仕様・決まりのファイルを消した複製で。文面に「素直な実装を先に書かない」）**:
+  - 1 回目（19 手、$0.27）: 60 件を、`parseStatusInput` を呼ばずテストの値（`"maybe"`・201 字・6 枚など）だけ見る手抜き、SQL から `state = 'confirmed'` を外す手抜き、Content-Type の完全一致で通した。`parseStatusInput` と同じ結果になるかを 28 の入力で比べるテスト、番号入りの未確定の写真、`charset` 付き、1 バイトずつのチャンク、`duplicate_ref_photo` を足した
+  - 2 回目（17 手、$0.23）: 93 件を、検証を手で写す（字数を空白を除く前に数える誤り付き）手抜きで通した。`parseStatusInput` を差し替えて呼ばれることを確かめる別のファイル、空白付きの長いメモ、JSON でない Content-Type 5 つを足した
+  - 3 回目（17 手、$0.20）: 102 件を、ほぼ素直な実装で通した。残りは境目だけだったので、上限ちょうど・1 バイト超え、`;` の前の空白、Content-Type 無しを足して凍結した
+  - 入れなかった指摘: `content-length` が `abc`・負・小数（`declaredTooLarge` が読めなければ本文で判定する。T19 で確かめ済み）。誤りが重なったときの順序（仕様に無い）。根拠が空のときに D1 を引かないこと（性能。12 圃場の規模）。INSERT が行を返さない場合（D1 の RETURNING は必ず返す）。同じ要求を 2 回（続けて残すテストで別の行になる）
+- **書き方の注意（`scripts/cage/policy.mjs`）**: import は Service が `./status-reason`・`@/types`、worker が `@/services/...`・`./...`。`Response.json()` を使わず `http.ts` の `json()`・`errorResponse()`
+- **参照**: `docs/spec.md` §6
+- **担当**: 先輩
