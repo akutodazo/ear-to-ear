@@ -144,11 +144,13 @@ describe("toggleRefPhoto（根拠の写真の選び方）", () => {
     expect(toggleRefPhoto(["a", "b"], "c", 3).limited).toBe(false);
   });
 
-  it("元の配列を変えない", () => {
+  it("元の配列を変えない（上限で足せなかったときも写しを返す）", () => {
     const selected = ["p1"];
     const result = toggleRefPhoto(selected, "p2", 5);
     expect(selected).toStrictEqual(["p1"]);
     expect(result.selected).not.toBe(selected);
+    const full = ["a", "b"];
+    expect(toggleRefPhoto(full, "c", 2).selected).not.toBe(full);
   });
 });
 
