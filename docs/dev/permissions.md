@@ -16,7 +16,7 @@ Claude Code が「許可しますか？（常に許可・一度だけ）」と�
 | A 読むだけ・手元で確かめるだけ | `npm run check`・`lint`・`typecheck`・`test`・`build`、`npx tsc --noEmit`、`node scripts/check-safety.mjs`、読むだけの MCP | 常に許可（決まった形だけ） |
 | B 外に出るが、今の決まりで Claude に任せているもの | `git add/commit/push`、`gh pr create`・`gh pr merge * --squash --auto`・`gh pr edit`・`gh issue create` | 常に許可 |
 | C 取り消しにくいもの | `gh pr close`・`gh issue close`、`--auto` の無い `gh pr merge`、`rm`、`taskkill`、`git worktree remove`、`curl` | 毎回聞く（設定に書かない） |
-| D 人の手で行うもの | main への push・強制 push、`wrangler secret put・delete`・`d1 execute --remote`・R2 への書き込み・`wrangler delete`・`wrangler login`、`.dev.vars`・`.env*`・`private/` を読む（デプロイと `d1 migrations apply --remote` は 11-04 から Claude に任せた。`cloudflare-bot.md`） | 禁止 |
+| D 人の手で行うもの | main への push・強制 push、`wrangler deploy`・`secret`・`d1/r2 … --remote`・`d1 create・delete・time-travel`・`r2 bucket`・`wrangler delete`・`wrangler login`・`scripts/ops/l6-live.mjs`（11-04 に足した）、`.dev.vars`・`.env*`・`private/` を読む | 禁止 |
 
 - `grep`・`cat`・`git status/log/diff`・`gh pr view` などは Claude Code が最初から許しているので書かない
 - `npx vitest run *`・`python *`・`node -e *`・`npx -y …` のように**何でも実行できる形は許可しない**（テストは `npm run test` の決まった形で許可）
@@ -39,7 +39,7 @@ macOS・Linux なら `//Users/<ユーザー名>/…` や `~/…` の形になる
 ## 効いているかの確かめ方（何も送らない）
 | 確かめること | やり方 | 期待 |
 |---|---|---|
-| 秘密の登録の禁止 | Claude に `npx wrangler secret put X --env dev` を頼む | 実行の前に「denied」で止まる（止まらなくても、値を聞かれたところで Ctrl+C） |
+| デプロイの禁止 | Claude に `npx wrangler deploy --env dev --dry-run` を頼む | 実行の前に「denied」で止まる（`--dry-run` なので、止まらなくても送信はしない） |
 | 読み取りの禁止 | Claude に `private/` の下の**秘密でない**ファイル（例 `private/fixtures/README.md`、`node scripts/make-fixtures.mjs` で作れる）を読ませる | 「denied by your permission settings」で止まる。`.dev.vars` で試さない |
 
 ## 気を付けること
