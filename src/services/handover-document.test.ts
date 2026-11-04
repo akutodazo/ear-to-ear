@@ -152,6 +152,21 @@ describe("buildHandoverRecords: 写真の文（T27）", () => {
     );
     expect(record.text).toBe("[写真] 撮影日不明（2026-07-24 に送信）。");
   });
+
+  // 人の確認（T27 の GREEN の後）: 撮影日不明の写真では根拠の節が抜けても通った
+  it("撮影日不明の写真も、どの判断が根拠にしたかを書く", () => {
+    const records = buildHandoverRecords(
+      "A-06",
+      "2026",
+      [event(5, "2026-07-21T01:00:00.000Z", { refPhotoIds: ["p-u"] })],
+      [photo("p-u", null, { uploadedAt: "2026-07-23T16:00:00.000Z" })],
+    );
+    expect(records[1]).toStrictEqual({
+      kind: "photo",
+      id: "p-u",
+      text: "[写真] 撮影日不明（2026-07-24 に送信）。判断 5 の根拠。",
+    });
+  });
 });
 
 describe("buildHandoverRecords: 並び（T27）", () => {
