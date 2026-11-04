@@ -18,7 +18,7 @@ export type InspectJpeg = (bytes: Uint8Array) => { appSegments: number[] };
 /** 秘密らしい文字列が見つかった行（1 始まり）と種類。値は持たない */
 export interface SecretHit {
   line: number;
-  kind: "anthropic-key" | "secret-assignment" | "private-key";
+  kind: "anthropic-key" | "cloudflare-token" | "secret-assignment" | "private-key";
 }
 
 /** 名前で止めるもの。上から順に見て、最初に当たった理由を返す */
@@ -112,7 +112,8 @@ export function decodeText(bytes: Uint8Array): string | null {
 }
 
 /** 秘密の値を入れる名前（docs/spec.md §6・§11 の Secret） */
-const SECRET_NAMES = "(?:MEMBER_PASSPHRASE|ADMIN_PASSPHRASE|SESSION_SECRET|ANTHROPIC_API_KEY)";
+const SECRET_NAMES =
+  "(?:MEMBER_PASSPHRASE|ADMIN_PASSPHRASE|SESSION_SECRET|ANTHROPIC_API_KEY|CLAUDE_API_KEY|CLOUDFLARE_API_TOKEN)";
 /**
  * `名前=値`（.dev.vars の形）。値は8文字以上で、空白・引用符・バッククォート（文書のコードの終わり）・<>（見本の印）を含まない。
  * 比べるだけの `===`、環境からの入れ直し（`env.`・`c.env.`・`process.env.`）、シェルの `${…}`・`$(…)` は値ではないので止めない
@@ -124,6 +125,8 @@ const ASSIGN_EQUALS = new RegExp(
 const ASSIGN_COLON = new RegExp(`${SECRET_NAMES}\\s*:\\s*["'][^"']{8,}["']`);
 const ANTHROPIC_KEY = /sk-ant-[A-Za-z0-9_-]{20,}/;
 const PRIVATE_KEY = /-----BEGIN [A-Z ]*PRIVATE KEY-----/;
+/** Cloudflare の API トークン（ユーザーの `cfut_`・アカウントの `cfat_`。11-04） */
+const CLOUDFLARE_TOKEN = /cf[ua]t_[A-Za-z0-9_-]{30,}/;
 
 /** 文字のファイルの中身から、秘密らしい文字列のある行を返す。値は返さない */
 export function findSecretLikeLines(text: string): SecretHit[] {
@@ -131,6 +134,7 @@ export function findSecretLikeLines(text: string): SecretHit[] {
   text.split(/\r?\n/).forEach((content, index) => {
     const line = index + 1;
     if (ANTHROPIC_KEY.test(content)) hits.push({ line, kind: "anthropic-key" });
+    else if (CLOUDFLARE_TOKEN.test(content)) hits.push({ line, kind: "cloudflare-token" });
     else if (ASSIGN_EQUALS.test(content) || ASSIGN_COLON.test(content)) hits.push({ line, kind: "secret-assignment" });
     else if (PRIVATE_KEY.test(content)) hits.push({ line, kind: "private-key" });
   });
