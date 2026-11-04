@@ -30,7 +30,7 @@ function withAppsBefore(count: number, size: number, lastSize = size): File {
     const length = n + 2;
     parts.push([0xff, 0xe2, length >> 8, length & 0xff, ...new Array<number>(n).fill(0x41)]);
   }
-  const xmp = djiJpeg("41.8075", "144.5076", "2026-07-21T10:15:30");
+  const xmp = djiJpeg("43.2428", "141.7479", "2026-07-21T10:15:30");
   return new File([new Uint8Array([0xff, 0xd8]), ...parts.map((p) => new Uint8Array(p)), xmp.slice(2)], "late.jpg", {
     type: "image/jpeg",
   });
@@ -38,17 +38,17 @@ function withAppsBefore(count: number, size: number, lastSize = size): File {
 
 describe("readPhotoInfo（写真の情報を端末の中で読む。T01 の readPhotoMeta につなぐ）", () => {
   it("DJI の XMP から撮影位置と撮影日を読む", async () => {
-    const info = await readPhotoInfo(djiJpeg("41.8075", "144.5076", "2026-07-21T10:15:30"));
+    const info = await readPhotoInfo(djiJpeg("43.2428", "141.7479", "2026-07-21T10:15:30"));
     expect(info).toEqual({
-      position: { lat: 41.8075, lng: 144.5076 },
+      position: { lat: 43.2428, lng: 141.7479 },
       takenAt: "2026-07-21",
       takenAtSource: "xmp",
     });
   });
 
   it("後ろに大きな画像データが続いても同じ結果", async () => {
-    const info = await readPhotoInfo(djiJpeg("41.8075", "144.5076", "2026-07-21T10:15:30", 4 * 1024 * 1024));
-    expect(info.position).toEqual({ lat: 41.8075, lng: 144.5076 });
+    const info = await readPhotoInfo(djiJpeg("43.2428", "141.7479", "2026-07-21T10:15:30", 4 * 1024 * 1024));
+    expect(info.position).toEqual({ lat: 43.2428, lng: 141.7479 });
   });
 
   it("写真の先頭 PHOTO_INFO_HEAD_BYTES より後ろの APP1 は読まない（丸ごと読まない。PR #51 のレビュー #1）", async () => {
@@ -74,7 +74,7 @@ describe("readPhotoInfo（写真の情報を端末の中で読む。T01 の read
 
 describe("撮影位置は送る meta に入らない（K6、PR #50 のレビュー #7 の申し送り）", () => {
   it("読んだ位置で候補を出しても、送る meta は番号だけで座標を含まない", async () => {
-    const info = await readPhotoInfo(djiJpeg("41.8075", "144.5076", "2026-07-21T10:15:30"));
+    const info = await readPhotoInfo(djiJpeg("43.2428", "141.7479", "2026-07-21T10:15:30"));
     expect(info.position).not.toBeNull();
     const ids = candidateFieldIds(info.position, fields);
     expect(ids[0]).toBe("A-06");
@@ -86,8 +86,8 @@ describe("撮影位置は送る meta に入らない（K6、PR #50 のレビュ�
       chosenFieldId: null,
     });
     const text = JSON.stringify(meta);
-    expect(text).not.toContain("41.8075");
-    expect(text).not.toContain("144.5076");
+    expect(text).not.toContain("43.2428");
+    expect(text).not.toContain("141.7479");
     expect(Object.keys(meta).sort()).toEqual(
       ["candidateFieldIds", "chosenFieldId", "contentHash", "takenAt", "takenAtSource"].sort(),
     );
