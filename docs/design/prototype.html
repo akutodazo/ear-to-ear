@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ear-to-ear 試作</title>
+<style>
+/* ear-to-ear 再設計の試作。値は docs/design/design-system.md の §3〜§8 と同じ。
+   単一テーマ（ライト固定。地図の上は暗い札＋白文字）。データはすべて架空、写真と下地は合成。 */
+:root{
+  --palette-ink-900:#1f2429; --palette-ink-700:#4a535c; --palette-ink-500:#6b737c;
+  --palette-ink-300:rgba(0,0,0,.24); --palette-ink-100:rgba(0,0,0,.08);
+  --palette-paper-000:#ffffff; --palette-paper-100:#f4f6f8;
+  --palette-blue-600:#1f6fb5; --palette-blue-700:#195d98; --palette-blue-050:#e8f1fa;
+  --palette-wheat-400:#d9b44a; --palette-wheat-700:#8a6a12;
+  --palette-green-700:#3f7a1e; --palette-green-050:#e9f3e1;
+  --palette-slate-600:#5a6670; --palette-slate-050:#eef0f2;
+  --palette-red-600:#d93a1e; --palette-red-050:#fdeeea;
+  --palette-shade-800:rgba(20,24,28,.78); --palette-shade-000:rgba(255,255,255,.92);
+
+  --text-1:var(--palette-ink-900); --text-2:var(--palette-ink-700); --text-3:var(--palette-ink-500);
+  --text-on-dark:var(--palette-paper-000);
+  --background-2:var(--palette-paper-100); --surface:var(--palette-paper-000);
+  --border:var(--palette-ink-100); --border-strong:var(--palette-ink-300);
+  --brand:var(--palette-blue-600); --brand-hover:var(--palette-blue-700); --brand-soft:var(--palette-blue-050);
+  --benchmark:var(--palette-wheat-400); --benchmark-ink:var(--palette-wheat-700);
+  --fill-ready:var(--palette-green-700); --fill-done:var(--palette-slate-600); --fill-alpha:.45;
+  --map-outline:#ffffff; --map-outline-under:rgba(0,0,0,.55); --map-selected:var(--palette-blue-600);
+  --map-label-bg:var(--palette-shade-800); --map-control-bg:var(--palette-shade-000);
+  --rank-draft:var(--palette-blue-600); --rank-final-bg:var(--palette-blue-600);
+  --pending-dot:var(--palette-wheat-400);
+  --assertive:var(--palette-red-600); --assertive-soft:var(--palette-red-050);
+  --focus-ring:0 0 0 4px rgba(31,111,181,.32); --disabled-opacity:.32;
+
+  --font:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP","Yu Gothic UI",sans-serif;
+  --space-4:4px; --space-8:8px; --space-16:16px; --space-24:24px;
+  --sheet-peek:160px; --sheet-half:52vh;
+  --radius-4:4px; --radius-8:8px; --radius-16:16px;
+  --duration-fast:100ms; --duration-base:150ms; --duration-enter:250ms;
+  color-scheme:light;
+}
+@media (prefers-reduced-motion:reduce){:root{--duration-fast:0ms;--duration-base:0ms;--duration-enter:0ms}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--background-2);color:var(--text-1);font-family:var(--font);font-size:18px;line-height:1.6;
+  font-variant-numeric:tabular-nums;overflow-wrap:anywhere;line-break:strict;overflow:hidden;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+button,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+.app{height:100%;display:flex;flex-direction:column}
+
+/* 帯 */
+.bar{height:56px;flex:0 0 56px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;
+  padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
+.bar .logo{font-weight:700;font-size:17px;white-space:nowrap}
+.bar .district{flex:1;display:flex;justify-content:center;min-width:0}
+.bar select{height:44px;min-width:104px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);padding:0 8px;font-weight:700;font-size:16px;max-width:100%}
+.bar .btn.sm{padding:0 10px;font-size:16px}
+.bar .demo{font-size:14px;color:var(--text-2);display:flex;align-items:center;gap:4px;white-space:nowrap}
+.bar .demo input{width:22px;height:22px;margin:0}
+
+/* 本体 */
+.main{flex:1;position:relative;min-height:0}
+.mapwrap{position:absolute;inset:0;overflow:hidden;background:#6f7a52;touch-action:none;user-select:none;-webkit-user-select:none}
+.world{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+.world canvas{display:block;width:1600px;height:1200px}
+.world svg{position:absolute;left:0;top:0;width:1600px;height:1200px;overflow:visible}
+.parcel{fill:transparent;stroke:var(--map-outline);stroke-width:2;cursor:pointer;outline:none;vector-effect:non-scaling-stroke}
+.parcel-under{fill:none;stroke:var(--map-outline-under);stroke-width:6;vector-effect:non-scaling-stroke;pointer-events:none}
+.parcel.ready{fill:var(--fill-ready);fill-opacity:var(--fill-alpha)}
+.parcel.done{fill:url(#hatch)}
+.parcel.selected{stroke-width:4}
+.parcel-inner{fill:none;stroke:var(--map-selected);stroke-width:3;vector-effect:non-scaling-stroke;pointer-events:none;display:none}
+.parcel-inner.on{display:block}
+.parcel:focus-visible{stroke:var(--map-selected);stroke-width:5}
+.labels{position:absolute;inset:0;pointer-events:none}
+.lab{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:4px;white-space:nowrap}
+.lab .bm{background:var(--benchmark);color:var(--benchmark-ink);border:1px solid var(--benchmark-ink);font-size:13px;font-weight:700;line-height:1.3;padding:1px 8px;border-radius:4px}
+.lab .row{display:flex;align-items:center;gap:4px;position:relative}
+.lab .box{background:var(--map-label-bg);color:var(--text-on-dark);border-radius:4px;padding:2px 8px;font-size:14px;font-weight:700;line-height:1.35;text-align:left}
+.lab .box .l2{display:block;font-weight:700}
+.lab .box.ready .l2{color:#bfe3a3}
+.lab .box.done .l2{color:#d2d8de}
+.lab.compact .nm,.lab.compact .bm{display:none}
+.lab.selected .nm{display:inline}.lab.selected .bm{display:block}
+.rank{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;flex:0 0 auto;background:var(--surface);color:var(--rank-draft);border:2px dashed var(--rank-draft)}
+.rank.final{background:var(--rank-final-bg);color:var(--text-on-dark);border:2px solid var(--rank-final-bg)}
+.lab .pend{position:absolute;right:-6px;top:-6px;width:12px;height:12px;border-radius:50%;background:var(--pending-dot);border:1px solid var(--benchmark-ink)}
+.mapctl{position:absolute;right:max(12px,env(safe-area-inset-right,0px));top:12px;display:flex;flex-direction:column;gap:8px}
+.mapctl button{width:44px;height:44px;border-radius:8px;border:1px solid var(--border-strong);background:var(--map-control-bg);font-size:22px;font-weight:700;line-height:1}
+.attrib{position:absolute;left:max(12px,env(safe-area-inset-left,0px));top:12px;background:var(--map-control-bg);border:1px solid var(--border-strong);border-radius:4px;font-size:12px;padding:2px 8px;color:var(--text-2)}
+.legend{position:absolute;left:0;right:0;bottom:0;min-height:44px;background:var(--map-control-bg);border-top:1px solid var(--border-strong);display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;font-size:14px;color:var(--text-1);
+  padding:6px max(12px,env(safe-area-inset-right,0px)) 6px max(12px,env(safe-area-inset-left,0px))}
+.legend span{display:inline-flex;align-items:center;gap:4px}
+.legend i{display:inline-block;width:16px;height:16px;border:1px solid var(--text-2);border-radius:3px;background:var(--surface)}
+.legend i.ready{background:rgba(63,122,30,.55)}
+.legend i.done{background:repeating-linear-gradient(135deg,var(--fill-done) 0 2px,transparent 2px 7px)}
+.legend i.draft{border:2px dashed var(--rank-draft);border-radius:50%}
+.legend i.final{background:var(--rank-final-bg);border-color:var(--rank-final-bg);border-radius:50%}
+.legend i.bm{background:var(--benchmark);border-color:var(--benchmark-ink)}
+.mapnote{position:absolute;left:0;right:0;top:0;background:var(--surface);border-bottom:1px solid var(--border);padding:8px 16px;font-size:17px;color:var(--text-2);display:none}
+.mapnote.on{display:block}
+
+/* シート */
+.sheet{position:absolute;left:0;right:0;bottom:0;height:var(--sheet-peek);background:var(--background-2);border-top:1px solid var(--border-strong);border-radius:16px 16px 0 0;display:flex;flex-direction:column;transition:height var(--duration-enter) ease-out}
+.sheet[data-state="hidden"]{display:none}
+.sheet[data-state="half"]{height:var(--sheet-half)}
+.sheet[data-state="full"]{height:calc(100% - 16px)}
+.sheet.dragging{transition:none}
+.grip{height:28px;flex:0 0 28px;display:flex;align-items:center;justify-content:center;touch-action:none;cursor:grab}
+.grip span{width:36px;height:4px;border-radius:2px;background:var(--border-strong)}
+.sheetbody{flex:1;min-height:0;overflow:hidden;padding:0 max(16px,env(safe-area-inset-left,0px)) 24px}
+.sheet[data-state="full"] .sheetbody,.sheet[data-state="half"] .sheetbody{overflow:auto}
+.sheethead{display:flex;align-items:flex-start;gap:8px;min-height:44px}
+.sheethead h2{margin:0;font-size:1.2rem;line-height:1.4;flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.sheethead .close{width:44px;height:44px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);font-size:20px;flex:0 0 auto}
+.tabs{display:none;gap:8px;margin:0 0 12px}
+.tabs button{flex:1;min-height:44px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);font-weight:700}
+.tabs button[aria-pressed="true"]{background:var(--brand-soft);color:var(--brand);border-color:var(--brand)}
+
+.chip{display:inline-block;font-size:15px;font-weight:700;line-height:1.4;padding:1px 8px;border-radius:4px;white-space:nowrap;vertical-align:middle}
+.chip.bm{background:var(--benchmark);color:var(--benchmark-ink);border:1px solid var(--benchmark-ink)}
+.chip.ready{background:var(--fill-ready);color:var(--text-on-dark)}
+.chip.done{background:var(--fill-done);color:var(--text-on-dark)}
+.chip.none{border:1px solid var(--border-strong);color:var(--text-2)}
+.chip.year{background:var(--brand-soft);color:var(--brand)}
+.chip.syn{position:absolute;left:6px;top:6px;background:var(--map-label-bg);color:var(--text-on-dark);font-size:12px}
+.chip.other{background:var(--palette-slate-050);color:var(--text-2);border:1px solid var(--border-strong)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:56px;padding:0 20px;border-radius:16px;font-weight:700;border:1px solid transparent;background:var(--surface);color:var(--brand);transition:background-color var(--duration-base),transform var(--duration-fast) ease-out;text-decoration:none}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:var(--brand);color:var(--text-on-dark)}
+.btn.primary:hover{background:var(--brand-hover)}
+.btn.secondary{border-color:var(--border-strong)}
+.btn.secondary:hover{background:var(--brand-soft)}
+.btn.danger{border-color:var(--assertive);color:var(--assertive)}
+.btn.on{background:var(--brand-soft);color:var(--brand);border-color:var(--brand)}
+.btn.sm{min-height:44px;padding:0 14px;border-radius:12px;font-size:17px}
+.btn:focus-visible,button:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.btn[disabled]{opacity:var(--disabled-opacity);cursor:default}
+.btn[aria-busy="true"]{opacity:1}
+.entry{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.note{font-size:17px;color:var(--text-2);margin:0}
+.msg{font-size:17px;font-weight:700;color:var(--fill-ready);margin:4px 0 0;min-height:1.6em}
+.msg.err{color:var(--assertive)}
+h3{font-size:1.2rem;line-height:1.4;margin:24px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border-strong)}
+h3 small{font-weight:400;font-size:17px;color:var(--text-2)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 12px}
+.seg .btn{min-height:48px;border-radius:12px}
+
+/* 比較 */
+.cmphead{display:grid;grid-template-columns:1fr 1fr;gap:8px;position:sticky;top:0;background:var(--background-2);padding:4px 0;font-size:15px;color:var(--text-2);z-index:2}
+.cmphead b{color:var(--text-1);font-size:17px}
+.cmphead.one{grid-template-columns:1fr}
+.day{position:sticky;top:34px;background:var(--background-2);font-weight:700;padding:6px 0 4px;z-index:1}
+.cmprow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.cmprow.one{grid-template-columns:1fr}
+.ph{position:relative;aspect-ratio:4/3;border-radius:8px;overflow:hidden;background:var(--surface);border:1px solid var(--border);display:block;padding:0;width:100%}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.ph.empty{border:1px dashed var(--border-strong);background:var(--background-2);display:flex;align-items:center;justify-content:center;text-align:center;font-size:15px;color:var(--text-2);padding:8px}
+.cap{font-size:15px;color:var(--text-2);margin-top:2px}
+.pick{min-height:56px;border-radius:12px;border:1px dashed var(--border-strong);background:var(--surface);color:var(--brand);font-weight:700;width:100%}
+
+/* 昨年 */
+.last{border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);padding:12px;margin-top:8px}
+.last .ttl{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:8px}
+
+/* 判断 */
+.reasons{display:flex;flex-direction:column;gap:8px;margin:8px 0}
+.reasons .btn{justify-content:flex-start;min-height:52px;border-radius:12px}
+textarea{width:100%;min-height:72px;border:1px solid var(--border-strong);border-radius:8px;padding:10px 14px;background:var(--surface);resize:vertical}
+.refs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:8px 0 12px}
+.refs .ph{cursor:pointer}
+.refs .ph.on{outline:3px solid var(--brand);outline-offset:-3px}
+
+/* 記録 */
+.rec{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:17px}
+.rec.revoked{border-style:dashed;color:var(--text-3)}
+.rec .nogr{color:var(--text-3)}
+.cite{color:var(--brand);font-weight:700;background:none;border:0;padding:0 2px;font-size:inherit;text-decoration:underline}
+.citebox{background:var(--brand-soft);border-radius:8px;padding:8px 12px;font-size:16px;margin:4px 0 8px}
+
+/* 順番 */
+.ordhead{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.ordhead .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.warn{background:#fff6dc;border-left:6px solid var(--benchmark-ink);border-radius:8px;padding:8px 12px;font-size:17px}
+.grp{font-weight:700;color:var(--text-2);font-size:17px;margin:16px 0 6px;padding-bottom:4px;border-bottom:1px dashed var(--border-strong)}
+.olist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;min-height:24px}
+.olist.target{outline:2px dashed var(--brand);outline-offset:4px;border-radius:8px}
+.orow{background:var(--surface);border:1px solid var(--border);border-radius:8px;display:grid;grid-template-columns:36px 72px 1fr auto;gap:8px;align-items:center;padding:8px;border-left-width:6px;border-left-color:var(--border)}
+.orow.ready{border-left-color:var(--fill-ready)}
+.orow.done{border-left-color:var(--fill-done)}
+.orow.selected{outline:2px solid var(--brand)}
+.orow.lifted{outline:2px solid var(--brand);background:var(--brand-soft);pointer-events:none}
+.orow .rank{width:36px;height:36px}
+.orow .nor{width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;color:var(--text-3)}
+.orow .th{width:72px;height:54px;border-radius:4px;overflow:hidden;background:var(--background-2);border:1px dashed var(--border-strong);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text-3)}
+.orow .th img{width:100%;height:100%;object-fit:cover;display:block}
+.orow .mid{min-width:0;display:flex;flex-direction:column;gap:2px;font-size:17px}
+.orow .mid .nm{font-weight:700;font-size:18px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.orow .mid .why{color:var(--text-2);font-size:16px}
+.orow .mid .miss{color:var(--text-2);font-size:16px}
+.orow .ctl{display:flex;align-items:center;gap:4px}
+.handle{width:56px;height:56px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;touch-action:none;cursor:grab}
+.handle i{display:block;width:22px;height:3px;background:var(--text-2);border-radius:2px}
+.updn{display:none;flex-direction:column;gap:4px}
+.updn button{width:44px;height:26px;border-radius:6px;border:1px solid var(--border-strong);background:var(--surface);font-size:14px;line-height:1}
+.buttons-mode .updn{display:flex}
+.buttons-mode .handle{display:none}
+.used{font-size:16px;color:var(--text-2);margin-top:16px;border-top:1px solid var(--border);padding-top:8px}
+.foot{font-size:15px;color:var(--text-3);margin-top:24px;border-top:1px solid var(--border);padding-top:8px}
+.switch{display:flex;align-items:center;gap:8px;font-size:16px;color:var(--text-2);min-height:44px}
+.switch input{width:22px;height:22px;margin:0}
+
+/* 広い画面 */
+@media (min-width:960px){
+  .main{display:grid;grid-template-columns:1fr 400px}
+  .mapwrap{position:relative;inset:auto;min-height:100%}
+  .sheet{position:static;height:auto !important;border-top:0;border-left:1px solid var(--border-strong);border-radius:0;transition:none}
+  .sheet[data-state="hidden"]{display:flex}
+  .grip{display:none}
+  .sheetbody{overflow:auto !important;padding-top:12px}
+  .tabs{display:flex}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="logo">ear-to-ear</div>
+    <div class="district"><label class="sr" for="district" hidden>地区</label>
+      <select id="district" aria-label="地区"><option>北地区</option><option>中地区</option><option>南地区</option></select></div>
+    <label class="demo" title="デモ用: 委員長として見る"><input type="checkbox" id="adminToggle">委員長</label>
+    <button type="button" class="btn secondary sm" id="uploadBtn">写真を送る</button>
+  </header>
+  <div class="main">
+    <div class="mapwrap" id="mapwrap">
+      <div class="world" id="world">
+        <canvas id="base" width="1600" height="1200" aria-hidden="true"></canvas>
+        <svg id="parcels" viewBox="0 0 1600 1200" aria-label="圃場の地図">
+          <defs><pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="rgba(90,102,112,.25)"/><rect width="2.5" height="8" fill="#5a6670"/></pattern></defs>
+          <g id="gUnder"></g><g id="gFill"></g><g id="gInner"></g>
+        </svg>
+      </div>
+      <div class="labels" id="labels" aria-hidden="true"></div>
+      <div class="mapnote" id="mapnote"></div>
+      <div class="mapctl"><button type="button" id="zin" aria-label="拡大">＋</button><button type="button" id="zout" aria-label="縮小">－</button></div>
+      <div class="attrib">架空の村（合成の下地。本番は地理院タイル）</div>
+      <div class="legend" id="legend">
+        <span><i class="ready"></i>収穫可能（人の判断）</span><span><i class="done"></i>収穫済</span><span><i></i>未確認</span>
+        <span><i class="draft"></i>仮の順</span><span><i class="final"></i>確定した順</span><span><i class="bm"></i>目安の畑</span>
+      </div>
+    </div>
+    <aside class="sheet" id="sheet" data-state="hidden" aria-label="圃場の情報">
+      <div class="grip" id="grip"><span></span></div>
+      <div class="sheetbody" id="sheetbody"></div>
+    </aside>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ========= 架空のデータ（実在の場所・人・写真ではない） ========= */
+const NOW = '2026-07-22';            // 「今」。水曜日
+const SEASON = '2026', LAST = '2025';
+const FIELDS = [
+  // 地区ごとに 2×2 の塊（スマホの縦画面で 1 地区が収まる）。P15 の四角を崩した架空の形
+  {id:'A-01',name:'北の1',district:'北地区',poly:[[162,158],[432,152],[438,330],[166,336]]},
+  {id:'A-02',name:'北の2',district:'北地区',poly:[[492,154],[762,160],[758,334],[488,328]]},
+  {id:'A-03',name:'北の3',district:'北地区',poly:[[164,392],[434,386],[430,562],[160,556]]},
+  {id:'A-04',name:'北の4',district:'北地区',poly:[[490,388],[760,394],[764,560],[494,566]]},
+  {id:'A-05',name:'中の1',district:'中地区',poly:[[890,158],[1160,152],[1166,330],[894,336]]},
+  {id:'A-06',name:'中の2',district:'中地区',poly:[[1220,154],[1490,160],[1486,334],[1216,328]]},
+  {id:'A-07',name:'中の3',district:'中地区',poly:[[892,392],[1162,386],[1158,562],[888,556]]},
+  {id:'A-08',name:'中の4',district:'中地区',poly:[[1218,388],[1488,394],[1492,560],[1222,566]]},
+  {id:'A-09',name:'南の1',district:'南地区',poly:[[164,708],[434,702],[440,880],[168,886]]},
+  {id:'A-10',name:'南の2',district:'南地区',poly:[[494,704],[764,710],[760,884],[490,878]]},
+  {id:'A-11',name:'南の3',district:'南地区',poly:[[166,942],[436,936],[432,1112],[162,1106]]},
+  {id:'A-12',name:'南の4',district:'南地区',poly:[[492,938],[762,944],[766,1110],[496,1116]]},
+];
+const DISTRICTS = ['北地区','中地区','南地区'];
+// 作付け（年×圃場）。benchmark = 目安の畑（委員会が指定。南地区は未指定）
+const SEASONS = {
+  '2026':{ 'A-01':{crop:'小麦'},'A-02':{crop:'小麦'},'A-03':{crop:'小麦',benchmark:true},'A-04':{crop:'小麦'},
+           'A-05':{crop:'小麦'},'A-06':{crop:'小麦'},'A-07':{crop:'小麦',benchmark:true},'A-08':{crop:'小麦'},
+           'A-09':{crop:'小麦'},'A-10':{crop:'小麦'},'A-11':{crop:'小麦'},'A-12':{crop:'小麦'} },
+  '2025':{ 'A-02':{crop:'小麦',harvestedOn:'2025-07-26'},'A-03':{crop:'小麦',harvestedOn:'2025-07-24',benchmark:true},
+           'A-04':{crop:'小麦',harvestedOn:'2025-07-25'},'A-05':{crop:'小麦',harvestedOn:'2025-07-23'},
+           'A-06':{crop:'大豆',harvestedOn:null},'A-07':{crop:'小麦',harvestedOn:'2025-07-22',benchmark:true},
+           'A-08':{crop:'小麦',harvestedOn:'2025-07-26'},'A-09':{crop:'小麦',harvestedOn:'2025-07-27'},
+           'A-11':{crop:'小麦',harvestedOn:'2025-07-24'},'A-12':{crop:'小麦',harvestedOn:'2025-07-28'} }
+};
+// 写真。tone は合成画像の色味（架空）。本番は R2 の JPEG
+const PHOTOS = [
+  {id:'p01',fieldId:'A-01',date:'2026-07-10',tone:'g2'},{id:'p02',fieldId:'A-01',date:'2026-07-21',tone:'y1'},
+  {id:'p03',fieldId:'A-02',date:'2026-07-10',tone:'g2'},
+  {id:'p04',fieldId:'A-03',date:'2026-07-10',tone:'g1'},{id:'p05',fieldId:'A-03',date:'2026-07-21',tone:'y2'},
+  {id:'p06',fieldId:'A-04',date:'2026-07-10',tone:'g2'},{id:'p07',fieldId:'A-04',date:'2026-07-21',tone:'y1'},
+  {id:'p08',fieldId:'A-05',date:'2026-07-10',tone:'y1'},{id:'p09',fieldId:'A-05',date:'2026-07-21',tone:'y2'},
+  {id:'p10',fieldId:'A-06',date:'2026-07-21',tone:'g2'},
+  {id:'p11',fieldId:'A-07',date:'2026-07-10',tone:'y1'},{id:'p12',fieldId:'A-07',date:'2026-07-19',tone:'y2'},
+  {id:'p13',fieldId:'A-09',date:'2026-07-21',tone:'g2'},{id:'p14',fieldId:'A-10',date:'2026-07-21',tone:'g1'},
+  {id:'p15',fieldId:'A-11',date:'2026-07-10',tone:'g2'},{id:'p16',fieldId:'A-11',date:'2026-07-20',tone:'y2'},
+  // 昨年
+  {id:'q02',fieldId:'A-02',date:'2025-07-19',tone:'y1'},{id:'q03a',fieldId:'A-03',date:'2025-07-12',tone:'g2'},{id:'q03b',fieldId:'A-03',date:'2025-07-19',tone:'y2'},
+  {id:'q04',fieldId:'A-04',date:'2025-07-19',tone:'y1'},{id:'q05',fieldId:'A-05',date:'2025-07-19',tone:'y2'},{id:'q06',fieldId:'A-06',date:'2025-07-19',tone:'g1'},
+  {id:'q07',fieldId:'A-07',date:'2025-07-19',tone:'y2'},{id:'q08',fieldId:'A-08',date:'2025-07-19',tone:'y1'},{id:'q09',fieldId:'A-09',date:'2025-07-19',tone:'g2'},
+  {id:'q11',fieldId:'A-11',date:'2025-07-19',tone:'y2'},{id:'q12',fieldId:'A-12',date:'2025-07-19',tone:'y1'},
+];
+const UNCONFIRMED = {'A-02':1,'A-08':1};
+// 人の判断（最新）と履歴。status: ready=収穫可能 / done=収穫済
+const STATUS = {
+  'A-03':{status:'ready',at:'2026-07-21 15:10',reasons:['穂の色'],note:'',refs:['p05']},
+  'A-04':{status:'ready',at:'2026-07-21 15:30',reasons:['黄色い穂の割合'],note:'',refs:['p07']},
+  'A-05':{status:'done',at:'2026-07-21 17:00',reasons:['その他'],note:'午後に刈り終えた',refs:[]},
+  'A-07':{status:'ready',at:'2026-07-19 16:20',reasons:['穂の色','黄色い穂の割合'],note:'',refs:['p12']},
+  'A-11':{status:'ready',at:'2026-07-20 11:05',reasons:['穂の色'],note:'',refs:['p16']},
+};
+const HISTORY = {
+  'A-03':[{id:'s-A03-1',status:'ready',at:'2026-07-21 15:10',reasons:['穂の色'],refs:1},{id:'s-A03-0',status:'ready',at:'2026-07-12 17:02',reasons:['黄色い穂の割合'],refs:1,revokedAt:'2026-07-13 09:15'}],
+  'A-04':[{id:'s-A04-1',status:'ready',at:'2026-07-21 15:30',reasons:['黄色い穂の割合'],refs:1}],
+  'A-05':[{id:'s-A05-1',status:'done',at:'2026-07-21 17:00',reasons:['その他'],refs:0}],
+  'A-07':[{id:'s-A07-1',status:'ready',at:'2026-07-19 16:20',reasons:['穂の色','黄色い穂の割合'],refs:1}],
+  'A-11':[{id:'s-A11-1',status:'ready',at:'2026-07-20 11:05',reasons:['穂の色'],refs:1}],
+};
+const HANDOVER = {
+  'A-03':[{text:'7月12日に「収穫可能」としたが、翌朝取り消した。',cites:['s-A03-0']},{text:'7月21日に穂の色を理由に再び「収穫可能」。',cites:['s-A03-1']},{text:'昨年は 7月24日に収穫。',cites:['h-A03-2025']},{text:'取り消しの理由は記録にない。',cites:[]}],
+};
+const REASONS = ['穂の色','黄色い穂の割合','農協の判定で中止（水分超過）','農協の判定で中止（砕けなどの傷）','その他'];
+// AI の仮の順（本番は Worker が記録から作る。ここでは固定の架空データ。Claude は呼んでいない）
+const ORDERS = {
+  '北地区':{generatedAt:'7/21 15:40',state:'draft',saved:true,confirmedAt:null,
+    ranked:['A-03','A-04','A-02'],insufficient:['A-01'],
+    reasons:{'A-03':[{text:'7/21 に「収穫可能」の判断（穂の色）',cites:['s-A03-1']}],
+             'A-04':[{text:'目安と同じ 7/21 に「収穫可能」',cites:['s-A04-1']},{text:'昨年は目安の翌日（7/25）に収穫',cites:['h-A04-2025']}],
+             'A-02':[{text:'昨年は目安の 2 日後（7/26）に収穫',cites:['h-A02-2025']}],'A-01':[]},
+    missing:{'A-02':['判断'],'A-01':['判断','昨年の記録']}},
+  '中地区':{generatedAt:'7/21 15:40',state:'draft',saved:true,confirmedAt:null,
+    ranked:['A-07'],insufficient:['A-06','A-08'],
+    reasons:{'A-07':[{text:'7/19 に「収穫可能」の判断（穂の色、黄色い穂の割合）',cites:['s-A07-1']}],'A-06':[],'A-08':[]},
+    missing:{'A-06':['判断','昨年は大豆（別の作物）'],'A-08':['今年の写真','判断']}},
+  '南地区':{generatedAt:'7/21 15:40',state:'draft',saved:true,confirmedAt:null,
+    ranked:['A-11'],insufficient:['A-09','A-10','A-12'],
+    reasons:{'A-11':[{text:'7/20 に「収穫可能」の判断（穂の色）',cites:['s-A11-1']}],'A-09':[],'A-10':[],'A-12':[]},
+    missing:{'A-09':['判断'],'A-10':['判断','昨年の記録'],'A-12':['今年の写真','判断']}},
+};
+const RECORDS = {
+  's-A03-1':'A-03 の判断: 2026/7/21 15:10 収穫可能（穂の色）。根拠の写真 1 枚',
+  's-A03-0':'A-03 の判断: 2026/7/12 17:02 収穫可能（黄色い穂の割合）。7/13 09:15 に取り消し',
+  's-A04-1':'A-04 の判断: 2026/7/21 15:30 収穫可能（黄色い穂の割合）。根拠の写真 1 枚',
+  's-A07-1':'A-07 の判断: 2026/7/19 16:20 収穫可能（穂の色、黄色い穂の割合）',
+  's-A11-1':'A-11 の判断: 2026/7/20 11:05 収穫可能（穂の色）',
+  'h-A03-2025':'A-03 の昨年の記録: 2025/7/24 収穫（小麦）',
+  'h-A04-2025':'A-04 の昨年の記録: 2025/7/25 収穫（小麦）',
+  'h-A02-2025':'A-02 の昨年の記録: 2025/7/26 収穫（小麦）',
+};
+
+/* ========= 補助 ========= */
+const $ = (s, el=document) => el.querySelector(s);
+const byId = id => FIELDS.find(f => f.id === id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const WD = ['日','月','火','水','木','金','土'];
+function md(d){ const [y,m,dd] = d.split('-').map(Number); return `${m}/${dd}`; }
+function mdw(d){ const [y,m,dd] = d.split('-').map(Number); const w = new Date(y, m-1, dd).getDay(); return `${m}月${dd}日（${WD[w]}）`; }
+function ymd(d){ const [y,m,dd] = d.split('-').map(Number); return `${y}年 ${m}/${dd}`; }
+function dayDiff(a,b){ return Math.round((new Date(b) - new Date(a)) / 86400000); }
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const wide = () => matchMedia('(min-width: 960px)').matches;
+function benchmarkOf(district){ return FIELDS.find(f => f.district === district && SEASONS[SEASON][f.id] && SEASONS[SEASON][f.id].benchmark) || null; }
+function photosOf(fid, year){ return PHOTOS.filter(p => p.fieldId === fid && p.date.startsWith(year)).sort((a,b) => b.date.localeCompare(a.date)); }
+function latestPhoto(fid){ return photosOf(fid, SEASON)[0] || null; }
+function rankOf(fid){ const o = ORDERS[byId(fid).district]; const i = o.ranked.indexOf(fid); return i < 0 ? null : i + 1; }
+
+/* ========= 合成画像（架空・参考用） ========= */
+const TONES = { g1:[96,132,58], g2:[128,146,62], y1:[170,160,72], y2:[196,172,80] };
+const imgCache = new Map();
+function seeded(seed){ let s = seed >>> 0; return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296; }
+function photoURL(p){
+  if (imgCache.has(p.id)) return imgCache.get(p.id);
+  const c = document.createElement('canvas'); c.width = 320; c.height = 240; const g = c.getContext('2d');
+  const [r,gg,b] = TONES[p.tone] || TONES.g2; const rnd = seeded(p.id.split('').reduce((a,ch) => a*31 + ch.charCodeAt(0), 7));
+  g.fillStyle = `rgb(${r},${gg},${b})`; g.fillRect(0,0,320,240);
+  for (let y = 0; y < 240; y += 6) { const k = (rnd() - .5) * 28; g.fillStyle = `rgba(${r+k|0},${gg+k|0},${b+k*0.6|0},.9)`; g.fillRect(0, y, 320, 3); }
+  for (let i = 0; i < 900; i++) { const k = (rnd() - .5) * 60; g.fillStyle = `rgba(${r+k|0},${gg+k|0},${b+k*0.5|0},.7)`; g.fillRect(rnd()*320, rnd()*240, 2, 2); }
+  g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(0, 0, 320, 18);
+  const url = c.toDataURL('image/jpeg', .72); imgCache.set(p.id, url); return url;
+}
+
+/* ========= 下地（合成の「航空写真風」。架空の村） ========= */
+function drawBase(){
+  const c = $('#base'), g = c.getContext('2d'); const rnd = seeded(20261104);
+  g.fillStyle = '#7d8656'; g.fillRect(0,0,1600,1200);
+  // 畑の区画（輪郭のある 12 枚と、その周りの無名の畑）
+  const plots = [];
+  FIELDS.forEach(f => plots.push({poly:f.poly, hue:[150+rnd()*40, 140+rnd()*30, 70+rnd()*20]}));
+  const extra = [[890,708,270,170],[1220,708,270,170],[890,940,600,170],[20,20,1500,60],[20,1150,1500,40],[20,130,100,1000]];
+  extra.forEach(([x,y,w,h]) => plots.push({poly:[[x,y],[x+w,y],[x+w,y+h],[x,y+h]], hue:[110+rnd()*40, 120+rnd()*30, 60+rnd()*20]}));
+  plots.forEach(p => {
+    g.save(); g.beginPath(); p.poly.forEach(([x,y],i) => i ? g.lineTo(x,y) : g.moveTo(x,y)); g.closePath(); g.clip();
+    const [r,gg,b] = p.hue; g.fillStyle = `rgb(${r|0},${gg|0},${b|0})`; g.fill();
+    const xs = p.poly.map(q=>q[0]), ys = p.poly.map(q=>q[1]); const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    for (let y = y0; y < y1; y += 7) { const k = (rnd() - .5) * 30; g.fillStyle = `rgba(${r+k|0},${gg+k|0},${b+k*.5|0},.8)`; g.fillRect(x0, y, x1-x0, 3); }
+    g.restore();
+  });
+  // 道
+  g.strokeStyle = '#c9c3b0'; g.lineWidth = 16; g.lineCap = 'round';
+  [[824,0,824,1200],[0,634,1600,634],[0,106,1600,106],[132,0,132,1200]].forEach(([a,b,cx,d]) => { g.beginPath(); g.moveTo(a,b); g.lineTo(cx,d); g.stroke(); });
+  g.strokeStyle = '#a39d8a'; g.lineWidth = 2; g.setLineDash([12,10]);
+  [[824,0,824,1200],[0,634,1600,634]].forEach(([a,b,cx,d]) => { g.beginPath(); g.moveTo(a,b); g.lineTo(cx,d); g.stroke(); }); g.setLineDash([]);
+  // 農道（細い）
+  g.strokeStyle = '#d6d0bd'; g.lineWidth = 8;
+  [[462,130,462,590],[1190,130,1190,590],[462,680,462,1130],[1190,680,1190,1130],[140,361,780,361],[870,361,1510,361],[140,911,780,911],[870,911,1510,911]].forEach(([a,b,cx,d]) => { g.beginPath(); g.moveTo(a,b); g.lineTo(cx,d); g.stroke(); });
+  // 川
+  g.strokeStyle = '#5f7f8c'; g.lineWidth = 26; g.beginPath(); g.moveTo(1560,-10); g.bezierCurveTo(1530,300,1580,500,1550,700); g.bezierCurveTo(1525,900,1570,1100,1555,1210); g.stroke();
+  // 木立（畑の塊の外と、塊の間の帯だけ）
+  for (let i = 0; i < 90; i++) { const x = rnd()*1600, y = rnd()*1200; const inBlock = (x > 140 && x < 780 && y > 130 && y < 590) || (x > 870 && x < 1510 && y > 130 && y < 590) || (x > 140 && x < 780 && y > 680 && y < 1130) || (x > 870 && x < 1510 && y > 680 && y < 1130); if (inBlock || Math.abs(x - 824) < 14 || Math.abs(y - 634) < 14) continue;
+    for (let k = 0; k < 6; k++) { g.fillStyle = `rgba(${40+rnd()*20|0},${70+rnd()*25|0},${35|0},.9)`; g.beginPath(); g.arc(x + (rnd()-.5)*34, y + (rnd()-.5)*26, 7 + rnd()*9, 0, 7); g.fill(); } }
+  // 建物（道の交差点の近く）
+  [[840,600,30,18],[842,648,24,16],[790,604,22,14],[150,70,26,16],[1300,640,30,18],[1340,642,22,14],[800,1160,28,16]].forEach(([x,y,w,h]) => { g.fillStyle = '#b8b2a4'; g.fillRect(x, y, w, h); g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(x+2, y+h, w, 4); });
+  // 駐車スペース・離着陸の候補は断定しない（描かない）
+}
+
+/* ========= 地図（移動・拡大） ========= */
+const view = { s: .3, tx: 0, ty: 0, min: .2, max: 2.5 };
+const world = $('#world'), mapwrap = $('#mapwrap'), labels = $('#labels');
+function apply(){ world.style.transform = `translate(${view.tx}px,${view.ty}px) scale(${view.s})`; placeLabels(); }
+function bboxOf(fields){ const xs = [], ys = []; fields.forEach(f => f.poly.forEach(([x,y]) => { xs.push(x); ys.push(y); })); return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) }; }
+function fit(fields, animate){
+  const b = bboxOf(fields), W = mapwrap.clientWidth, H = mapwrap.clientHeight - (state.selected && !wide() ? 160 : 44);
+  const pad = 28; const s = Math.min((W - pad*2) / (b.x1 - b.x0), (H - pad*2) / (b.y1 - b.y0));
+  view.s = Math.max(view.min, Math.min(view.max, s)); view.tx = (W - (b.x1 + b.x0) * view.s) / 2; view.ty = (H - (b.y1 + b.y0) * view.s) / 2 + (state.selected && !wide() ? 0 : 0);
+  transition(animate); apply();
+}
+function transition(on){ world.style.transition = (on && !reduced) ? 'transform var(--duration-enter) ease-out' : 'none'; if (on) setTimeout(() => world.style.transition = 'none', 260); }
+function centerOn(f){ const c = centroid(f); const W = mapwrap.clientWidth, H = mapwrap.clientHeight; const visH = (!wide() && state.selected) ? H - sheetHeight() : H; view.tx = W/2 - c[0]*view.s; view.ty = visH/2 - c[1]*view.s; transition(true); apply(); }
+function zoomAt(f, cx, cy){ const ns = Math.max(view.min, Math.min(view.max, view.s * f)); const wx = (cx - view.tx) / view.s, wy = (cy - view.ty) / view.s; view.s = ns; view.tx = cx - wx*ns; view.ty = cy - wy*ns; apply(); }
+function centroid(f){ const n = f.poly.length; return [f.poly.reduce((a,p) => a + p[0], 0)/n, f.poly.reduce((a,p) => a + p[1], 0)/n]; }
+function sheetHeight(){ const sh = $('#sheet'); return sh.dataset.state === 'hidden' ? 0 : sh.getBoundingClientRect().height; }
+
+// 指・ホイール
+const ptrs = new Map(); let gesture = null;
+mapwrap.addEventListener('pointerdown', e => {
+  if (e.target.closest('.mapctl, .legend, .mapnote')) return;
+  mapwrap.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if (ptrs.size === 1) gesture = { type:'pan', x0:e.clientX, y0:e.clientY, tx:view.tx, ty:view.ty, moved:false, t:Date.now() };
+  else if (ptrs.size === 2) { const [a,b] = [...ptrs.values()]; gesture = { type:'pinch', d0:Math.hypot(a.x-b.x, a.y-b.y), s0:view.s, tx0:view.tx, ty0:view.ty, cx:(a.x+b.x)/2, cy:(a.y+b.y)/2, moved:true }; }
+});
+mapwrap.addEventListener('pointermove', e => {
+  if (!ptrs.has(e.pointerId) || !gesture) return; ptrs.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if (gesture.type === 'pan') { const dx = e.clientX - gesture.x0, dy = e.clientY - gesture.y0; if (Math.hypot(dx,dy) > 8) gesture.moved = true; if (gesture.moved) { view.tx = gesture.tx + dx; view.ty = gesture.ty + dy; apply(); } }
+  else { const [a,b] = [...ptrs.values()]; const d = Math.hypot(a.x-b.x, a.y-b.y); const ns = Math.max(view.min, Math.min(view.max, gesture.s0 * d / gesture.d0)); const wx = (gesture.cx - gesture.tx0) / gesture.s0, wy = (gesture.cy - gesture.ty0) / gesture.s0; const ncx = (a.x+b.x)/2, ncy = (a.y+b.y)/2; view.s = ns; view.tx = ncx - wx*ns; view.ty = ncy - wy*ns; apply(); }
+});
+function endPtr(e){
+  if (!ptrs.has(e.pointerId)) return; ptrs.delete(e.pointerId);
+  if (gesture && gesture.type === 'pan' && !gesture.moved && Date.now() - gesture.t < 600) { const el = document.elementFromPoint(e.clientX, e.clientY); const hit = el && el.closest('[data-field]'); if (hit) select(hit.dataset.field); else if (el && el.closest('#mapwrap') && !el.closest('.mapctl, .legend, .mapnote')) deselect(); }
+  if (ptrs.size === 1) { const [p] = [...ptrs.values()]; gesture = { type:'pan', x0:p.x, y0:p.y, tx:view.tx, ty:view.ty, moved:true, t:0 }; } else if (ptrs.size === 0) gesture = null;
+}
+mapwrap.addEventListener('pointerup', endPtr); mapwrap.addEventListener('pointercancel', endPtr);
+mapwrap.addEventListener('wheel', e => { e.preventDefault(); const r = mapwrap.getBoundingClientRect(); zoomAt(Math.exp(-e.deltaY * .0015), e.clientX - r.left, e.clientY - r.top); }, {passive:false});
+$('#zin').addEventListener('click', () => zoomAt(1.4, mapwrap.clientWidth/2, mapwrap.clientHeight/2));
+$('#zout').addEventListener('click', () => zoomAt(1/1.4, mapwrap.clientWidth/2, mapwrap.clientHeight/2));
+mapwrap.addEventListener('keydown', e => { const k = e.key; const step = 60; if (k === 'ArrowLeft') view.tx += step; else if (k === 'ArrowRight') view.tx -= step; else if (k === 'ArrowUp') view.ty += step; else if (k === 'ArrowDown') view.ty -= step; else if (k === '+' || k === '=') return zoomAt(1.4, mapwrap.clientWidth/2, mapwrap.clientHeight/2); else if (k === '-') return zoomAt(1/1.4, mapwrap.clientWidth/2, mapwrap.clientHeight/2); else return; e.preventDefault(); apply(); });
+
+/* ========= 輪郭と札 ========= */
+function pathD(f){ return f.poly.map(([x,y],i) => (i ? 'L' : 'M') + x + ' ' + y).join(' ') + ' Z'; }
+function buildParcels(){
+  const under = $('#gUnder'), fill = $('#gFill'), inner = $('#gInner');
+  FIELDS.forEach(f => {
+    const d = pathD(f);
+    under.insertAdjacentHTML('beforeend', `<path class="parcel-under" d="${d}"/>`);
+    fill.insertAdjacentHTML('beforeend', `<path class="parcel" data-field="${f.id}" d="${d}" role="button" tabindex="0"/>`);
+    inner.insertAdjacentHTML('beforeend', `<path class="parcel-inner" data-inner="${f.id}" d="${d}"/>`);
+    const lab = document.createElement('div'); lab.className = 'lab'; lab.dataset.lab = f.id; labels.appendChild(lab);
+  });
+  fill.addEventListener('keydown', e => { const t = e.target.closest('[data-field]'); if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); select(t.dataset.field); } });
+}
+function paintParcels(){
+  FIELDS.forEach(f => {
+    const p = $(`[data-field="${f.id}"]`), st = STATUS[f.id]; const sel = state.selected === f.id;
+    p.classList.toggle('ready', !!st && st.status === 'ready'); p.classList.toggle('done', !!st && st.status === 'done'); p.classList.toggle('selected', sel);
+    $(`[data-inner="${f.id}"]`).classList.toggle('on', sel);
+    const bm = SEASONS[SEASON][f.id] && SEASONS[SEASON][f.id].benchmark; const rk = f.district === state.district ? rankOf(f.id) : null; const o = ORDERS[f.district];
+    p.setAttribute('aria-label', `${f.id} ${f.name}、${st ? (st.status === 'ready' ? '収穫可能 ' : '収穫済 ') + md(st.at.slice(0,10)) : '未確認'}${rk ? `、${o.state === 'confirmed' ? '確定した順' : '仮の順'} ${rk}` : ''}${bm ? '、目安の畑' : ''}`);
+    const lab = $(`[data-lab="${f.id}"]`);
+    lab.innerHTML = `${bm ? '<span class="bm">目安</span>' : ''}<div class="row">${rk ? `<span class="rank${o.state === 'confirmed' ? ' final' : ''}">${rk}</span>` : ''}<span class="box${st ? ' ' + st.status : ''}"><span class="l1">${f.id}<span class="nm"> ${esc(f.name)}</span></span><span class="l2">${st ? (st.status === 'ready' ? '可 ' : '済 ') + md(st.at.slice(0,10)) : '未確認'}</span></span>${UNCONFIRMED[f.id] ? '<span class="pend"></span>' : ''}</div>`;
+    lab.classList.toggle('selected', sel);
+  });
+  placeLabels();
+}
+function placeLabels(){
+  const compact = view.s < .42;
+  FIELDS.forEach(f => { const lab = $(`[data-lab="${f.id}"]`); const c = centroid(f); lab.style.left = (c[0]*view.s + view.tx) + 'px'; lab.style.top = (c[1]*view.s + view.ty) + 'px'; lab.classList.toggle('compact', compact && state.selected !== f.id); lab.style.fontSize = view.s >= 1.5 ? '16px' : '14px'; });
+}
+
+/* ========= 状態 ========= */
+const state = { district:'北地区', selected:null, mode:'field', compare:'two', partner:null, picking:false, buttonsMode:reduced, admin:false,
+  form:{status:null, reasons:new Set(), note:'', refs:new Set()}, confirmArm:null, msg:{}, openCite:null };
+function select(id){
+  const f = byId(id); if (!f) return;
+  if (state.district !== f.district) { state.district = f.district; $('#district').value = f.district; }
+  if (state.picking) { state.partner = id; state.picking = false; state.compare = 'two'; renderSheet(); setSheet('half'); paintParcels(); return; }
+  if (state.selected !== id) { state.selected = id; state.form = {status:null, reasons:new Set(), note:'', refs:new Set()}; state.partner = null; state.msg = {}; state.openCite = null; }
+  try { history.replaceState(null, '', '#' + id); } catch {}
+  if ($('#sheet').dataset.state === 'hidden') setSheet('peek');
+  paintParcels(); renderSheet(); body.scrollTop = 0; if (wide()) centerOn(f);
+}
+function deselect(){ if (!state.selected) return; state.selected = null; state.picking = false; try { history.replaceState(null, '', location.pathname); } catch {} setSheet('hidden'); paintParcels(); renderSheet(); }
+$('#district').addEventListener('change', e => { state.district = e.target.value; state.selected = null; state.partner = null; state.mode = 'field'; setSheet('hidden'); paintParcels(); renderSheet(); fit(FIELDS.filter(f => f.district === state.district), true); });
+$('#adminToggle').addEventListener('change', e => { state.admin = e.target.checked; renderSheet(); });
+$('#uploadBtn').addEventListener('click', () => { const n = $('#mapnote'); n.textContent = '試作では「写真を送る」（/upload）は開きません。本番の L0 の画面をそのまま使います。'; n.classList.add('on'); setTimeout(() => n.classList.remove('on'), 4000); });
+
+/* ========= シートの段 ========= */
+const sheet = $('#sheet'), grip = $('#grip');
+function setSheet(s){ sheet.dataset.state = s; $('#legend').style.display = (s === 'hidden' || wide()) ? '' : 'none'; }
+let sg = null;
+grip.addEventListener('pointerdown', e => { if (wide()) return; grip.setPointerCapture(e.pointerId); sg = { y0:e.clientY, h0:sheet.getBoundingClientRect().height, t0:Date.now(), moved:false }; sheet.classList.add('dragging'); });
+grip.addEventListener('pointermove', e => { if (!sg) return; const dy = e.clientY - sg.y0; if (Math.abs(dy) > 4) sg.moved = true; const H = sheet.parentElement.clientHeight; sheet.style.height = Math.max(160, Math.min(H - 16, sg.h0 - dy)) + 'px'; });
+function gripEnd(e){ if (!sg) return; const H = sheet.parentElement.clientHeight; const h = sheet.getBoundingClientRect().height; const dy = e.clientY - sg.y0; const v = dy / Math.max(1, Date.now() - sg.t0);
+  let next; const order = ['peek','half','full']; const cur = sheet.dataset.state;
+  if (!sg.moved) next = order[Math.min(2, order.indexOf(cur) + 1)];
+  else if (Math.abs(v) > .5 || Math.abs(dy) > 64) { const i = order.indexOf(cur); next = order[Math.max(0, Math.min(2, i + (dy < 0 ? 1 : -1)))]; }
+  else { const hs = {peek:160, half:H*.52, full:H-16}; next = order.reduce((a,b) => Math.abs(hs[b]-h) < Math.abs(hs[a]-h) ? b : a); }
+  sheet.classList.remove('dragging'); sheet.style.height = ''; setSheet(next); sg = null; }
+grip.addEventListener('pointerup', gripEnd); grip.addEventListener('pointercancel', gripEnd);
+
+/* ========= シートの中身 ========= */
+const body = $('#sheetbody');
+function renderSheet(){
+  if (!state.selected && !wide()) { body.innerHTML = ''; return; }
+  const tabs = wide() ? `<div class="tabs"><button type="button" aria-pressed="${state.mode === 'field'}" data-mode="field">写真</button><button type="button" aria-pressed="${state.mode === 'order'}" data-mode="order">順番</button></div>` : '';
+  let html = tabs;
+  if (state.mode === 'order' || (!state.selected && wide())) html += renderOrder(); else html += renderField();
+  body.innerHTML = html; wire();
+}
+function chipStatus(fid){ const st = STATUS[fid]; return st ? `<span class="chip ${st.status}">${st.status === 'ready' ? '可' : '済'} ${md(st.at.slice(0,10))}</span>` : '<span class="chip none">未確認</span>'; }
+function chipBm(fid){ return SEASONS[SEASON][fid] && SEASONS[SEASON][fid].benchmark ? '<span class="chip bm">目安</span>' : ''; }
+function phCell(p, cap){ return p ? `<div><button type="button" class="ph" data-photo="${p.id}" aria-label="写真を大きく見る（${md(p.date)}・${p.fieldId}）"><img src="${photoURL(p)}" alt=""><span class="chip syn">合成</span></button><div class="cap">${cap}</div></div>` : `<div><div class="ph empty">この日の写真はありません</div><div class="cap">${cap}</div></div>`; }
+
+function renderField(){
+  const f = byId(state.selected); const season = SEASONS[SEASON][f.id] || {crop:'—'}; const wheat = season.crop === '小麦';
+  const bm = benchmarkOf(f.district); const partner = state.partner ? byId(state.partner) : (bm && bm.id !== f.id ? bm : null);
+  const two = state.compare === 'two' && partner;
+  let h = `<div class="sheethead"><h2>${f.id} ${esc(f.name)} ${chipBm(f.id)} ${chipStatus(f.id)}</h2><button type="button" class="close" data-act="close" aria-label="閉じる">×</button></div>`;
+  h += `<div class="entry"><button type="button" class="btn secondary" data-act="half">目安と比べる</button><button type="button" class="btn secondary" data-act="order">順番 ▸</button></div>`;
+  h += `<p class="note" style="margin-top:8px">${SEASON}年・${esc(season.crop)}${wheat ? '' : '。今年は対象外'}</p>`;
+  // 比較
+  h += `<h3>写真 <small>今年（${SEASON}年）</small></h3>`;
+  if (bm && bm.id === f.id) h += `<p class="note">この畑が目安です。ほかの畑を選ぶと、この畑と並びます。</p>`;
+  else if (!partner) h += `<p class="note">この地区の目安の畑は未指定です。比べる相手を選んでください。</p>`;
+  h += `<div class="seg"><button type="button" class="btn secondary ${two ? 'on' : ''}" data-act="cmp-two" aria-pressed="${!!two}" ${partner ? '' : 'disabled'}>${partner ? (partner.id === (bm && bm.id) ? '目安と並べる' : partner.id + ' と並べる') : '目安と並べる'}</button><button type="button" class="btn secondary ${two ? '' : 'on'}" data-act="cmp-one" aria-pressed="${!two}">この畑だけ</button></div>`;
+  if (!partner) h += `<button type="button" class="pick" data-act="pick">${state.picking ? '地図で輪郭を押してください' : '比べる相手を選ぶ'}</button>`;
+  if (partner && state.partner && partner.id !== (bm && bm.id)) h += `<p class="note">${partner.id} と比べています（目安ではありません）。</p>`;
+  const mine = photosOf(f.id, SEASON), theirs = two ? photosOf(partner.id, SEASON) : [];
+  const dates = [...new Set([...mine, ...theirs].map(p => p.date))].sort((a,b) => b.localeCompare(a));
+  h += `<div class="cmphead ${two ? '' : 'one'}">${two ? `<div>${partner.id === (bm && bm.id) ? '目安 ' : ''}<b>${partner.id} ${esc(partner.name)}</b></div>` : ''}<div>この畑 <b>${f.id} ${esc(f.name)}</b></div></div>`;
+  if (!dates.length) h += `<div class="cmprow ${two ? '' : 'one'}">${two ? '<div><div class="ph empty">今年の写真はまだありません</div></div>' : ''}<div><div class="ph empty">今年の写真はまだありません。「写真を送る」から送れます</div></div></div>`;
+  dates.forEach(d => { const a = theirs.find(p => p.date === d), b = mine.find(p => p.date === d); if (!b && !two) return;
+    h += `<div class="day">${mdw(d)}</div><div class="cmprow ${two ? '' : 'one'}">${two ? phCell(a, a ? `${md(d)}・${partner.id}` : '') : ''}${phCell(b, b ? `${md(d)}・${f.id}` : '')}</div>`; });
+  // 昨年
+  h += renderLast(f, two ? partner : null);
+  // 判断
+  if (wheat) h += renderJudge(f);
+  // 記録
+  h += `<h3>記録</h3>`;
+  const hist = HISTORY[f.id] || [];
+  h += hist.length ? hist.map(e => `<div class="rec ${e.revokedAt ? 'revoked' : ''}"><div>${e.revokedAt ? '<span class="chip none">取り消し</span>' : `<span class="chip ${e.status}">${e.status === 'ready' ? '収穫可能' : '収穫済'}</span>`} ${e.at.slice(5,16).replace('-', '/')}</div><div>${esc(e.reasons.join('、'))}${e.refs ? `。根拠 ${e.refs}枚` : ''}${e.revokedAt ? `。${e.revokedAt.slice(5,16).replace('-', '/')} に取り消し` : ''}</div></div>`).join('') : `<p class="note">判断の記録はまだありません。</p>`;
+  const hv = HANDOVER[f.id];
+  h += `<h3>引き継ぎメモ <small>Claude が記録から作成（架空）</small></h3>`;
+  h += hv ? `<div class="rec">${hv.map((b,i) => `<span class="${b.cites.length ? '' : 'nogr'}">${esc(b.text)}${b.cites.map(c => `<button type="button" class="cite" data-cite="${c}">[${i+1}]</button>`).join('')}${b.cites.length ? '' : '（根拠なし）'}</span> `).join('')}</div>` : `<p class="note">引き継ぎメモはまだありません（記録が増えてから作ります）。</p>`;
+  if (state.openCite) h += `<div class="citebox">${esc(RECORDS[state.openCite] || '記録が見つかりません')}</div>`;
+  if (UNCONFIRMED[f.id]) h += `<p class="note">未確定の写真 ${UNCONFIRMED[f.id]}枚 → 新着で番号を付けると、ここに入ります。</p>`;
+  h += `<p class="foot">データはすべて架空。写真と下地は合成。判断の送信・保存はこの画面の中だけ（本番の API は呼ばない）。</p>`;
+  return h;
+}
+function renderLast(f, partner){
+  let h = `<h3>昨年の同じ週 <small><span class="chip year">${LAST}年</span></small></h3>`;
+  const ref = latestPhoto(f.id) ? latestPhoto(f.id).date : NOW; const refL = LAST + ref.slice(4);
+  const block = (fid, label) => {
+    const s = SEASONS[LAST][fid]; if (!s) return `<div><div class="ph empty">${LAST}年の記録はありません</div><div class="cap">${label}</div></div>`;
+    const ph = photosOf(fid, LAST); const same = ph.filter(p => Math.abs(dayDiff(refL, p.date)) <= 3)[0]; const near = ph[0];
+    const p = same || near; const cap = `${label}・${s.crop === '小麦' ? '小麦' : `<span class="chip other">${esc(s.crop)}（別の作物）</span>`}${s.harvestedOn ? `・${md(s.harvestedOn)} 収穫` : '・収穫日は記録なし'}`;
+    if (!p) return `<div><div class="ph empty">${LAST}年の写真はありません</div><div class="cap">${cap}</div></div>`;
+    return `<div><button type="button" class="ph" data-photo="${p.id}" aria-label="昨年の写真（${ymd(p.date)}）"><img src="${photoURL(p)}" alt=""><span class="chip syn">合成</span></button><div class="cap">${same ? '' : '同じ週には無く、近い日: '}${ymd(p.date)}<br>${cap}</div></div>`;
+  };
+  h += `<div class="last"><div class="ttl"><b>${LAST}年 ${md(refL)} の前後 3 日</b><span class="note">（今年の最新 ${md(ref)} と同じ週）</span></div><div class="cmprow ${partner ? '' : 'one'}">${partner ? block(partner.id, partner.id) : ''}${block(f.id, f.id)}</div></div>`;
+  return h;
+}
+function renderJudge(f){
+  const fm = state.form; const refs = photosOf(f.id, SEASON);
+  let h = `<h3>判断を残す</h3><div class="seg"><button type="button" class="btn secondary ${fm.status === 'ready' ? 'on' : ''}" data-status="ready" aria-pressed="${fm.status === 'ready'}">収穫可能</button><button type="button" class="btn secondary ${fm.status === 'done' ? 'on' : ''}" data-status="done" aria-pressed="${fm.status === 'done'}">収穫済</button></div>`;
+  h += `<div><b>理由</b> <span class="note">1 つ以上</span></div><div class="reasons">${REASONS.map(r => `<button type="button" class="btn secondary ${fm.reasons.has(r) ? 'on' : ''}" data-reason="${esc(r)}" aria-pressed="${fm.reasons.has(r)}">${esc(r)}</button>`).join('')}</div>`;
+  h += `<label for="note"><b>メモ</b> <span class="note">任意・200 字まで</span></label><textarea id="note" maxlength="200">${esc(fm.note)}</textarea>`;
+  h += `<div><b>根拠の写真</b> <span class="note">5 枚まで・${fm.refs.size}枚</span></div>`;
+  h += refs.length ? `<div class="refs">${refs.map(p => `<button type="button" class="ph ${fm.refs.has(p.id) ? 'on' : ''}" data-ref="${p.id}" aria-pressed="${fm.refs.has(p.id)}" aria-label="${md(p.date)} の写真を根拠にする"><img src="${photoURL(p)}" alt=""><span class="chip syn">合成</span></button>`).join('')}</div>` : `<p class="note">今年の写真が無いので、根拠の写真は付けられません。</p>`;
+  h += `<button type="button" class="btn primary" data-act="save-status" style="width:100%">判断を残す</button><p class="msg ${state.msg.judge && state.msg.judge.err ? 'err' : ''}">${state.msg.judge ? esc(state.msg.judge.text) : ''}</p>`;
+  return h;
+}
+
+/* ========= 順番の段 ========= */
+function renderOrder(){
+  const d = state.district; const o = ORDERS[d]; const bm = benchmarkOf(d);
+  const harvested = FIELDS.filter(f => f.district === d && STATUS[f.id] && STATUS[f.id].status === 'done').map(f => f.id);
+  const ranked = o.ranked.filter(id => !harvested.includes(id)), insufficient = o.insufficient.filter(id => !harvested.includes(id));
+  let h = `<div class="sheethead"><h2>${d}の収穫順</h2>${wide() ? '' : '<button type="button" class="close" data-act="close-order" aria-label="閉じる">×</button>'}</div>`;
+  h += `<div class="ordhead"><p class="note">${o.state === 'confirmed' ? `<b>${o.confirmedAt} に確定した順</b>（元は記録から並べた仮の順 ${o.generatedAt}）` : `記録から並べた<b>仮の順</b>（${o.generatedAt} 時点）`}${bm ? '' : '。<b>目安が未指定</b>のため根拠が少ない'}</p>`;
+  if (!o.saved) h += `<div class="warn">${o.state === 'confirmed' ? '確定した順と違います。確定し直すか、元に戻してください' : '保存していません'}</div>`;
+  h += `<div class="acts"><button type="button" class="btn secondary" data-act="save-order" ${o.saved ? 'disabled' : ''}>仮の順を保存</button>`;
+  if (state.admin) h += state.confirmArm === d ? `<button type="button" class="btn danger" data-act="confirm2">本当に確定する（5 秒で戻ります）</button>` : `<button type="button" class="btn primary" data-act="confirm1">${o.state === 'confirmed' ? '確定し直す' : '確定する'}</button>`;
+  else h += `<span class="note" style="align-self:center">確定は委員長が行います</span>`;
+  h += `</div><p class="msg ${state.msg.order && state.msg.order.err ? 'err' : ''}">${state.msg.order ? esc(state.msg.order.text) : ''}</p>`;
+  h += `<label class="switch"><input type="checkbox" id="btnMode" ${state.buttonsMode ? 'checked' : ''}>ボタンで並べ替える（持ち手を使わない）</label></div>`;
+  const row = (id, i, grp) => { const f = byId(id); const st = STATUS[id]; const p = latestPhoto(id); const rs = (o.reasons[id] || []); const ms = (o.missing[id] || []);
+    return `<li class="orow ${st ? st.status : ''} ${state.selected === id ? 'selected' : ''}" data-row="${id}" data-grp="${grp}">${grp === 'ranked' ? `<span class="rank ${o.state === 'confirmed' ? 'final' : ''}">${i+1}</span>` : '<span class="nor" aria-hidden="true">—</span>'}<div class="th">${p ? `<img src="${photoURL(p)}" alt="">` : '写真なし'}</div><div class="mid"><div class="nm"><button type="button" class="cite" style="text-decoration:none;color:var(--text-1)" data-sel="${id}">${id} ${esc(f.name)}</button>${chipBm(id)}${chipStatus(id)}</div>${rs.length ? `<div class="why">${rs.map(r => esc(r.text) + r.cites.map(c => `<button type="button" class="cite" data-cite="${c}">[${citeNo(c)}]</button>`).join('')).join('。')}</div>` : ''}${ms.length ? `<div class="miss">足りない: ${esc(ms.join('、'))}</div>` : ''}${state.openCite && rs.some(r => r.cites.includes(state.openCite)) ? `<div class="citebox">${esc(RECORDS[state.openCite] || '')}</div>` : ''}</div><div class="ctl"><div class="updn"><button type="button" data-up="${id}" aria-label="上へ">▲</button><button type="button" data-down="${id}" aria-label="下へ">▼</button></div><div class="handle" data-handle="${id}" role="button" aria-label="${id} を動かす"><i></i><i></i><i></i></div></div></li>`; };
+  h += `<div class="grp">順位あり ${ranked.length ? '' : '<span class="note">— 順位を付けられる記録がまだありません</span>'}</div><ul class="olist" id="rankedList" data-list="ranked">${ranked.map((id,i) => row(id, i, 'ranked')).join('')}</ul>`;
+  h += `<div class="grp">情報不足（順位を付けていません）</div><ul class="olist" id="insufList" data-list="insufficient">${insufficient.map((id,i) => row(id, i, 'insufficient')).join('')}</ul>`;
+  if (harvested.length) h += `<div class="grp">収穫済</div><ul class="olist">${harvested.map(id => `<li class="orow done" data-row="${id}"><span class="nor" aria-hidden="true">済</span><div class="th">${latestPhoto(id) ? `<img src="${photoURL(latestPhoto(id))}" alt="">` : '写真なし'}</div><div class="mid"><div class="nm"><button type="button" class="cite" style="text-decoration:none;color:var(--text-1)" data-sel="${id}">${id} ${esc(byId(id).name)}</button>${chipStatus(id)}</div></div><div></div></li>`).join('')}</ul>`;
+  const cnt = { st: FIELDS.filter(f => f.district === d && STATUS[f.id]).length, ph: PHOTOS.filter(p => byId(p.fieldId).district === d && p.date.startsWith(SEASON)).length, hv: FIELDS.filter(f => f.district === d && SEASONS[LAST][f.id] && SEASONS[LAST][f.id].harvestedOn).length };
+  h += `<p class="used">使った記録: 判断 ${cnt.st}件、今年の写真 ${cnt.ph}枚、昨年の収穫日 ${cnt.hv}件。写真の画像は使っていない（記録の文字だけ）。成熟度・水分・収穫予定日は出さない。</p>`;
+  const unc = FIELDS.filter(f => f.district === d).reduce((a,f) => a + (UNCONFIRMED[f.id] || 0), 0);
+  if (unc) h += `<p class="note">未確定の写真 ${unc}枚 → 新着で番号を付ける</p>`;
+  h += `<p class="foot">この仮の順は固定の架空データ（Claude は呼んでいない）。本番は Worker が記録から作る。</p>`;
+  return h;
+}
+const CITES = Object.keys(RECORDS); function citeNo(c){ return CITES.indexOf(c) + 1; }
+
+/* ========= 配線 ========= */
+function wire(){
+  body.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { state.mode = b.dataset.mode; renderSheet(); body.scrollTop = 0; }));
+  body.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => act(b.dataset.act, b)));
+  body.querySelectorAll('[data-status]').forEach(b => b.addEventListener('click', () => { state.form.status = b.dataset.status; keepScroll(renderSheet); }));
+  body.querySelectorAll('[data-reason]').forEach(b => b.addEventListener('click', () => { const r = b.dataset.reason; state.form.reasons.has(r) ? state.form.reasons.delete(r) : state.form.reasons.add(r); keepScroll(renderSheet); }));
+  body.querySelectorAll('[data-ref]').forEach(b => b.addEventListener('click', () => { const r = b.dataset.ref; if (state.form.refs.has(r)) state.form.refs.delete(r); else if (state.form.refs.size < 5) state.form.refs.add(r); keepScroll(renderSheet); }));
+  const note = $('#note'); if (note) note.addEventListener('input', () => state.form.note = note.value);
+  body.querySelectorAll('[data-cite]').forEach(b => b.addEventListener('click', () => { state.openCite = state.openCite === b.dataset.cite ? null : b.dataset.cite; keepScroll(renderSheet); }));
+  body.querySelectorAll('[data-photo]').forEach(b => b.addEventListener('click', () => { const n = $('#mapnote'); n.textContent = '本番では元の大きさの写真が新しいタブで開きます（/api/photo-files/:id）。試作の写真は合成です。'; n.classList.add('on'); setTimeout(() => n.classList.remove('on'), 3500); }));
+  body.querySelectorAll('[data-sel]').forEach(b => b.addEventListener('click', () => { const id = b.dataset.sel; state.selected = id; state.form = {status:null, reasons:new Set(), note:'', refs:new Set()}; try { history.replaceState(null, '', '#' + id); } catch {} paintParcels(); centerOn(byId(id)); keepScroll(renderSheet); }));
+  body.querySelectorAll('[data-up]').forEach(b => b.addEventListener('click', () => moveRow(b.dataset.up, -1)));
+  body.querySelectorAll('[data-down]').forEach(b => b.addEventListener('click', () => moveRow(b.dataset.down, +1)));
+  const bm = $('#btnMode'); if (bm) bm.addEventListener('change', () => { state.buttonsMode = bm.checked; keepScroll(renderSheet); });
+  body.classList.toggle('buttons-mode', state.buttonsMode);
+  body.querySelectorAll('[data-handle]').forEach(hd => hd.addEventListener('pointerdown', dragStart));
+}
+function keepScroll(fn){ const y = body.scrollTop; fn(); body.scrollTop = y; }
+function act(a, btn){
+  const f = state.selected ? byId(state.selected) : null; const o = ORDERS[state.district];
+  if (a === 'close') deselect();
+  else if (a === 'close-order') { state.mode = 'field'; if (!state.selected) setSheet('hidden'); renderSheet(); body.scrollTop = 0; }
+  else if (a === 'half') { state.compare = 'two'; setSheet('half'); keepScroll(renderSheet); }
+  else if (a === 'order') { state.mode = 'order'; renderSheet(); body.scrollTop = 0; if (!wide()) setSheet('full'); }
+  else if (a === 'cmp-two') { state.compare = 'two'; keepScroll(renderSheet); }
+  else if (a === 'cmp-one') { state.compare = 'one'; keepScroll(renderSheet); }
+  else if (a === 'pick') { state.picking = true; keepScroll(renderSheet); setSheet('peek'); const n = $('#mapnote'); n.textContent = '地図で比べる相手の輪郭を押してください'; n.classList.add('on'); setTimeout(() => n.classList.remove('on'), 4000); }
+  else if (a === 'save-status') {
+    const fm = state.form; if (!fm.status) state.msg.judge = {err:true, text:'「収穫可能」か「収穫済」を選んでください'};
+    else if (!fm.reasons.size) state.msg.judge = {err:true, text:'理由を 1 つ以上選んでください'};
+    else { const at = NOW + ' 10:12'; STATUS[f.id] = {status:fm.status, at, reasons:[...fm.reasons], note:fm.note, refs:[...fm.refs]};
+      (HISTORY[f.id] = HISTORY[f.id] || []).unshift({id:'s-' + f.id + '-' + Date.now(), status:fm.status, at, reasons:[...fm.reasons], refs:fm.refs.size});
+      const oo = ORDERS[f.district]; if (oo.missing[f.id]) oo.missing[f.id] = oo.missing[f.id].filter(m => m !== '判断');
+      state.msg.judge = {text:'残しました（この画面の中だけ）。地図の塗りと仮の順に反映されます'}; state.form = {status:null, reasons:new Set(), note:'', refs:new Set()}; paintParcels(); }
+    keepScroll(renderSheet);
+  }
+  else if (a === 'save-order') { o.saved = true; state.msg.order = {text:'仮の順を保存しました（この画面の中だけ）'}; keepScroll(renderSheet); }
+  else if (a === 'confirm1') { state.confirmArm = state.district; keepScroll(renderSheet); clearTimeout(state.armT); state.armT = setTimeout(() => { state.confirmArm = null; keepScroll(renderSheet); }, 5000); }
+  else if (a === 'confirm2') { clearTimeout(state.armT); state.confirmArm = null; o.state = 'confirmed'; o.saved = true; o.confirmedAt = md(NOW) + ' 10:15'; state.msg.order = {text:'確定しました。地図の番号が実線になりました'}; paintParcels(); keepScroll(renderSheet); }
+}
+function moveRow(id, dir){
+  const o = ORDERS[state.district]; let list = o.ranked.includes(id) ? o.ranked : o.insufficient; const i = list.indexOf(id);
+  if (list === o.insufficient && dir < 0 && i === 0) { o.insufficient.splice(i, 1); o.ranked.push(id); }
+  else if (list === o.ranked && dir > 0 && i === o.ranked.length - 1) { o.ranked.splice(i, 1); o.insufficient.unshift(id); }
+  else { const j = i + dir; if (j < 0 || j >= list.length) return; list.splice(i, 1); list.splice(j, 0, id); }
+  o.saved = false; paintParcels(); keepScroll(renderSheet);
+}
+// 持ち手のドラッグ（行をその場で入れ替える。行は指に追従させず、隣の行の中央を越えたら入れ替わる）
+let drag = null;
+function dragStart(e){
+  const id = e.currentTarget.dataset.handle; const row = body.querySelector(`[data-row="${id}"]`); if (!row) return;
+  e.currentTarget.setPointerCapture(e.pointerId); drag = { id, row, hd:e.currentTarget }; row.classList.add('lifted'); $('#rankedList').classList.add('target'); $('#insufList').classList.add('target');
+  e.currentTarget.addEventListener('pointermove', dragMove); e.currentTarget.addEventListener('pointerup', dragEnd); e.currentTarget.addEventListener('pointercancel', dragEnd);
+}
+function dragMove(e){
+  if (!drag) return; const el = document.elementFromPoint(e.clientX, e.clientY); if (!el) return;
+  const over = el.closest('[data-row]'); const list = el.closest('[data-list]');
+  if (over && over !== drag.row && over.dataset.grp !== undefined) { const r = over.getBoundingClientRect(); if (e.clientY < r.top + r.height/2) over.before(drag.row); else over.after(drag.row); }
+  else if (list && !list.contains(drag.row)) list.appendChild(drag.row);
+  // シートの端で自動スクロール
+  const br = body.getBoundingClientRect(); if (e.clientY > br.bottom - 48) body.scrollTop += 8; else if (e.clientY < br.top + 48) body.scrollTop -= 8;
+}
+function dragEnd(){
+  if (!drag) return; const o = ORDERS[state.district];
+  const ranked = [...$('#rankedList').querySelectorAll('[data-row]')].map(r => r.dataset.row), insuf = [...$('#insufList').querySelectorAll('[data-row]')].map(r => r.dataset.row);
+  const changed = ranked.join() !== o.ranked.filter(x => !(STATUS[x] && STATUS[x].status === 'done')).join() || insuf.join() !== o.insufficient.join();
+  o.ranked = ranked; o.insufficient = insuf; if (changed) o.saved = false; drag.row.classList.remove('lifted'); drag = null; paintParcels(); keepScroll(renderSheet);
+}
+
+/* ========= 起動 ========= */
+drawBase(); buildParcels(); paintParcels();
+fit(FIELDS.filter(f => f.district === state.district), false);
+const h0 = (location.hash || '').replace('#', ''); if (byId(h0)) select(h0); else if (wide()) renderSheet();
+addEventListener('resize', () => { if (!state.selected) fit(FIELDS.filter(f => f.district === state.district), false); placeLabels(); renderSheet(); setSheet(sheet.dataset.state); });
+addEventListener('hashchange', () => { const id = (location.hash || '').replace('#', ''); if (byId(id)) select(id); });
+</script>
+</body>
+</html>
