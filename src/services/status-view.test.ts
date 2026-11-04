@@ -243,6 +243,17 @@ describe("withLocalChanges（遅れて届いた履歴に、手元の変更を重
     expect(withLocalChanges([event({ id: 1, at: at1 })], [change(1, localRevoked)], 0)[0]).toBe(localRevoked);
   });
 
+  it("取り消し済み同士でも、stamp の大きい方が残る（配列の順によらない）", () => {
+    const first = event({ id: 1, at: at1, revokedAt: "2026-07-23T00:00:00.000Z" });
+    const second = event({ id: 1, at: at1, revokedAt: "2026-07-24T00:00:00.000Z" });
+    for (const changes of [
+      [change(1, first), change(2, second)],
+      [change(2, second), change(1, first)],
+    ]) {
+      expect(withLocalChanges(server, changes, 0)[1]).toBe(second);
+    }
+  });
+
   it("読んだ履歴が空でも、手元の変更は入る", () => {
     const sent = event({ id: 3, at: at3 });
     expect(withLocalChanges([], [change(1, sent)], 0)).toStrictEqual([sent]);
