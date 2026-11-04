@@ -10,24 +10,16 @@ import fieldsData from "@/data/fields.json";
 import type { Field, Role, UploadedPhoto } from "@/types";
 import { applyAssignment, assignOutcomeLabel } from "@/services/assignment";
 import { filterRecent, unconfirmedCountLabel } from "@/services/recent-view";
+import { loginOutcomeLabel } from "@/services/login-label";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
 import type {
   IPhotoRepository,
-  LoginOutcome,
   RecentOutcome,
   RoleOutcome,
 } from "@/repositories/interfaces/i-photo-repository";
 
 const RECENT_LIMIT = 50;
 const fields: Field[] = fieldsData;
-
-const LOGIN_MESSAGES: Record<LoginOutcome, string | null> = {
-  ok: null,
-  wrong: "合言葉が違います",
-  "too-many": "何度も間違えたので、10分ほどおいてからもう一度",
-  "network-error": "つながりませんでした。電波のよい所でもう一度",
-  error: "うまくいきませんでした。時間をおいてもう一度",
-};
 
 /** 写真ごとの確定・変更の様子 */
 export interface AssignStatus {
@@ -100,7 +92,7 @@ export function useRecent(repository?: IPhotoRepository) {
       try {
         const outcome = await repo.login(passphrase);
         if (outcome !== "ok") {
-          setLoginMessage(LOGIN_MESSAGES[outcome]);
+          setLoginMessage(loginOutcomeLabel(outcome));
           return;
         }
         current = await repo.getRole();
