@@ -442,3 +442,27 @@ TASKS.md の決まり（状態の書き方・REPORT の置き場所）はその�
 - **書き方の注意（`scripts/cage/policy.mjs`）**: import は `@/services/...`・`@/types`・`./...`。`Response.json()` を使わず `http.ts` の `json()`・`errorResponse()`。`Date.now()` を使わず `deps.nowMs()`
 - **参照**: `docs/spec.md` §5・§6
 - **担当**: 先輩
+
+## T32 `handover-view`（L6 の引き継ぎメモを、画面の文と根拠の印に分ける）
+- **状態**: 取り込み済み（11-04、#116）
+- **運転の記録**: 1104 の列車の 3 本目（T06・T12 は済みで飛ばした）。START `43b43c7` → GREEN `ce0ae68` → REPORT `9560953`。Opus、9 手、$0.34。ゲート G0〜G7 と C1〜C5 がすべて合格（C3 24 件、C4 テスト全体）。変更は許可した 1 ファイルと REPORT だけ。QUESTIONS なし。REPORT に手元のパスなし。列車の前に `.dev.vars` が無いことと wrangler が未ログインであることを確かめた
+- **Claude の確認（11-04、人の確認の前）**: 差分を読んで抜けは見つからなかった（仮の実装と同じ形）。実装を 18 通りに壊して 5 つが生き残り、結果が変わらない 3 つを除く 2 つ（取り消しの印を文末だけで見る・start だけが整数でない引用）を落とすテストを足して 26 件
+- **人の確認**: 済み（11-04、本人が差分と REPORT を読み、CI の合格を確かめて #116 をマージ）
+- **Issue**: なし（画面側のデータ層 #114 の続き。合格条件 13）
+- **依存**: T27 `buildHandoverRecords` の記録の文の書き方（テストは T27 で作った記録を使う）、`HandoverNote` の型
+- **変えてよいファイル**: `src/services/handover-view.ts`（＋ `docs/run/REPORT-T32.md`、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結）**: `src/services/handover-view.test.ts`（24 件。GREEN の後に人の確認で 2 件を足して 26 件）
+- **人が RED で置いたもの（凍結）**: `handover-view.ts` の型（`HandoverSource`・`HandoverSentence`）、`NO_SOURCE_LABEL`、空の関数
+- **関数**: `statusAnchorId(eventId): string`、`sourceLabel(record): string`、`handoverSentences(note): HandoverSentence[]`
+- **合格条件**:
+  - `statusAnchorId` は `status-event-<番号>`。判断の戻り先は `#` ＋ それ、写真の戻り先は `/api/photo-files/<id を encodeURIComponent>`
+  - `sourceLabel` は T27 の文の先頭だけを読む。判断は「判断 月/日」（0 を付けない）、文末が「（YYYY-MM-DD に取り消し）」なら「（取り消し）」を付ける。写真は「写真 月/日」、撮影日不明なら「写真（撮影日不明）」。読めなければ「判断」「写真」
+  - `handoverSentences` はブロック 1 つを 1 文にする（文は変えない、空白だけのブロックは出さない）。引用の範囲（end は含まない）を記録の数の内に切り、範囲の外は飛ばす。start・end が整数でない、start ≧ end の引用は無いものとする。文の中で同じ記録は 1 回、最初に引用された順、引用の部分は最初のもの（文字列でなければ空）。印が無ければ `uncited`
+  - 記録の文の書き方を自前で作らない（テストは T27 の関数で記録を作る）。メモを変えない
+- **RED の確かめ（11-04）**: 空の実装で 22 件が失敗（残り 2 件は空でも通る）。仮の実装（列車には渡さない）で 24 件とも通る
+- **攻撃役（Sonnet、檻の中、仕様・決まりのファイルを消した複製で）**:
+  - 1 回目（6 手、$0.09）: 22 件を、ほぼ正しい実装で通した。近道は取り消しを「に取り消し）」で終わるかだけで見たこと。T27 の書き方だけを印にするテストと、同じ記録を別の文が引用したらどちらにも印が付くテストを足して 24 件（攻撃役の実装は 1 件落ちる）
+  - 入れなかった指摘: 月が 1 桁の例（「07」「08」で見ている）、複数桁の番号（`status-event-12` で見ている）、範囲外の日付・空の id・知らない種類（T27 と型が作らない）
+- **書き方の注意（`scripts/cage/policy.mjs`）**: import は `@/types` だけ。fetch・Date を使わない
+- **参照**: `docs/spec.md` §3・§7（`/fields/[id]` の引き継ぎメモ）、合格条件 13
+- **担当**: 本人
