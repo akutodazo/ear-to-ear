@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Field, FieldSummary, StatusEvent, UploadedPhoto } from "@/types";
 import type { SeasonRecord } from "./last-season";
-import { draftOrder, moveWithin, nextToShoot, orderRows, rankOrUnrank, sameOrder, type OrderDraft } from "./harvest-order";
+import { applySaved, draftOrder, moveTo, moveWithin, nextToShoot, orderRows, rankOrUnrank, sameOrder, type OrderDraft } from "./harvest-order";
 
 // 刈る順番の下書き（11-05、3 段目）。記録から並べるだけで、写真や AI から収穫の時期を推測しない。
 // 順位を付けるのは今年「収穫可能」と人が判断した畑だけ。判断の無い畑は順位を付けず、人が動かす
@@ -127,5 +127,27 @@ describe("並べ替え（人が直す）", () => {
 describe("nextToShoot（次に撮る畑。記録から並べるだけ）", () => {
   it("今年の写真が無い畑が先、次に判断が無く最新の写真が古い順。収穫可能・収穫済は入れない", () => {
     expect(nextToShoot(orderRows(input))).toEqual(["A-02", "A-01"]);
+  });
+});
+
+describe("moveTo（指で動かした先へ）", () => {
+  it("from の畑を to の位置へ。範囲の外は端に丸める", () => {
+    const list = ["A-01", "A-02", "A-03", "A-04"];
+    expect(moveTo(list, 0, 2)).toEqual(["A-02", "A-03", "A-01", "A-04"]);
+    expect(moveTo(list, 3, 0)).toEqual(["A-04", "A-01", "A-02", "A-03"]);
+    expect(moveTo(list, 1, 99)).toEqual(["A-01", "A-03", "A-04", "A-02"]);
+    expect(moveTo(list, 9, 0)).toEqual(list);
+  });
+});
+
+describe("applySaved（保存した順を、今の記録に合わせる）", () => {
+  const now: OrderDraft = { ranked: ["A-03", "A-04"], unranked: ["A-02", "A-01"], done: ["A-05"] };
+
+  it("保存した並びを使い、収穫済になった畑は外し、保存に無い畑は順位なしの後ろに足す", () => {
+    expect(applySaved(now, { ranked: ["A-04", "A-05", "A-03"], unranked: ["A-02"] })).toEqual({ ranked: ["A-04", "A-03"], unranked: ["A-02", "A-01"], done: ["A-05"] });
+  });
+
+  it("知らない畑・重なりは捨てる", () => {
+    expect(applySaved(now, { ranked: ["A-99", "A-03", "A-03"], unranked: ["A-03", "A-01"] })).toEqual({ ranked: ["A-03"], unranked: ["A-01", "A-04", "A-02"], done: ["A-05"] });
   });
 });
