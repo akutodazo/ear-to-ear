@@ -653,14 +653,11 @@ a:focus-visible {
   color: var(--text-2);
 }
 
+/* 目安の印は地図と同じ金の輪郭の印＋言葉（金の地の札にはしない） */
 .dock-benchmark {
   margin-left: var(--space-8);
-  padding: 0 6px;
-  border: 1px solid #8a6a12;
-  border-radius: 4px;
   color: #5a4408;
-  background: var(--wheat);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 700;
   vertical-align: 2px;
 }
@@ -712,28 +709,95 @@ a:focus-visible {
   gap: 4px;
 }
 
-.legend-swatch {
+/* 状態の印: 地図の札・凡例・板で同じ形（色だけに頼らず、塗り・破線・輪郭で分ける） */
+.mark {
   display: inline-block;
+  flex: none;
   width: 12px;
   height: 12px;
   border: 1.5px solid #8a9187;
   border-radius: 2px;
   background: var(--surface);
+  vertical-align: -1px;
 }
 
-.legend-ready {
-  border-color: #9bb04a;
+.mark-ready {
+  border-color: #7f9a2e;
   background: var(--accent);
 }
 
-.legend-done {
+.mark-done {
   border-style: dashed;
-  background: rgba(37, 51, 38, 0.4);
+  border-color: #dedfd4;
+  background: rgba(37, 51, 38, 0.75);
 }
 
-.legend-benchmark {
-  border-color: #c9a22e;
+.mark-benchmark {
   border-width: 2px;
+  border-color: #c9a22e;
+}
+
+/* 航空写真の上の印は白い縁と影で浮かせる */
+.map-label .mark {
+  margin-right: 4px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9), 0 0 3px rgba(0, 0, 0, 0.8);
+}
+
+.map-label .mark-done {
+  border-color: #ffffff;
+}
+
+/* 線のアイコン: 文字の高さに合わせる */
+.icon {
+  flex: none;
+  width: 1.25em;
+  height: 1.25em;
+  vertical-align: -0.3em;
+}
+
+.button .icon {
+  margin-right: 6px;
+}
+
+.dock-status,
+.dock-photo-line,
+.dock-benchmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dock-status {
+  flex-wrap: wrap;
+}
+
+.dock-unconfirmed {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 400;
+  color: var(--text-2);
+}
+
+.dock-unconfirmed .map-label-dot {
+  margin: 0;
+  box-shadow: 0 0 0 1.5px #8a9187;
+}
+
+.dock-photo-empty .icon {
+  width: 28px;
+  height: 28px;
+  margin-bottom: 2px;
+}
+
+.dock-photo-empty {
+  flex-direction: column;
+}
+
+.dock-close .icon {
+  width: 22px;
+  height: 22px;
+  vertical-align: middle;
 }
 
 /* 下の帯（地図／見比べる／刈る順番） */
@@ -741,22 +805,29 @@ a:focus-visible {
   display: flex;
   justify-content: space-evenly;
   gap: var(--space-8);
-  padding: 4px var(--space-16) max(4px, env(safe-area-inset-bottom));
+  padding: 2px var(--space-16) max(2px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--border);
   background: var(--background-2);
 }
 
 .app-nav-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 2px;
   min-width: 96px;
-  min-height: 48px;
+  min-height: 56px;
   border-radius: var(--radius-8);
   color: var(--text-2);
   font-size: 0.95rem;
   font-weight: 700;
   text-decoration: none;
+}
+
+.app-nav-item .icon {
+  width: 24px;
+  height: 24px;
 }
 
 .app-nav-current {

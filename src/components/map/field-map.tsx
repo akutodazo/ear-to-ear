@@ -66,7 +66,7 @@ function escapeHtml(text: string): string {
 
 /**
  * 札の中身。箱に入れず、影つきの白い文字だけ（航空写真の上で読める）。
- * 「目安」（金）／番号（と未確定の点）／名前／判断（塗りがあるときだけ。未確認は文字にしない）。
+ * 「目安」（金）／番号（と未確定の点）／名前／判断（塗りがあるときだけ。凡例と同じ印＋日付。未確認は何も出さない）。
  * 縮小しているときは名前と判断を隠す（CSS の .map-zoom-compact）
  */
 function labelHtml(item: MapParcel): string {
@@ -75,9 +75,11 @@ function labelHtml(item: MapParcel): string {
   const benchmark = appearance.benchmark ? '<span class="map-label-benchmark">目安</span>' : "";
   const dot = appearance.unconfirmed ? '<span class="map-label-dot" title="未確定の写真あり"></span>' : "";
   const name = nameParts.length > 0 ? `<span class="map-label-name">${escapeHtml(nameParts.join(" "))}</span>` : "";
+  // 2 行目は「可 7/21」。文字の「可」「済」は印に置き換え、日付だけ残す（読み上げは aria-label が言葉で言う）
+  const date = labelLines[1]?.split(" ")[1];
   const status =
-    appearance.fill !== "none" && labelLines[1] !== undefined
-      ? `<span class="map-label-status map-label-status-${appearance.fill}">${escapeHtml(labelLines[1])}</span>`
+    appearance.fill !== "none" && date !== undefined
+      ? `<span class="map-label-status map-label-status-${appearance.fill}"><i class="mark mark-${appearance.fill}"></i>${escapeHtml(date)}</span>`
       : "";
   return `${benchmark}<span class="map-label-id">${escapeHtml(id)}${dot}</span>${name}${status}`;
 }

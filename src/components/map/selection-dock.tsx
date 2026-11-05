@@ -1,6 +1,6 @@
 /**
  * 地図の上に出る、選んだ圃場の板（11-05 のデザインの引き継ぎ: 畑を押すと最新の写真が出る）。
- * 左に最新の写真、右に番号・名前・判断・目安。下は「目安の畑と見比べる」への入口。props だけで受け取る
+ * 左に最新の写真、右に番号・名前・判断（地図と同じ印＋言葉）・目安。下は「目安の畑と見比べる」への入口。props だけで受け取る
  */
 import Image from "next/image";
 import Link from "next/link";
@@ -8,6 +8,7 @@ import type { Field } from "@/types";
 import type { ParcelAppearance } from "@/services/parcel-geometry";
 import { takenAtLabel } from "@/services/photo-labels";
 import type { LatestPhotoState } from "@/hooks/use-latest-photo";
+import { IconClose, IconCompare, IconPhoto } from "@/components/icons";
 
 interface Props {
   field: Field;
@@ -16,6 +17,15 @@ interface Props {
   statusLine: string;
   latest: LatestPhotoState;
   onClose: () => void;
+}
+
+/** 地図の札では印だけだが、板は凡例が見えないので言葉で言う */
+const STATUS_WORD = { ready: "収穫可能", done: "収穫済" } as const;
+
+function statusText(appearance: ParcelAppearance, statusLine: string): string {
+  if (appearance.fill === "none") return statusLine;
+  const date = statusLine.split(" ")[1] ?? "";
+  return `${STATUS_WORD[appearance.fill]} ${date}`.trim();
 }
 
 function photoLine(latest: LatestPhotoState): string {
@@ -41,25 +51,43 @@ export function SelectionDock({ field, appearance, statusLine, latest, onClose }
           {photo ? (
             <Image src={`/api/photo-files/${encodeURIComponent(photo.id)}`} alt={`${field.id} の最新の写真`} fill sizes="96px" />
           ) : (
-            <span className="dock-photo-empty">{latest.kind === "ok" ? "写真なし" : "…"}</span>
+            <span className="dock-photo-empty">
+              <IconPhoto />
+              {latest.kind === "ok" ? "写真なし" : ""}
+            </span>
           )}
         </div>
         <div className="dock-text">
           <div className="dock-title">
             <span className="dock-id">{field.id}</span> {field.name}
-            {appearance.benchmark && <span className="dock-benchmark">目安の畑</span>}
+            {appearance.benchmark && (
+              <span className="dock-benchmark">
+                <i className="mark mark-benchmark" aria-hidden="true" />
+                目安の畑
+              </span>
+            )}
           </div>
           <div className="dock-status">
-            {statusLine}
-            {appearance.unconfirmed && "・未確定の写真あり"}
+            <i className={`mark mark-${appearance.fill}`} aria-hidden="true" />
+            {statusText(appearance, statusLine)}
+            {appearance.unconfirmed && (
+              <span className="dock-unconfirmed">
+                <i className="map-label-dot" aria-hidden="true" />
+                未確定の写真あり
+              </span>
+            )}
           </div>
-          <div className="dock-photo-line">{photoLine(latest)}</div>
+          <div className="dock-photo-line">
+            <IconPhoto />
+            {photoLine(latest)}
+          </div>
         </div>
         <button type="button" className="dock-close" onClick={onClose} aria-label="閉じる">
-          ×
+          <IconClose />
         </button>
       </div>
       <Link className="button button-primary button-block" href={`/fields/${field.id}`}>
+        <IconCompare />
         {appearance.benchmark ? "この畑の写真を見る" : "目安の畑と見比べる"}
       </Link>
     </section>

@@ -14,6 +14,7 @@ import { FieldMap, type MapParcel } from "@/components/map/field-map";
 import { SelectionDock } from "@/components/map/selection-dock";
 import { MapLegend } from "@/components/map/map-legend";
 import { AppNav } from "@/components/app-nav";
+import { IconCamera } from "@/components/icons";
 
 // JSON の型は number[][] なので、[lat, lng] の組に読み替える（中身は src/data/parcels.test.ts が確かめる）
 const parcels: Parcel[] = parcelsData.map((p) => ({ fieldId: p.fieldId, polygon: p.polygon.map(([lat, lng]) => [lat, lng] as [number, number]) }));
@@ -73,6 +74,7 @@ export function HomeClient() {
           </select>
         </label>
         <Link className="button button-small" href="/upload">
+          <IconCamera />
           写真を送る
         </Link>
       </header>
