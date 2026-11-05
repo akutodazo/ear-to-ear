@@ -57,7 +57,7 @@ function setup(line: Partial<LinePort> | null = {}): Setup {
   return { deps: fakeDeps({ db, line: port }), testDb, signCalls: () => signs, dbCalls: () => dbs };
 }
 
-function webhookRequest(body: string | Uint8Array, signature: string | null, headers: Record<string, string> = {}): Request {
+function webhookRequest(body: string, signature: string | null, headers: Record<string, string> = {}): Request {
   const h: Record<string, string> = { "content-type": "application/json", ...headers };
   if (signature !== null) h["x-line-signature"] = signature;
   return new Request(`https://example.test${PATH}`, { method: "POST", headers: h, body });
