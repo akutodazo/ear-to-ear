@@ -19,6 +19,8 @@ const CLAUDE_NAME = "CLAUDE_" + "API_KEY";
 const CF_NAME = "CLOUDFLARE_" + "API_TOKEN";
 const CF_USER = "cf" + "ut_";
 const CF_ACCOUNT = "cf" + "at_";
+const LINE_TOKEN_NAME = "LINE_CHANNEL_" + "ACCESS_TOKEN";
+const LINE_SECRET_NAME = "LINE_CHANNEL_" + "SECRET";
 
 describe("checkFileName（名前で分かる危ないファイル）", () => {
   it.each([".dev.vars", "worker/.dev.vars", ".dev.vars.example"])("%s は開発用の秘密", (path) => {
@@ -234,6 +236,9 @@ describe("findSecretLikeLines（秘密らしい文字列）", () => {
     [`${CLAUDE_NAME}=${"k9".repeat(10)}`, "Claude の API キーの名前（11-04）"],
     [`${CF_NAME}=${"t7".repeat(10)}`, "Cloudflare のトークンの名前（11-04）"],
     [`  ${CF_NAME}: "abcdefgh12"`, "Cloudflare のトークンの名前（オブジェクト）"],
+    [`${LINE_TOKEN_NAME}=${"q8".repeat(10)}`, "LINE のアクセストークンの名前（11-05、#135）"],
+    [`${LINE_SECRET_NAME}=${"w4".repeat(10)}`, "LINE のチャネルシークレットの名前（11-05、#135）"],
+    [`  ${LINE_SECRET_NAME}: "abcdefgh12"`, "LINE のチャネルシークレットの名前（オブジェクト）"],
   ])("%s（%s）は止める", (text) => {
     expect(findSecretLikeLines(text)).toEqual([{ line: 1, kind: "secret-assignment" }]);
   });
@@ -250,6 +255,7 @@ describe("findSecretLikeLines（秘密らしい文字列）", () => {
     [`\`${CF_NAME}\` を Environment の秘密に置く`, "文書の中の名前"],
     [`CLOUDFLARE_API_TOKEN: \${{ secrets.${CF_NAME} }}`, "Actions で秘密から渡す"],
     [`const k = env.${CLAUDE_NAME};`, "環境からの読み出し"],
+    [`const s = env.${LINE_SECRET_NAME};`, "LINE の秘密の環境からの読み出し"],
   ])("%s（%s）は止めない", (text) => {
     expect(findSecretLikeLines(text)).toEqual([]);
   });
