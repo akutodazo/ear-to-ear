@@ -12,6 +12,7 @@ import { useLatestPhoto } from "@/hooks/use-latest-photo";
 import { benchmarkFor, mapLabelLines, parcelAppearance } from "@/services/parcel-geometry";
 import { FieldMap, type MapParcel } from "@/components/map/field-map";
 import { SelectionDock } from "@/components/map/selection-dock";
+import { useLastSeasonMemo } from "@/hooks/use-last-season-memo";
 import { MapLegend } from "@/components/map/map-legend";
 import { AppNav } from "@/components/app-nav";
 import { IconCamera } from "@/components/icons";
@@ -26,6 +27,7 @@ export function HomeClient() {
   const map = useFieldMap();
   const { selectedId, selected, select } = useFieldSelection();
   const latest = useLatestPhoto(selectedId);
+  const lastMemo = useLastSeasonMemo(selectedId, SEASON);
   const districts = useMemo(() => [...new Set(map.pins.map((p) => p.field.district))], [map.pins]);
   // 見ている地区。圃場を押すとその地区に変わり、閉じても戻らない（精査 #1）。既定は最初の地区（開いたときに選んでいればその地区）
   const [districtChoice, setDistrictChoice] = useState<string | null>(() => selected?.district ?? null);
@@ -118,6 +120,7 @@ export function HomeClient() {
             statusLine={selectedItem.labelLines[1] ?? (map.message ? "判断を読み込めていません" : "判断を読み込んでいます")}
             latest={latest}
             compareLabel={compareLabel}
+            lastSeasonMemo={lastMemo && lastMemo.first !== null ? { season: lastMemo.season, first: lastMemo.first } : null}
             onClose={() => choose(null)}
           />
         ) : (

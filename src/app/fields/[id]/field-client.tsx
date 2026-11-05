@@ -27,6 +27,8 @@ import { SplitViewer, type PartnerPicker, type SlotPhoto } from "@/components/co
 import { FieldSwitcher } from "@/components/compare/field-switcher";
 import { PhotoStream } from "@/components/compare/photo-stream";
 import { LastSeasonNote } from "@/components/compare/last-season-note";
+import { LastSeasonMemo } from "@/components/compare/last-season-memo";
+import { useLastSeasonMemo } from "@/hooks/use-last-season-memo";
 import { StatusPanel } from "@/components/compare/status-panel";
 import { StatusActions } from "@/components/compare/status-actions";
 import { StatusHistory } from "@/components/compare/status-history";
@@ -51,6 +53,8 @@ export function FieldClient({ field }: { field: Field }) {
   const district = useDistrictPhotos(districtIds);
   const status = useFieldStatus(field.id, photos.confirmedPhotoIds);
   const handover = useHandover(field.id);
+  // 来年の引き継ぎ（5 段目）: 昨年の判断の頃だけ、昨年のメモを「昨年の同じ頃」の下に
+  const lastMemo = useLastSeasonMemo(field.id, SEASON);
   const [writing, setWriting] = useState(false);
 
   // 比べ方の選択。日付・相手・前の日は「希望」として持ち、実際に出せる形には Service が直す
@@ -207,6 +211,7 @@ export function FieldClient({ field }: { field: Field }) {
           refs={open ? { selected: refSet, onToggle: status.toggleRefPhoto } : undefined}
         />
         <LastSeasonNote lines={seasonLines} />
+        {lastMemo && <LastSeasonMemo view={lastMemo} />}
         <StatusHistory history={status.history} loading={status.historyLoading} message={status.historyMessage} revokeStatus={status.revokeStatus} onRevoke={status.revoke} onRetry={status.refreshHistory} />
         {/* 取り消しで合言葉を聞かれたとき（判断の入力を閉じていても出す。main の #120 と同じ） */}
         {status.needsPassphrase && !open && (

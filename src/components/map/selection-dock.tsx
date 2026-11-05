@@ -1,6 +1,7 @@
 /**
  * 地図の上に出る、選んだ圃場の板（11-05 のデザインの引き継ぎ: 畑を押すと最新の写真が出る）。
- * 左に最新の写真、右に番号・名前・判断（地図と同じ印＋言葉）・目安。下は「目安の畑と見比べる」への入口。props だけで受け取る
+ * 左に最新の写真、右に番号・名前・判断（地図と同じ印＋言葉）・目安。昨年の判断の頃なら、昨年の引き継ぎの 1 文目（5 段目）。
+ * 下は「目安の畑と見比べる」への入口。props だけで受け取る
  */
 import Image from "next/image";
 import Link from "next/link";
@@ -8,7 +9,7 @@ import type { Field } from "@/types";
 import type { ParcelAppearance } from "@/services/parcel-geometry";
 import { takenAtLabel } from "@/services/photo-labels";
 import type { LatestPhotoState } from "@/hooks/use-latest-photo";
-import { IconClose, IconCompare, IconPhoto } from "@/components/icons";
+import { IconCalendar, IconClose, IconCompare, IconPhoto } from "@/components/icons";
 
 interface Props {
   field: Field;
@@ -18,6 +19,8 @@ interface Props {
   latest: LatestPhotoState;
   /** 下のボタンの文言（地区に目安があるかで親が決める。精査 #3） */
   compareLabel: string;
+  /** 昨年の引き継ぎ（昨年の判断の頃だけ）。年と 1 文目。無ければ null */
+  lastSeasonMemo?: { season: string; first: string } | null;
   onClose: () => void;
 }
 
@@ -45,7 +48,7 @@ function photoLine(latest: LatestPhotoState): string {
   }
 }
 
-export function SelectionDock({ field, appearance, statusLine, latest, compareLabel, onClose }: Props) {
+export function SelectionDock({ field, appearance, statusLine, latest, compareLabel, lastSeasonMemo = null, onClose }: Props) {
   const photo = latest.kind === "ok" ? latest.photo : null;
   return (
     <section className="dock" aria-label="選んだ圃場">
@@ -89,6 +92,15 @@ export function SelectionDock({ field, appearance, statusLine, latest, compareLa
           <IconClose />
         </button>
       </div>
+      {lastSeasonMemo && (
+        <p className="dock-last-memo">
+          <IconCalendar />
+          <span>
+            <span className="dock-last-memo-head">昨年の引き継ぎ（{lastSeasonMemo.season}年）</span>
+            {lastSeasonMemo.first}
+          </span>
+        </p>
+      )}
       <Link className="button button-primary button-block" href={`/fields/${field.id}`}>
         <IconCompare />
         {compareLabel}

@@ -1,12 +1,15 @@
 /**
  * 来年の引き継ぎ（5 段目、11-05）。昨年の引き継ぎメモを、昨年の判断の日の前後だけ出す。純粋関数。
- * まだ実装していない（RED）
+ * 出すかどうかは記録の日付（昨年の収穫可能の日、無ければ収穫済の日）と今日の月日だけで決め、収穫の時期を予想しない。
+ * 日数の差は言わない（「あと n 日」と読めるため）。昨年の根拠の印は今年の記録へのリンクにしない（昨年の履歴・写真はこの画面に無い）
  */
 import type { HandoverNote } from "@/types";
+import { handoverSentences } from "./handover-view";
 import type { SeasonRecord } from "./last-season";
 
 export interface LastSeasonMemoSentence {
   text: string;
+  /** 根拠の印の言葉（例「判断 7/20」「写真 7/18」）。リンクにしない */
   labels: string[];
   uncited: boolean;
 }
@@ -14,21 +17,57 @@ export interface LastSeasonMemoSentence {
 export interface LastSeasonMemoView {
   season: string;
   sentences: LastSeasonMemoSentence[];
+  /** 地図の板に出す 1 文目。文が無ければ null */
   first: string | null;
 }
 
-export function lastSeasonNoteFor(_notes: readonly HandoverNote[], _fieldId: string, _season: string): HandoverNote | null {
-  throw new Error("未実装");
+const WHEAT = "小麦";
+const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** 'YYYY-MM-DD' を UTC の 0 時の時刻に。ありえない日付（2/30 など）は null */
+function dateMs(date: string): number | null {
+  const m = DATE.exec(date);
+  if (m === null) return null;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const ms = Date.UTC(y, mo - 1, d);
+  const back = new Date(ms);
+  return back.getUTCFullYear() === y && back.getUTCMonth() === mo - 1 && back.getUTCDate() === d ? ms : null;
 }
 
-export function isNearLastSeason(_record: SeasonRecord | null, _today: string, _days: number): boolean {
-  throw new Error("未実装");
+/** その圃場の、今年の 1 つ前の年のメモ。無ければ null */
+export function lastSeasonNoteFor(notes: readonly HandoverNote[], fieldId: string, season: string): HandoverNote | null {
+  const year = Number(season);
+  if (!Number.isInteger(year)) return null;
+  const last = String(year - 1);
+  return notes.find((n) => n.fieldId === fieldId && n.season === last) ?? null;
 }
 
-export function demoToday(_search: string): string | null {
-  throw new Error("未実装");
+/**
+ * 今日が、昨年の判断の日（収穫可能、無ければ収穫済）の月日の前後 days 日の中か（端を含む）。
+ * 記録が無い・判断の日が無い・小麦でない年・今日が日付の形でないときは false
+ */
+export function isNearLastSeason(record: SeasonRecord | null, today: string, days: number): boolean {
+  if (record === null || record.crop !== WHEAT) return false;
+  const anchor = record.readyAt ?? record.doneAt;
+  if (anchor === null) return false;
+  const todayMs = dateMs(today);
+  const a = DATE.exec(anchor);
+  if (todayMs === null || a === null) return false;
+  const anchorThisYear = dateMs(`${today.slice(0, 4)}-${a[2]}-${a[3]}`);
+  if (anchorThisYear === null) return false;
+  return Math.abs(todayMs - anchorThisYear) <= days * DAY_MS;
 }
 
-export function lastSeasonMemoView(_note: HandoverNote): LastSeasonMemoView {
-  throw new Error("未実装");
+/** デモで今日を差し替える `?today=YYYY-MM-DD`。正しい日付だけ返し、ほかは null */
+export function demoToday(search: string): string | null {
+  const value = new URLSearchParams(search).get("today");
+  if (value === null || dateMs(value) === null) return null;
+  return value;
+}
+
+/** 昨年のメモを画面の形にする（文と根拠の印の言葉。リンクは持たない） */
+export function lastSeasonMemoView(note: HandoverNote): LastSeasonMemoView {
+  const sentences = handoverSentences(note).map((s) => ({ text: s.text, labels: s.sources.map((src) => src.label), uncited: s.uncited }));
+  return { season: note.season, sentences, first: sentences[0]?.text ?? null };
 }

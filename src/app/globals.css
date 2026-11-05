@@ -2087,3 +2087,50 @@ ol.order-group .order-row-dragging {
 .history-item:target {
   box-shadow: var(--focus-ring);
 }
+
+/* 来年の引き継ぎ（5 段目）。昨年のメモの印はリンクにしない（押せる形に見せない） */
+.memo-last .season-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.memo-last .season-title svg {
+  width: 16px;
+  height: 16px;
+}
+
+.badge-source-static {
+  border-style: dashed;
+  cursor: default;
+}
+
+/* 地図の板: 昨年の引き継ぎの 1 文目（2 行まで） */
+.dock-last-memo {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 var(--space-8);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+.dock-last-memo svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+
+.dock-last-memo > span {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.dock-last-memo-head {
+  margin-right: 6px;
+  font-weight: 700;
+  color: var(--text-1);
+}
