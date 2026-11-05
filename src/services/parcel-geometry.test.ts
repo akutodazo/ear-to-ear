@@ -230,7 +230,13 @@ describe("polygonsOverlap（輪郭どうしが重なるか。傾いた帯は四�
   it("離れていれば false。辺が触れるだけでも false", () => {
     const apart: LatLng[] = square.map(([lat, lng]) => [lat + 0.01, lng]);
     expect(polygonsOverlap(square, apart)).toBe(false);
-    const touching: LatLng[] = square.map(([lat, lng]) => [lat, lng + 0.002]);
+    // 足し算の丸めで辺が少しずれないよう、値をそのまま書く
+    const touching: LatLng[] = [
+      [43.2400, 141.7520],
+      [43.2400, 141.7540],
+      [43.2420, 141.7540],
+      [43.2420, 141.7520],
+    ];
     expect(polygonsOverlap(square, touching)).toBe(false);
   });
 

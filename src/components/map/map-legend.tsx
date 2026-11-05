@@ -1,10 +1,10 @@
-/** 地図の凡例（何も選んでいないときに下に出る）。状態は色だけで言わず、文字を添える */
+/** 地図の凡例（何も選んでいないときに左下に小さく出る）。状態は色だけで言わず、文字を添える */
 export function MapLegend() {
   return (
     <ul className="legend" aria-label="凡例">
       <li>
         <i className="legend-swatch legend-ready" aria-hidden="true" />
-        収穫可能（人の判断）
+        収穫可能
       </li>
       <li>
         <i className="legend-swatch legend-done" aria-hidden="true" />

@@ -1,6 +1,6 @@
 "use client";
 
-/** `/` の配線: 地図の Presenter（useFieldMap）と選択（useFieldSelection）を呼び、部品に props で配る（AGENTS.md §4） */
+/** `/` の配線: 地図（useFieldMap）・選択（useFieldSelection）・選んだ畑の最新の写真（useLatestPhoto）を呼び、部品に props で配る（AGENTS.md §4） */
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import parcelsData from "@/data/parcels.json";
@@ -8,6 +8,7 @@ import benchmarksData from "@/data/benchmarks.json";
 import type { Benchmark, Parcel } from "@/types";
 import { useFieldMap } from "@/hooks/use-field-map";
 import { useFieldSelection } from "@/hooks/use-field-selection";
+import { useLatestPhoto } from "@/hooks/use-latest-photo";
 import { benchmarkFor, mapLabelLines, parcelAppearance } from "@/services/parcel-geometry";
 import { FieldMap, type MapParcel } from "@/components/map/field-map";
 import { SelectionDock } from "@/components/map/selection-dock";
@@ -23,6 +24,7 @@ const SEASON = "2026";
 export function HomeClient() {
   const map = useFieldMap();
   const { selectedId, selected, select } = useFieldSelection();
+  const latest = useLatestPhoto(selectedId);
   const districts = useMemo(() => [...new Set(map.pins.map((p) => p.field.district))], [map.pins]);
   const [districtChoice, setDistrictChoice] = useState<string | null>(null);
   // 圃場を選ぶとその地区に、選んでいなければ切り替えた地区（既定は最初の地区）
@@ -94,12 +96,13 @@ export function HomeClient() {
             field={selectedItem.field}
             appearance={selectedItem.appearance}
             statusLine={selectedItem.labelLines[1] ?? (map.message ? "判断を読み込めていません" : "判断を読み込んでいます")}
+            latest={latest}
             onClose={() => select(null)}
           />
         ) : (
           <MapLegend />
         )}
-        <span className="map-fictional-note">区画・番号・判断は架空（{districtItems.length} 圃場）</span>
+        <span className="map-fictional-note">区画の形・番号・判断は架空のもの</span>
       </div>
       <AppNav current="map" compareHref={selected ? `/fields/${selected.id}` : null} />
     </div>

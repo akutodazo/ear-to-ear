@@ -3,7 +3,9 @@
 /**
  * 航空写真の上の圃場の輪郭（L1 の地図）。Leaflet はブラウザでしか動かないので、開いてから読み込む。
  * props だけで受け取り、押された圃場を親に返す（AGENTS.md §4）。
- * 輪郭は白と黒の二重線、塗りは人の判断（収穫可能＝黄緑、収穫済＝灰の破線）、未確認は塗らない。
+ * 11-05 のデザインの引き継ぎ: 最初の視線を畑に向ける。輪郭は細い白線（下に薄い影）、塗りは人の判断
+ * （収穫可能＝黄緑、収穫済＝暗い破線）、未確認は塗らず文字も出さない。札は箱に入れず、影つきの文字だけ。
+ * 目安の畑は金の輪郭、選んだ畑は黄緑の太い輪郭。
  */
 import { useEffect, useRef, useState } from "react";
 import type { LayerGroup, Map as LeafletMap } from "leaflet";
@@ -28,30 +30,56 @@ interface Props {
   onSelect: (fieldId: string | null) => void;
 }
 
-/** この倍率より縮小しているときは札を番号だけにする */
-const COMPACT_BELOW_ZOOM = 16;
+/** この倍率より縮小しているときは札を番号（と目安）だけにする。1 地区に合わせた倍率（約 15.75）では名前まで出し、全地区（約 15）では番号だけ */
+const COMPACT_BELOW_ZOOM = 15.5;
+/** 地区に合わせるときの上限の倍率（1 つの地区が画面いっぱいより寄らない） */
+const FIT_MAX_ZOOM = 17.25;
 
 type Leaflet = typeof import("leaflet");
 
-const FILL_COLOR: Record<ParcelAppearance["fill"], string | null> = {
-  none: null,
-  ready: "#d8f178",
-  done: "#5a6670",
-};
+const LIME = "#d8f178";
+const GOLD = "#f1cc65";
+const INK = "#253326";
+
+/** 塗りの色と濃さ。未確認は塗らない（0 だと押せないので、ごく薄い透明） */
+function fillStyle(appearance: ParcelAppearance): { fillColor: string; fillOpacity: number } {
+  switch (appearance.fill) {
+    case "ready":
+      return { fillColor: LIME, fillOpacity: appearance.selected ? 0.5 : 0.4 };
+    case "done":
+      return { fillColor: INK, fillOpacity: appearance.selected ? 0.5 : 0.4 };
+    case "none":
+      return { fillColor: "#ffffff", fillOpacity: appearance.selected ? 0.14 : 0.001 };
+  }
+}
+
+/** 輪郭の線。選んだ畑は黄緑の太線、目安の畑は金、ほかは細い白 */
+function lineStyle(appearance: ParcelAppearance): { color: string; weight: number } {
+  if (appearance.selected) return { color: LIME, weight: 3.5 };
+  if (appearance.benchmark) return { color: GOLD, weight: 2.5 };
+  return { color: "#ffffff", weight: 1.5 };
+}
 
 function escapeHtml(text: string): string {
   return text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] ?? c);
 }
 
+/**
+ * 札の中身。箱に入れず、影つきの白い文字だけ（航空写真の上で読める）。
+ * 「目安」（金）／番号（と未確定の点）／名前／判断（塗りがあるときだけ。未確認は文字にしない）。
+ * 縮小しているときは名前と判断を隠す（CSS の .map-zoom-compact）
+ */
 function labelHtml(item: MapParcel): string {
   const { appearance, labelLines } = item;
-  const chip = appearance.benchmark ? '<span class="map-label-benchmark">目安</span>' : "";
-  const dot = appearance.unconfirmed ? '<span class="map-label-dot" title="未確定の写真あり"></span>' : "";
-  // 1 行目は「A-03 北の3」。縮小しているときは名前を隠して番号だけにする（CSS の .map-zoom-compact）
   const [id, ...nameParts] = labelLines[0].split(" ");
-  const first = `<span class="map-label-line map-label-id">${escapeHtml(id)}<span class="map-label-name"> ${escapeHtml(nameParts.join(" "))}</span></span>`;
-  const lines = first + labelLines.slice(1).map((line) => `<span class="map-label-line">${escapeHtml(line)}</span>`).join("");
-  return `${chip}<span class="map-label-box map-label-${appearance.fill}">${lines}${dot}</span>`;
+  const benchmark = appearance.benchmark ? '<span class="map-label-benchmark">目安</span>' : "";
+  const dot = appearance.unconfirmed ? '<span class="map-label-dot" title="未確定の写真あり"></span>' : "";
+  const name = nameParts.length > 0 ? `<span class="map-label-name">${escapeHtml(nameParts.join(" "))}</span>` : "";
+  const status =
+    appearance.fill !== "none" && labelLines[1] !== undefined
+      ? `<span class="map-label-status map-label-status-${appearance.fill}">${escapeHtml(labelLines[1])}</span>`
+      : "";
+  return `${benchmark}<span class="map-label-id">${escapeHtml(id)}${dot}</span>${name}${status}`;
 }
 
 function ariaLabel(item: MapParcel): string {
@@ -67,21 +95,24 @@ function draw(L: Leaflet, layers: LayerGroup, items: MapParcel[], onSelect: (fie
   for (const item of items) {
     const latlngs = item.parcel.polygon.map(([lat, lng]) => L.latLng(lat, lng));
     const { appearance } = item;
-    // 下の黒線（明るい畑の上でも白線が見える）
-    L.polygon(latlngs, { color: "rgba(0,0,0,0.55)", weight: appearance.selected ? 8 : 6, fill: false, interactive: false }).addTo(layers);
-    const fillColor = FILL_COLOR[appearance.fill];
+    const line = lineStyle(appearance);
+    // 下の薄い影（明るい畑の上でも白線が見える。太い黒枠にはしない）
+    L.polygon(latlngs, {
+      color: "rgba(0,0,0,0.45)",
+      weight: line.weight + (appearance.selected ? 4 : 2.5),
+      fill: false,
+      interactive: false,
+      lineJoin: "round",
+    }).addTo(layers);
     const top = L.polygon(latlngs, {
-      color: "#ffffff",
-      weight: appearance.selected ? 4 : 2,
-      dashArray: appearance.fill === "done" ? "6 8" : undefined,
+      ...line,
+      ...fillStyle(appearance),
+      opacity: 0.95,
+      dashArray: appearance.fill === "done" ? "5 7" : undefined,
       fill: true,
-      fillColor: fillColor ?? "#000000",
-      fillOpacity: fillColor === null ? 0 : appearance.fill === "done" ? 0.35 : 0.45,
+      lineJoin: "round",
       className: `map-parcel map-parcel-${appearance.fill}${appearance.selected ? " map-parcel-selected" : ""}`,
     }).addTo(layers);
-    if (appearance.selected) {
-      L.polygon(latlngs, { color: "#2d6441", weight: 3, fill: false, interactive: false }).addTo(layers);
-    }
     top.on("click", (e) => {
       L.DomEvent.stopPropagation(e);
       onSelect(item.field.id);
@@ -102,6 +133,8 @@ function draw(L: Leaflet, layers: LayerGroup, items: MapParcel[], onSelect: (fie
     L.marker([lat, lng], {
       interactive: false,
       keyboard: false,
+      // 選んだ畑の札は隣の札より手前に
+      zIndexOffset: appearance.selected ? 1000 : 0,
       icon: L.divIcon({ className: `map-label${appearance.selected ? " map-label-selected" : ""}`, html: labelHtml(item), iconSize: undefined }),
     }).addTo(layers);
   }
@@ -120,7 +153,7 @@ function fitIfNeeded(map: LeafletMap, items: MapParcel[], key: string, fitted: {
       [bounds.latMin, bounds.lngMin],
       [bounds.latMax, bounds.lngMax],
     ],
-    { padding: [12, 12], animate: false },
+    { padding: [16, 16], maxZoom: FIT_MAX_ZOOM, animate: false },
   );
 }
 
@@ -150,7 +183,7 @@ export function FieldMap({ parcels, fitItems, fitKey, onSelect }: Props) {
       // 倍率は 0.25 刻み（地区の 4 区画が画面の幅にちょうど入る倍率を選べる。整数刻みだと 1 段小さくなる）
       const map = L.map(container, {
         zoomControl: false,
-        attributionControl: true,
+        attributionControl: false,
         minZoom: MAP_TILES.minZoom,
         maxZoom: MAP_TILES.maxZoom,
         zoomSnap: 0.25,
@@ -158,6 +191,8 @@ export function FieldMap({ parcels, fitItems, fitKey, onSelect }: Props) {
       });
       L.tileLayer(MAP_TILES.url, { attribution: MAP_TILES.attribution, minZoom: MAP_TILES.minZoom, maxZoom: MAP_TILES.maxZoom }).addTo(map);
       L.control.zoom({ position: "topright", zoomInTitle: "拡大", zoomOutTitle: "縮小" }).addTo(map);
+      // 出典は拡大・縮小の下（右上）。下は凡例と選んだ畑の板に使う
+      L.control.attribution({ position: "topright", prefix: false }).addTo(map);
       map.on("click", () => onSelectRef.current(null));
       const updateCompact = () => container.classList.toggle("map-zoom-compact", map.getZoom() < COMPACT_BELOW_ZOOM);
       map.on("zoomend", updateCompact);

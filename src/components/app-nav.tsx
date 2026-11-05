@@ -1,4 +1,4 @@
-/** 下の帯（地図／見比べる／刈る順番）。11-04 夜の本人決定で、画面はこの 3 つで切り替える */
+/** 下の帯（地図／見比べる／刈る順番）。11-04 夜の本人決定で、画面はこの 3 つで切り替える。説明の文は付けない（11-05） */
 import Link from "next/link";
 
 interface Props {
@@ -20,12 +20,10 @@ export function AppNav({ current, compareHref }: Props) {
       ) : (
         <span className="app-nav-item app-nav-disabled" aria-disabled="true">
           見比べる
-          <small>圃場を選ぶと押せます</small>
         </span>
       )}
       <span className="app-nav-item app-nav-disabled" aria-disabled="true">
         刈る順番
-        <small>準備中</small>
       </span>
     </nav>
   );

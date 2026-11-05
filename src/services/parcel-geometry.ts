@@ -137,3 +137,46 @@ export function mapLabelLines(field: Field, summary: FieldSummary | null): strin
 export function benchmarkFor(benchmarks: readonly Benchmark[], season: string, district: string): string | null {
   return benchmarks.find((b) => b.season === season && b.district === district)?.fieldId ?? null;
 }
+
+/** 線分 p1-p2 と p3-p4 が交わるか（端で触れるだけは交わらない） */
+function segmentsCross(p1: LatLng, p2: LatLng, p3: LatLng, p4: LatLng): boolean {
+  const orient = (a: LatLng, b: LatLng, c: LatLng) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+  const d1 = orient(p3, p4, p1);
+  const d2 = orient(p3, p4, p2);
+  const d3 = orient(p1, p2, p3);
+  const d4 = orient(p1, p2, p4);
+  return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+}
+
+/**
+ * 2 つの輪郭が重なるか（辺が交わる、またはどちらかの点がもう一方の中）。辺が触れるだけは重ならない。
+ * 傾いた帯は bounds で見ると隣どうしが重なって見えるので、区画の重なりはこちらで見る
+ */
+export function polygonsOverlap(a: readonly LatLng[], b: readonly LatLng[]): boolean {
+  if (a.length === 0 || b.length === 0) throw new Error("輪郭に点が無い");
+  for (let i = 0; i < a.length; i++) {
+    const a1 = a[i];
+    const a2 = a[(i + 1) % a.length];
+    for (let j = 0; j < b.length; j++) {
+      if (segmentsCross(a1, a2, b[j], b[(j + 1) % b.length])) return true;
+    }
+  }
+  // 辺の上の点は「中」と数えない（containsPoint は辺の上を保証しないので、先に外す）
+  const strictlyInside = (polygon: readonly LatLng[], point: LatLng) => !onBoundary(polygon, point) && containsPoint(polygon, point);
+  return a.some((p) => strictlyInside(b, p)) || b.some((p) => strictlyInside(a, p));
+}
+
+/** 点が輪郭の辺の上にあるか（ほぼ一直線で、端の間） */
+function onBoundary(polygon: readonly LatLng[], point: LatLng): boolean {
+  const EPS = 1e-12;
+  for (let i = 0; i < polygon.length; i++) {
+    const [lat1, lng1] = polygon[i];
+    const [lat2, lng2] = polygon[(i + 1) % polygon.length];
+    const cross = (lat2 - lat1) * (point[1] - lng1) - (lng2 - lng1) * (point[0] - lat1);
+    if (Math.abs(cross) > EPS) continue;
+    const withinLat = point[0] >= Math.min(lat1, lat2) - EPS && point[0] <= Math.max(lat1, lat2) + EPS;
+    const withinLng = point[1] >= Math.min(lng1, lng2) - EPS && point[1] <= Math.max(lng1, lng2) + EPS;
+    if (withinLat && withinLng) return true;
+  }
+  return false;
+}

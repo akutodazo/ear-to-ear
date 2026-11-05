@@ -378,7 +378,7 @@ a:focus-visible {
   display: block;
 }
 
-/* ===== 地図 `/`（L1。11-04 夜の本人決定: 航空写真と輪郭が主役、下の帯で画面を切り替える） ===== */
+/* ===== 地図 `/`（L1。11-04 夜の本人決定: 航空写真と輪郭が主役、下の帯で画面を切り替える。11-05: 最初の視線を畑に） ===== */
 .home-main {
   padding: 0;
 }
@@ -390,11 +390,12 @@ a:focus-visible {
   min-height: 480px;
 }
 
+/* 上の帯: 小さく。地区の切り替えと「写真を送る」だけ */
 .topbar {
   display: flex;
   align-items: center;
   gap: var(--space-8);
-  height: 60px;
+  height: 56px;
   padding: 0 var(--space-16);
   border-bottom: 1px solid var(--border);
   background: var(--background-2);
@@ -402,7 +403,7 @@ a:focus-visible {
 
 .topbar-brand {
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 1rem;
   color: var(--brand);
   white-space: nowrap;
 }
@@ -458,66 +459,78 @@ a:focus-visible {
 }
 
 .leaflet-control-attribution {
-  font-size: 12px;
-  background: rgba(255, 254, 249, 0.85);
+  font-size: 11px;
+  background: rgba(255, 254, 249, 0.8);
 }
 
-/* 札: 暗い地の上に白文字（航空写真の上で読める。design-system §3-4） */
-.map-label {
-  background: none;
-  border: 0;
+/* 札: 箱に入れず、影つきの白い文字だけ（航空写真を覆わない。11-05）。Leaflet の .leaflet-marker-icon より強くする */
+.field-map .map-label {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 0;
   width: max-content !important;
   height: auto !important;
+  border: 0;
+  background: none;
   transform: translate(-50%, -50%);
   pointer-events: none;
+  color: #ffffff;
+  text-align: center;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-shadow:
+    0 0 2px rgba(0, 0, 0, 0.95),
+    0 0 2px rgba(0, 0, 0, 0.95),
+    0 0 5px rgba(0, 0, 0, 0.7),
+    0 1px 2px rgba(0, 0, 0, 0.9);
 }
 
-.map-label-box {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: rgba(20, 24, 28, 0.78);
-  color: #ffffff;
+.map-label-id {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.map-label-name {
   font-size: 14px;
   font-weight: 700;
-  line-height: 1.35;
-  white-space: nowrap;
 }
 
-.map-label-ready .map-label-line:not(.map-label-id) {
-  color: var(--accent);
+.map-label-status {
+  font-size: 12px;
+  font-weight: 700;
 }
 
-.map-label-done .map-label-line:not(.map-label-id) {
-  color: #d2d8de;
+.map-label-status-ready {
+  color: #eef9c6;
+}
+
+.map-label-status-done {
+  color: #d6dbd3;
 }
 
 .map-label-benchmark {
-  padding: 1px 8px;
-  border: 1px solid #8a6a12;
-  border-radius: 4px;
-  background: var(--wheat);
-  color: #5a4408;
-  font-size: 13px;
+  color: var(--wheat);
+  font-size: 11px;
   font-weight: 700;
-  line-height: 1.3;
+  letter-spacing: 0.08em;
 }
 
+/* 未確定の写真あり: 番号の横の小さな白い点 */
 .map-label-dot {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  width: 12px;
-  height: 12px;
-  border: 1px solid #8a6a12;
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 4px;
   border-radius: 50%;
-  background: var(--wheat);
+  background: #ffffff;
+  box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.6);
+  vertical-align: 1px;
+}
+
+.map-label-selected .map-label-name {
+  font-size: 16px;
 }
 
 .map-parcel {
@@ -530,8 +543,9 @@ a:focus-visible {
   stroke-width: 5;
 }
 
-/* 縮小しているときは札の名前を隠して番号だけに（重なりを減らす。目安の札と判断は残す。選んでいる圃場は全部出す） */
-.map-zoom-compact .map-label:not(.map-label-selected) .map-label-name {
+/* 縮小しているときは名前と判断を隠し、番号（と目安）だけに。選んでいる畑は全部出す */
+.map-zoom-compact .map-label:not(.map-label-selected) .map-label-name,
+.map-zoom-compact .map-label:not(.map-label-selected) .map-label-status {
   display: none;
 }
 
@@ -567,44 +581,102 @@ a:focus-visible {
   z-index: 500;
   padding: 0 6px;
   border-radius: 4px;
-  background: rgba(255, 254, 249, 0.85);
-  font-size: 12px;
+  background: rgba(255, 254, 249, 0.8);
+  font-size: 11px;
   color: var(--text-2);
   pointer-events: none;
 }
 
-/* 選んだ圃場の板 */
+/* 選んだ圃場の板: 左に最新の写真、右に番号・名前・判断 */
 .dock {
   position: absolute;
-  left: var(--space-16);
-  right: var(--space-16);
-  bottom: var(--space-16);
+  left: var(--space-8);
+  right: var(--space-8);
+  bottom: var(--space-8);
   z-index: 500;
   display: flex;
   flex-direction: column;
   gap: var(--space-8);
-  padding: var(--space-16);
+  padding: var(--space-8);
   border-radius: var(--radius-16);
   background: var(--surface);
   box-shadow: 0 8px 24px rgba(21, 41, 29, 0.18);
 }
 
-.dock-head {
+.dock-body {
   display: flex;
   align-items: flex-start;
   gap: var(--space-8);
 }
 
-.dock-head .stack-tight {
+.dock-photo {
+  position: relative;
+  flex: none;
+  width: 96px;
+  height: 96px;
+  overflow: hidden;
+  border-radius: var(--radius-8);
+  background: var(--background-2);
+}
+
+.dock-photo img {
+  object-fit: cover;
+}
+
+.dock-photo-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-3);
+  font-size: 0.8rem;
+}
+
+.dock-text {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 2px;
+  line-height: 1.35;
 }
 
 .dock-title {
-  font-size: 1.1rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.dock-id {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-2);
+}
+
+.dock-benchmark {
+  margin-left: var(--space-8);
+  padding: 0 6px;
+  border: 1px solid #8a6a12;
+  border-radius: 4px;
+  color: #5a4408;
+  background: var(--wheat);
+  font-size: 0.8rem;
+  font-weight: 700;
+  vertical-align: 2px;
+}
+
+.dock-status {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.dock-photo-line {
+  font-size: 0.85rem;
+  color: var(--text-2);
 }
 
 .dock-close {
+  flex: none;
   width: 44px;
   height: 44px;
   border: 1px solid var(--border);
@@ -615,58 +687,53 @@ a:focus-visible {
   cursor: pointer;
 }
 
-.badge-benchmark {
-  margin-left: var(--space-8);
-  border: 1px solid #8a6a12;
-  background: var(--wheat);
-  color: #5a4408;
-}
-
-/* 凡例（何も選んでいないとき） */
+/* 凡例（何も選んでいないとき）: 左下に小さく */
 .legend {
   position: absolute;
-  left: var(--space-16);
-  right: var(--space-16);
-  bottom: var(--space-16);
+  left: var(--space-8);
+  bottom: var(--space-8);
   z-index: 500;
   display: flex;
   flex-wrap: wrap;
-  gap: 4px var(--space-16);
+  gap: 2px 10px;
+  max-width: calc(100% - 16px);
   margin: 0;
-  padding: var(--space-8) var(--space-16);
-  border-radius: var(--radius-8);
-  background: rgba(255, 254, 249, 0.92);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255, 254, 249, 0.88);
   list-style: none;
-  font-size: 0.85rem;
+  font-size: 12px;
+  color: var(--text-2);
 }
 
 .legend li {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .legend-swatch {
   display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 1px solid var(--text-2);
-  border-radius: 3px;
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid #8a9187;
+  border-radius: 2px;
   background: var(--surface);
 }
 
 .legend-ready {
+  border-color: #9bb04a;
   background: var(--accent);
 }
 
 .legend-done {
   border-style: dashed;
-  background: rgba(90, 102, 112, 0.35);
+  background: rgba(37, 51, 38, 0.4);
 }
 
 .legend-benchmark {
-  border-color: #8a6a12;
-  background: var(--wheat);
+  border-color: #c9a22e;
+  border-width: 2px;
 }
 
 /* 下の帯（地図／見比べる／刈る順番） */
@@ -674,28 +741,22 @@ a:focus-visible {
   display: flex;
   justify-content: space-evenly;
   gap: var(--space-8);
-  padding: 6px var(--space-16) max(6px, env(safe-area-inset-bottom));
+  padding: 4px var(--space-16) max(4px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--border);
   background: var(--background-2);
 }
 
 .app-nav-item {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   min-width: 96px;
-  min-height: 56px;
+  min-height: 48px;
   border-radius: var(--radius-8);
   color: var(--text-2);
   font-size: 0.95rem;
   font-weight: 700;
   text-decoration: none;
-}
-
-.app-nav-item small {
-  font-size: 0.7rem;
-  font-weight: 400;
 }
 
 .app-nav-current {
@@ -704,12 +765,12 @@ a:focus-visible {
 }
 
 .app-nav-disabled {
-  opacity: 0.5;
+  opacity: 0.45;
 }
 
 @media (min-width: 960px) {
   .dock {
     left: auto;
-    width: 360px;
+    width: 400px;
   }
 }
