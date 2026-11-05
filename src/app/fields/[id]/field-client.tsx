@@ -1,8 +1,9 @@
 "use client";
 
 /**
- * /fields/[id] の配線（11-05: 見比べる）。目安の畑の写真を上に固定し、この畑の写真を縦に送る。
- * 判断を残す（useFieldStatus）と昨年の同じ頃（last-season）もここで配る（AGENTS.md §4）
+ * /fields/[id] の配線（11-05: 見比べる）。2 つの比べ方を上の段に置く:
+ * 「同じ日に撮った別の畑と」（相手の既定は目安。日をまたいで比べない）と「この畑の前の日と」。2 枚は上下に重ね、境目を指で動かす。
+ * 下はこの畑の写真の流れ（根拠を選ぶ）、判断を残す（useFieldStatus）、昨年の同じ頃（last-season）、履歴（AGENTS.md §4）
  */
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -12,11 +13,13 @@ import seasonsData from "@/data/seasons.json";
 import type { Benchmark, Field } from "@/types";
 import { useFieldPhotos } from "@/hooks/use-field-photos";
 import { useFieldStatus } from "@/hooks/use-field-status";
-import { useLatestPhoto } from "@/hooks/use-latest-photo";
+import { useDistrictPhotos } from "@/hooks/use-district-photos";
 import { benchmarkFor, monthDayJst } from "@/services/parcel-geometry";
 import { isoToJstDate, lastSeasonFor, lastSeasonLines, type SeasonDates, type SeasonRecord } from "@/services/last-season";
+import { daysOf, indexByDay, resolveSameDay, resolveSameField } from "@/services/photo-compare";
 import { statusLabel } from "@/services/status-view";
-import { BenchmarkPane } from "@/components/compare/benchmark-pane";
+import { CompareControls, type CompareMode } from "@/components/compare/compare-controls";
+import { SplitViewer, type SlotPhoto } from "@/components/compare/split-viewer";
 import { FieldSwitcher } from "@/components/compare/field-switcher";
 import { PhotoStream } from "@/components/compare/photo-stream";
 import { LastSeasonNote } from "@/components/compare/last-season-note";
@@ -24,7 +27,7 @@ import { StatusPanel } from "@/components/compare/status-panel";
 import { StatusActions } from "@/components/compare/status-actions";
 import { StatusHistory } from "@/components/compare/status-history";
 import { AppNav } from "@/components/app-nav";
-import { IconMap, IconPen } from "@/components/icons";
+import { IconMap, IconPen, IconPhoto } from "@/components/icons";
 
 const fields: Field[] = fieldsData;
 const benchmarks: Benchmark[] = benchmarksData;
@@ -34,14 +37,40 @@ const SEASON = "2026";
 
 export function FieldClient({ field }: { field: Field }) {
   const districtFields = useMemo(() => fields.filter((f) => f.district === field.district), [field.district]);
+  const districtIds = useMemo(() => districtFields.map((f) => f.id), [districtFields]);
+  const fieldsById = useMemo(() => Object.fromEntries(districtFields.map((f) => [f.id, f])) as Record<string, Field>, [districtFields]);
   const benchmarkId = benchmarkFor(benchmarks, SEASON, field.district);
-  const benchmarkField = districtFields.find((f) => f.id === benchmarkId) ?? null;
-  const isBenchmark = benchmarkId === field.id;
 
   const photos = useFieldPhotos(field.id);
-  const bench = useLatestPhoto(benchmarkField && !isBenchmark ? benchmarkField.id : null);
+  const district = useDistrictPhotos(districtIds);
   const status = useFieldStatus(field.id, photos.confirmedPhotoIds);
   const [writing, setWriting] = useState(false);
+
+  // 比べ方の選択。日付・相手・前の日は「希望」として持ち、実際に出せる形には Service が直す
+  const [mode, setMode] = useState<CompareMode>("same-day");
+  const [wanted, setWanted] = useState<{ date?: string; partner?: string; earlier?: string }>({});
+  const days = useMemo(() => indexByDay(district.byField), [district.byField]);
+  const ownDays = useMemo(() => daysOf(days, field.id), [days, field.id]);
+  const sameDay = useMemo(() => resolveSameDay(days, field.id, wanted, benchmarkId, districtIds), [days, field.id, wanted, benchmarkId, districtIds]);
+  const sameField = useMemo(() => resolveSameField(days, field.id, wanted), [days, field.id, wanted]);
+  const date = mode === "same-day" ? sameDay.date : sameField.date;
+  const dayOf = (takenAt: string | null) => (takenAt === null ? undefined : days.find((d) => d.takenAt === takenAt));
+  const slot = (fieldId: string, takenAt: string | null): SlotPhoto | null => {
+    const photo = dayOf(takenAt)?.photos[fieldId];
+    if (!photo) return null;
+    return { photoId: photo.id, fieldId, fieldName: fieldsById[fieldId]?.name ?? fieldId, takenAt: photo.takenAt, benchmark: fieldId === benchmarkId };
+  };
+  const bottom = slot(field.id, date);
+  const top = mode === "same-day" ? (sameDay.partnerId === null ? null : slot(sameDay.partnerId, sameDay.date)) : slot(field.id, sameField.earlier);
+  const stageNote = district.loading
+    ? "写真を読み込んでいます"
+    : bottom === null
+      ? "この畑の写真はまだありません"
+      : top === null
+        ? mode === "same-day"
+          ? "この日に写真がある畑は、この畑だけです"
+          : "この畑の写真は 1 日分だけです"
+        : null;
 
   const live = useMemo(() => status.history.filter((e) => e.revokedAt === null), [status.history]);
   const latestJudgment = useMemo(
@@ -81,9 +110,36 @@ export function FieldClient({ field }: { field: Field }) {
         </Link>
         <FieldSwitcher fields={districtFields} currentId={field.id} benchmarkId={benchmarkId} />
       </header>
-      <div className={open ? "bench-wrap bench-wrap-compact" : "bench-wrap"}>
-        {isBenchmark ? <BenchmarkPane kind="self" field={field} /> : benchmarkField ? <BenchmarkPane kind="other" field={benchmarkField} latest={bench} /> : <BenchmarkPane kind="none" />}
-      </div>
+      <section className={open ? "stage stage-compact" : "stage"} aria-label="見比べる">
+        <CompareControls
+          mode={mode}
+          onMode={setMode}
+          days={ownDays}
+          date={date}
+          onDate={(d) => setWanted((w) => ({ ...w, date: d }))}
+          partners={sameDay.options}
+          partnerId={sameDay.partnerId}
+          fieldsById={fieldsById}
+          benchmarkId={benchmarkId}
+          onPartner={(id) => setWanted((w) => ({ ...w, partner: id }))}
+          earlierOptions={sameField.earlierOptions}
+          earlier={sameField.earlier}
+          onEarlier={(d) => setWanted((w) => ({ ...w, earlier: d }))}
+        />
+        {top && bottom ? (
+          <SplitViewer top={top} bottom={bottom} />
+        ) : (
+          <div className="stage-empty">
+            <IconPhoto />
+            {stageNote}
+            {district.failed.length > 0 && (
+              <button type="button" className="button button-small" onClick={district.refresh}>
+                もう一度読み込む
+              </button>
+            )}
+          </div>
+        )}
+      </section>
       <main className="compare-body">
         <section className="target">
           <div className="target-head">

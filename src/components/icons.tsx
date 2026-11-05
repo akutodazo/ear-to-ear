@@ -96,3 +96,24 @@ export function IconPen(props: Props) {
     </Svg>
   );
 }
+
+/** 同じ日の別の畑と（並んだ 2 つの区画） */
+export function IconFields(props: Props) {
+  return (
+    <Svg {...props}>
+      <path d="M3 8l5-3 4 2v11l-4-2-5 3z" />
+      <path d="M12 7l4-2 5 3v11l-5-3-4 2" />
+    </Svg>
+  );
+}
+
+/** この畑の前の日と（暦） */
+export function IconCalendar(props: Props) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18M8 3v4M16 3v4" />
+      <path d="M8 15h3M13 15h3" />
+    </Svg>
+  );
+}
