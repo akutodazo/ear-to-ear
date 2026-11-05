@@ -14,7 +14,7 @@
 
 ## 2. 頼みたいもの
 
-### 2-1. D1 の表（`migrations/0002_harvest_orders.sql`）
+### 2-1. D1 の表（`migrations/0004_harvest_orders.sql`。main に `0002_handover`・`0003_settings` があるので次の番号。11-05 夜に直した）
 判断（`field_status_events`）と同じく、**上書きせず 1 行ずつ足す**形を提案する。経緯が残り、来年の引き継ぎ（5 段目）でも「いつ誰の端末が確定したか」をたどれる。
 
 ```sql
@@ -85,7 +85,7 @@ interface SavedOrder {
 2. **パスの名前**。提案は `/api/orders`（地区名を URL の途中に入れると日本語の扱いが面倒なので、クエリにする）
 3. **`SavedOrder` を共有の型（`src/types/`）に移すか**。移すなら共有ファイルの変更なので両方の承認が要る（AGENTS.md §2）。移さないなら Worker 側に同じ形を書く
 4. **検査の関数（§2-3）をどちらが書くか**
-5. 確定したときに LINE に送るのは 4 段目（L8）の話で、この依頼には入れない。確定の行が足されたことを L8 が知る方法（同じハンドラの中で送るか、別にするか）は L8 のときに決める
+5. 確定したときに LINE に送るのは L8 の話で、この依頼には入れない。いまは画面の「LINE に 1 枚」で人が端末の共有から送る。判断の LINE の通知（#150、`waitUntil` で 1 通）ができたので、確定の行が足されたときも同じ形で送れるか（同じハンドラの中で送るか、別にするか）は、この API の後で決める（11-05 夜に追記）
 
 ## 5. 本人（ブラウザ側）がすること
 - `src/repositories/implementations/http-harvest-order-repository.ts` を足し、`create-harvest-order-repository.ts` を HTTP に差し替える（端末の中の実体はテスト用に残す）
