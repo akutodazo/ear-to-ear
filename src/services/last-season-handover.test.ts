@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { HandoverNote } from "@/types";
 import type { SeasonRecord } from "./last-season";
-import { demoToday, isNearLastSeason, lastSeasonMemoView, lastSeasonNoteFor } from "./last-season-handover";
+import { demoToday, demoTodayLabel, isNearLastSeason, lastSeasonMemoView, lastSeasonNoteFor } from "./last-season-handover";
 
 // 来年の引き継ぎ（5 段目、11-05 本人決定）。昨年のメモを、昨年の判断の日の前後だけ出す。純粋関数
 const note = (fieldId: string, season: string): HandoverNote => ({
@@ -104,5 +104,12 @@ describe("lastSeasonMemoView（昨年のメモを画面の形に）", () => {
 
   it("文が無ければ 1 文目は null", () => {
     expect(lastSeasonMemoView({ ...note("A-03", "2025"), blocks: [{ text: " ", cites: [] }] }).first).toBeNull();
+  });
+});
+
+describe("demoTodayLabel（今日を差し替えているときの表示。精査 4 回目 #5）", () => {
+  it("月日と、デモで差し替えていること", () => {
+    expect(demoTodayLabel("2026-07-20")).toBe("7/20 として表示中（デモ）");
+    expect(demoTodayLabel("2026-11-05")).toBe("11/5 として表示中（デモ）");
   });
 });

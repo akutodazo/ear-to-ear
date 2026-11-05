@@ -76,6 +76,10 @@ function originLabel(note: HandoverNote, kind: "status" | "photo", id: string): 
   return m ? `${m[1]}/${Number(m[2])}/${Number(m[3])} の${KIND_WORD[kind]}` : `${note.season}年の${KIND_WORD[kind]}`;
 }
 
+export function demoTodayLabel(_date: string): string {
+  throw new Error("未実装");
+}
+
 /** 昨年のメモを画面の形にする（文と出所の言葉。リンクは持たない） */
 export function lastSeasonMemoView(note: HandoverNote): LastSeasonMemoView {
   const sentences = handoverSentences(note).map((s) => ({ text: s.text, labels: s.sources.map((src) => originLabel(note, src.kind, src.id)), uncited: s.uncited }));
