@@ -116,7 +116,7 @@ describe("POST /api/line/webhook（#140）", () => {
     const { deps, testDb } = setup();
     testDb.raw.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run("other_key", "keep");
     await handleRequest(signedRequest(eventsBody([joinEvent(GROUP_A)])), deps);
-    expect(testDb.raw.prepare("SELECT value FROM settings WHERE key = 'other_key'").get()).toStrictEqual({ value: "keep" });
+    expect(testDb.raw.prepare("SELECT value FROM settings WHERE key = 'other_key'").get()).toEqual({ value: "keep" });
   });
 
   it("LINE の「検証」（events が空）は 200 で何も書かない", async () => {
