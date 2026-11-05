@@ -1942,3 +1942,26 @@ a:focus-visible {
 .order-row .order-missing {
   font-size: 0.78rem;
 }
+
+/* 長押しで並べ替え（プレイリストのように）: つかんだ行は浮き、ほかの行はよける */
+ol.order-group .order-row {
+  transition: transform 160ms ease, box-shadow 160ms ease;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+ol.order-group .order-row-dragging {
+  transition: box-shadow 160ms ease;
+  border-color: var(--brand);
+  box-shadow: 0 10px 24px rgba(21, 41, 29, 0.3);
+}
+
+.order-group-dragging .order-row:not(.order-row-dragging) {
+  opacity: 0.92;
+}
+
+.order-thumb img {
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
