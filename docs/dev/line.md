@@ -1,0 +1,53 @@
+# L8 の LINE のお知らせ（人の手順と demo の台本）
+
+状態: 11-05 先輩。コードは #143〜#147 と webhook（#140）・通知（#141）の PR。ここに書くのは **人がする作業**（LINE 側の設定・秘密の登録・グループ）と、2 人で見せる台本。決定は `docs/decisions.md` の 11-05。
+
+## 仕組み（Workers だけ）
+```
+[LINE のグループ] ←── push（1 通）── [Worker] 判断を D1 に記録 → 応答 → waitUntil で送る
+       │ 公式アカウントを招く                ↑ settings の line_group_id を読む・月の回数を数える
+       └─ join ──→ [LINE] ──webhook──→ [Worker] POST /api/line/webhook（署名を確かめ、グループ ID を保存）
+```
+- 送るきっかけは、判断を残した（`POST /api/fields/:id/status`）・取り消した（`DELETE /api/status-events/:id`）ときだけ
+- 本文は圃場番号・状態・理由の言葉・日本時間・圃場ページの URL。**メモ・写真・撮影位置は送らない**
+- 送れなくても判断の記録は成功する（合格条件 14）。月の送信は `LINE_STOP_AT`（180 回）の手前で止める
+- 秘密が無い・`LINE_ENABLED` が `false` のときは、送らず、webhook は 503（本体は動く）
+
+## 1. LINE 側の設定（人、15 分）
+1. LINE の公式アカウントを作る（LINE Official Account Manager）。名前は架空のもの（例「ear-to-ear お知らせ（試作）」）。実在の委員会・人の名前を入れない
+2. アカウントの設定で **Messaging API を有効にする**（LINE Developers のプロバイダーを選ぶ・作る）
+3. 応答の設定: **応答メッセージ OFF・あいさつメッセージ OFF・Webhook ON**。アカウントの設定で **グループ・複数人トークへの参加を許可する** を ON
+4. LINE Developers のチャネルで、**チャネルシークレット**（チャネル基本設定）と **チャネルアクセストークン（長期）**（Messaging API 設定）を確かめる。**会話・Issue・PR に貼らない**
+
+## 2. 秘密の登録（人。Claude は手元からクラウドに触らない）
+本体のフォルダで、値は聞かれたときに貼る:
+```
+npx wrangler secret put LINE_CHANNEL_SECRET --env dev
+npx wrangler secret put LINE_CHANNEL_ACCESS_TOKEN --env dev
+```
+demo でも使うときは `--env demo` で同じく。止めたいときは `LINE_ENABLED` に `false` を入れる（秘密を消さなくてよい）。
+
+## 3. Webhook の URL（人）
+LINE Developers の Messaging API 設定で:
+- Webhook URL: `https://harvest-share-dev.ryokou1119.workers.dev/api/line/webhook`
+- 「検証」を押して **成功**（200）になること。503 なら秘密が入っていない、401 ならシークレットが違う
+- 「Webhook の利用」を ON
+
+## 4. 2 人のグループ（人）
+1. 先輩と本人が、公式アカウントを友だちに追加する
+2. LINE で 2 人だけのグループを作る（名前は架空。例「収穫委員会（試作）」）
+3. グループに公式アカウントを招く → LINE から join が届き、Worker がグループ ID を `settings` に保存する
+4. 確かめ: dev で判断を 1 つ残し、グループに届けば準備完了
+
+## 5. demo の台本（2 人、1 分）
+1. 先輩のスマホで LINE のグループを開いておく（画面を映す）
+2. 本人が dev の `/fields/A-03` で「収穫可能」を理由（穂の色・黄色い穂の割合）付きで残す
+3. 数秒でグループに「A-03 収穫可能／理由: …／日時／URL」が届く。URL をタップすると同じ圃場のページが開く
+4. 本人が今の判断を取り消す →「A-03「収穫可能」の判断を取り消しました」が届く
+5. 「メモに書いたことは LINE には出ない」ことを見せる（メモ付きで残しても本文に無い）
+
+## 弱点（確かめていないこと）
+- **数え方**: LINE はグループの人数ぶん数える（2 人のグループに 1 回送ると 2 通）。`LINE_STOP_AT` は送った回数で数えるので、2 人なら実際は 360 通ぶんまで送ろうとする。月 200 通の無料枠を超えると LINE が 429 を返す（記録は成功する）。直すなら共有の `src/config.ts` の値を変えるか、人数を掛ける（本人に確認）
+- **無料枠の月の区切り**は日本時間の月と見ている（推定）
+- **グループが 2 つ以上**: 最後に join したグループにだけ送る（`settings` は 1 行）
+- 公式アカウントがグループから外されても `settings` は消えない（送ると LINE がエラーを返すだけ）
