@@ -113,7 +113,7 @@ export function decodeText(bytes: Uint8Array): string | null {
 
 /** 秘密の値を入れる名前（docs/spec.md §6・§11 の Secret） */
 const SECRET_NAMES =
-  "(?:MEMBER_PASSPHRASE|ADMIN_PASSPHRASE|SESSION_SECRET|ANTHROPIC_API_KEY|CLAUDE_API_KEY|CLOUDFLARE_API_TOKEN)";
+  "(?:MEMBER_PASSPHRASE|ADMIN_PASSPHRASE|SESSION_SECRET|ANTHROPIC_API_KEY|CLAUDE_API_KEY|CLOUDFLARE_API_TOKEN|LINE_CHANNEL_ACCESS_TOKEN|LINE_CHANNEL_SECRET)";
 /**
  * `名前=値`（.dev.vars の形）。値は8文字以上で、空白・引用符・バッククォート（文書のコードの終わり）・<>（見本の印）を含まない。
  * 比べるだけの `===`、環境からの入れ直し（`env.`・`c.env.`・`process.env.`）、シェルの `${…}`・`$(…)` は値ではないので止めない
