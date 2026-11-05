@@ -77,16 +77,15 @@ export function resolveSameDay(
 }
 
 /**
- * この畑の前の日と。下は選んだ日（既定は最新）、上はその前の日（指定があれば、選んだ日と違う日に限って使う）
+ * この畑の前の日と。下は選んだ日（既定は最新）、上はそれより前の日だけ（指定があればそれ、無ければ直前の日）。
+ * 選んだ日がいちばん古ければ上は null（後の日を「前の日」として出さない。精査 3 回目 #3）
  */
 export function resolveSameField(days: readonly CompareDay[], selfId: string, wanted: { date?: string; earlier?: string }): SameFieldChoice {
   const own = daysOf(days, selfId);
   if (own.length === 0) return { date: null, earlier: null, earlierOptions: [] };
   const date = wanted.date !== undefined && own.includes(wanted.date) ? wanted.date : own[0];
-  const earlierOptions = own.filter((d) => d !== date);
-  const earlier =
-    wanted.earlier !== undefined && earlierOptions.includes(wanted.earlier)
-      ? wanted.earlier
-      : (earlierOptions.find((d) => d < date) ?? earlierOptions[0] ?? null);
+  // own は新しい順なので、そのまま「選んだ日より前の日」を新しい順に並べたものになる
+  const earlierOptions = own.filter((d) => d < date);
+  const earlier = wanted.earlier !== undefined && earlierOptions.includes(wanted.earlier) ? wanted.earlier : (earlierOptions[0] ?? null);
   return { date, earlier, earlierOptions };
 }

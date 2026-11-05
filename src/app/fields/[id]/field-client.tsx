@@ -2,7 +2,8 @@
 
 /**
  * /fields/[id] の配線（11-05: 見比べる）。2 つの比べ方を上の段に置く:
- * 「同じ日に撮った別の畑と」（相手の既定は目安。日をまたいで比べない）と「この畑の前の日と」。2 枚は上下に重ね、境目を指で動かす。
+ * 「同じ日に撮った別の畑と」（相手の既定は目安。日をまたいで比べない。上下 2 つの窓）と「この畑の前の日と」（重ねる）。境目を指で動かす。
+ * 上の段は本文と一緒に送り、札の段は流れ去って 2 枚の写真だけが上に残る（精査 3 回目 #1）。
  * 下はこの畑の写真の流れ（根拠を選ぶ）、判断を残す（useFieldStatus）、昨年の同じ頃（last-season）、履歴（AGENTS.md §4）
  */
 import Link from "next/link";
@@ -17,9 +18,10 @@ import { useDistrictPhotos } from "@/hooks/use-district-photos";
 import { benchmarkFor, monthDayJst } from "@/services/parcel-geometry";
 import { isoToJstDate, lastSeasonFor, lastSeasonLines, type SeasonDates, type SeasonRecord } from "@/services/last-season";
 import { daysOf, indexByDay, resolveSameDay, resolveSameField } from "@/services/photo-compare";
+import { monthDay } from "@/services/last-season";
 import { statusLabel } from "@/services/status-view";
 import { CompareControls, type CompareMode } from "@/components/compare/compare-controls";
-import { SplitViewer, type SlotPhoto } from "@/components/compare/split-viewer";
+import { SplitViewer, type PartnerPicker, type SlotPhoto } from "@/components/compare/split-viewer";
 import { FieldSwitcher } from "@/components/compare/field-switcher";
 import { PhotoStream } from "@/components/compare/photo-stream";
 import { LastSeasonNote } from "@/components/compare/last-season-note";
@@ -62,15 +64,30 @@ export function FieldClient({ field }: { field: Field }) {
   };
   const bottom = slot(field.id, date);
   const top = mode === "same-day" ? (sameDay.partnerId === null ? null : slot(sameDay.partnerId, sameDay.date)) : slot(field.id, sameField.earlier);
+  // 失敗と「写真が無い」を取り違えない（精査 3 回目 #6）。この畑に写真が 1 枚も無ければ上の段ごと出さない
+  const ownFailed = district.failed.includes(field.id);
+  const showStage = district.loading || ownFailed || ownDays.length > 0;
   const stageNote = district.loading
     ? "写真を読み込んでいます"
-    : bottom === null
-      ? "この畑の写真はまだありません"
+    : ownFailed
+      ? "写真を読み込めませんでした"
       : top === null
         ? mode === "same-day"
-          ? "この日に写真がある畑は、この畑だけです"
-          : "この畑の写真は 1 日分だけです"
+          ? `${date ? monthDay(date) : "この日"} に撮った別の畑の写真はありません`
+          : "前の日の写真はありません"
         : null;
+  // 相手は上の写真の帯から選ぶ。並べるのはその日に撮った別の畑だけ（薄い札を並べない。精査 3 回目 #5）
+  const picker: PartnerPicker | undefined =
+    mode === "same-day" && sameDay.date !== null && sameDay.partnerId !== null
+      ? {
+          title: `${monthDay(sameDay.date)} に撮った畑`,
+          options: sameDay.options
+            .filter((o) => o.enabled)
+            .map((o) => ({ fieldId: o.fieldId, label: `${o.fieldId} ${fieldsById[o.fieldId]?.name ?? ""}`.trim(), benchmark: o.fieldId === benchmarkId })),
+          currentId: sameDay.partnerId,
+          onPick: (id) => setWanted((w) => ({ ...w, partner: id })),
+        }
+      : undefined;
 
   const live = useMemo(() => status.history.filter((e) => e.revokedAt === null), [status.history]);
   const latestJudgment = useMemo(
@@ -110,37 +127,34 @@ export function FieldClient({ field }: { field: Field }) {
         </Link>
         <FieldSwitcher fields={districtFields} currentId={field.id} benchmarkId={benchmarkId} />
       </header>
-      <section className={open ? "stage stage-compact" : "stage"} aria-label="見比べる">
-        <CompareControls
-          mode={mode}
-          onMode={setMode}
-          days={ownDays}
-          date={date}
-          onDate={(d) => setWanted((w) => ({ ...w, date: d }))}
-          partners={sameDay.options}
-          partnerId={sameDay.partnerId}
-          fieldsById={fieldsById}
-          benchmarkId={benchmarkId}
-          onPartner={(id) => setWanted((w) => ({ ...w, partner: id }))}
-          earlierOptions={sameField.earlierOptions}
-          earlier={sameField.earlier}
-          onEarlier={(d) => setWanted((w) => ({ ...w, earlier: d }))}
-        />
-        {top && bottom ? (
-          <SplitViewer top={top} bottom={bottom} />
-        ) : (
-          <div className="stage-empty">
-            <IconPhoto />
-            {stageNote}
-            {district.failed.length > 0 && (
-              <button type="button" className="button button-small" onClick={district.refresh}>
-                もう一度読み込む
-              </button>
-            )}
-          </div>
-        )}
-      </section>
       <main className="compare-body">
+        {showStage && (
+          <section className={open ? "stage stage-compact" : "stage"} aria-label="見比べる">
+            <CompareControls
+              mode={mode}
+              onMode={setMode}
+              days={ownDays}
+              date={date}
+              onDate={(d) => setWanted((w) => ({ ...w, date: d }))}
+              earlierOptions={sameField.earlierOptions}
+              earlier={sameField.earlier}
+              onEarlier={(d) => setWanted((w) => ({ ...w, earlier: d }))}
+            />
+            {top && bottom ? (
+              <SplitViewer kind={mode === "same-day" ? "stack" : "overlay"} top={top} bottom={bottom} topTag={mode === "same-field" ? "前の日" : undefined} picker={picker} />
+            ) : (
+              <div className="stage-empty">
+                <IconPhoto />
+                {stageNote}
+                {district.failed.length > 0 && (
+                  <button type="button" className="button button-small" onClick={district.refresh}>
+                    もう一度読み込む
+                  </button>
+                )}
+              </div>
+            )}
+          </section>
+        )}
         <section className="target">
           <div className="target-head">
             <h1 className="target-title">

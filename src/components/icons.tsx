@@ -117,3 +117,12 @@ export function IconCalendar(props: Props) {
     </Svg>
   );
 }
+
+/** 一覧を開く（下向きの山） */
+export function IconChevron(props: Props) {
+  return (
+    <Svg {...props}>
+      <path d="M6 9l6 6 6-6" />
+    </Svg>
+  );
+}

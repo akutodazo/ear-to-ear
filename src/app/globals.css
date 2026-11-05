@@ -918,7 +918,7 @@ a:focus-visible {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--space-8) var(--space-16) var(--space-24);
+  padding: 0 var(--space-16) var(--space-24);
   display: flex;
   flex-direction: column;
   gap: var(--space-16);
@@ -1110,10 +1110,10 @@ a:focus-visible {
 }
 
 .ref-toggle {
-  min-height: 40px;
-  padding: 0 12px;
+  min-height: 44px;
+  padding: 0 14px;
   border: 1.5px solid var(--border-strong);
-  border-radius: 20px;
+  border-radius: 22px;
   background: var(--surface);
   color: var(--text-1);
   font: inherit;
@@ -1251,12 +1251,15 @@ a:focus-visible {
 }
 
 /* ===== 見比べる: 上の段（比べ方・撮影日・相手の札と、上下に重ねた 2 枚）11-05 ===== */
+/* 上の段は本文と一緒に送る。札の段は流れ去り、2 枚の写真（.split）だけが上に残る（精査 3 回目 #1） */
 .stage {
-  flex: none;
-  display: flex;
-  flex-direction: column;
+  display: contents;
+}
+
+.stage > .controls,
+.stage > .stage-empty {
+  margin: 0 calc(-1 * var(--space-16));
   background: var(--background-2);
-  border-bottom: 1px solid var(--border);
 }
 
 .controls {
@@ -1318,10 +1321,10 @@ a:focus-visible {
   align-items: center;
   gap: 4px;
   flex: none;
-  min-height: 40px;
-  padding: 0 12px;
+  min-height: 44px;
+  padding: 0 14px;
   border: 1.5px solid var(--border);
-  border-radius: 20px;
+  border-radius: 22px;
   background: var(--surface);
   color: var(--text-2);
   font: inherit;
@@ -1343,18 +1346,36 @@ a:focus-visible {
 
 /* 2 枚を上下に重ねる枠。境目は .split-handle */
 .split {
-  position: relative;
-  width: 100%;
-  height: 44dvh;
-  min-height: 220px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  flex: none;
+  margin: 0 calc(-1 * var(--space-16));
+  height: 38dvh;
+  min-height: 200px;
   overflow: hidden;
   background: #1c2420;
   touch-action: pan-x pinch-zoom;
+  /* 下に送る本文と分ける（精査 3 回目 #9） */
+  box-shadow: 0 6px 12px rgba(21, 41, 29, 0.22);
 }
 
 .stage-compact .split {
-  height: 26dvh;
-  min-height: 160px;
+  height: 24dvh;
+  min-height: 150px;
+}
+
+/* 同じ日の別の畑: 上下 2 つの窓に、それぞれの写真の真ん中を出す */
+.split-window {
+  position: absolute;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+}
+
+.split-window img {
+  object-fit: cover;
+  object-position: center;
 }
 
 .split-layer {
@@ -1397,6 +1418,106 @@ a:focus-visible {
 
 .split-caption-title {
   font-weight: 700;
+}
+
+/* 下（この畑・選んだ日）の帯は左端に白い線（上と見分ける。精査 3 回目 #7） */
+.split-caption-self {
+  border-left: 4px solid #ffffff;
+}
+
+.split-tag {
+  padding: 0 6px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* 上の帯を押すと相手を選べる（同じ日の別の畑） */
+.split-caption-button {
+  z-index: 2;
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.split-caption-chevron {
+  width: 20px;
+  height: 20px;
+  margin-left: 4px;
+}
+
+.split-picker {
+  position: absolute;
+  left: var(--space-8);
+  right: var(--space-8);
+  top: var(--space-8);
+  z-index: 10;
+  max-height: calc(100% - 16px);
+  overflow-y: auto;
+  border-radius: var(--radius-8);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.split-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px 2px var(--space-16);
+  border-bottom: 1px solid var(--border);
+}
+
+.split-picker-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.split-picker-close {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.split-picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+}
+
+.split-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 var(--space-16);
+  border: 0;
+  background: none;
+  color: var(--text-1);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.split-picker-current {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.split-picker-note {
+  margin-left: auto;
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: #5a4408;
 }
 
 .split-caption-date {
@@ -1465,4 +1586,9 @@ a:focus-visible {
 .stage-empty .icon {
   width: 28px;
   height: 28px;
+}
+
+/* 上の段が無い（この畑に写真が無い）ときも、見出しを上の帯から離す */
+.compare-body > .target:first-child {
+  padding-top: var(--space-8);
 }
