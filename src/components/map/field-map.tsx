@@ -5,7 +5,7 @@
  * props だけで受け取り、押された圃場を親に返す（AGENTS.md §4）。
  * 11-05 のデザインの引き継ぎ: 最初の視線を畑に向ける。輪郭は細い白線（下に薄い影）、塗りは人の判断
  * （収穫可能＝黄緑、収穫済＝暗い破線）、未確認は塗らず文字も出さない。札は箱に入れず、影つきの文字だけ。
- * 目安の畑は金の輪郭、選んだ畑は黄緑の太い輪郭。
+ * 目安の畑は金の輪郭、選んだ畑は白の太い輪郭＋濃い影（黄緑は収穫可能だけに使う。精査 #2）。
  */
 import { useEffect, useRef, useState } from "react";
 import type { LayerGroup, Map as LeafletMap } from "leaflet";
@@ -34,6 +34,8 @@ interface Props {
 const COMPACT_BELOW_ZOOM = 15.5;
 /** 地区に合わせるときの上限の倍率（1 つの地区が画面いっぱいより寄らない） */
 const FIT_MAX_ZOOM = 17.25;
+/** 選んだ畑が板や上の帯に隠れるときだけ、最小限だけ動かす。下は板の高さ、上は注記の分 */
+const KEEP_VISIBLE_PADDING = { top: 56, bottom: 240 } as const;
 
 type Leaflet = typeof import("leaflet");
 
@@ -53,12 +55,14 @@ function fillStyle(appearance: ParcelAppearance): { fillColor: string; fillOpaci
   }
 }
 
-/** 輪郭の線。選んだ畑は黄緑の太線、目安の畑は金、ほかは細い白 */
+/** 輪郭の線。選んだ畑は白の太線（影で浮かせる）、目安の畑は金、ほかは細い白。目安を選んだら金は内側に残す */
 function lineStyle(appearance: ParcelAppearance): { color: string; weight: number } {
-  if (appearance.selected) return { color: LIME, weight: 3.5 };
+  if (appearance.selected) return { color: "#ffffff", weight: 4 };
   if (appearance.benchmark) return { color: GOLD, weight: 2.5 };
   return { color: "#ffffff", weight: 1.5 };
 }
+
+const STATUS_WORD = { ready: "収穫可能", done: "収穫済" } as const;
 
 function escapeHtml(text: string): string {
   return text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] ?? c);
@@ -66,8 +70,8 @@ function escapeHtml(text: string): string {
 
 /**
  * 札の中身。箱に入れず、影つきの白い文字だけ（航空写真の上で読める）。
- * 「目安」（金）／番号（と未確定の点）／名前／判断（塗りがあるときだけ。凡例と同じ印＋日付。未確認は何も出さない）。
- * 縮小しているときは名前と判断を隠す（CSS の .map-zoom-compact）
+ * 「目安」（金）／番号（と未確定の点）／名前。判断は塗りで分かるので文字にしない（日付は板で意味をつけて言う。精査 #8）。
+ * 縮小しているときは名前を隠す（CSS の .map-zoom-compact）
  */
 function labelHtml(item: MapParcel): string {
   const { appearance, labelLines } = item;
@@ -75,19 +79,21 @@ function labelHtml(item: MapParcel): string {
   const benchmark = appearance.benchmark ? '<span class="map-label-benchmark">目安</span>' : "";
   const dot = appearance.unconfirmed ? '<span class="map-label-dot" title="未確定の写真あり"></span>' : "";
   const name = nameParts.length > 0 ? `<span class="map-label-name">${escapeHtml(nameParts.join(" "))}</span>` : "";
-  // 2 行目は「可 7/21」。文字の「可」「済」は印に置き換え、日付だけ残す（読み上げは aria-label が言葉で言う）
-  const date = labelLines[1]?.split(" ")[1];
-  const status =
-    appearance.fill !== "none" && date !== undefined
-      ? `<span class="map-label-status map-label-status-${appearance.fill}"><i class="mark mark-${appearance.fill}"></i>${escapeHtml(date)}</span>`
-      : "";
-  return `${benchmark}<span class="map-label-id">${escapeHtml(id)}${dot}</span>${name}${status}`;
+  return `${benchmark}<span class="map-label-id">${escapeHtml(id)}${dot}</span>${name}`;
 }
 
+/** 読み上げ。「可 7/21」は「7/21 に収穫可能と判断」と言葉で言う */
 function ariaLabel(item: MapParcel): string {
-  const parts = [...item.labelLines];
-  if (item.appearance.benchmark) parts.push("目安の畑");
-  if (item.appearance.unconfirmed) parts.push("未確定の写真あり");
+  const { appearance, labelLines } = item;
+  const parts = [labelLines[0]];
+  if (appearance.fill !== "none") {
+    const date = labelLines[1]?.split(" ")[1];
+    parts.push(date ? `${date}に${STATUS_WORD[appearance.fill]}と判断` : STATUS_WORD[appearance.fill]);
+  } else if (labelLines[1] !== undefined) {
+    parts.push("判断はまだありません");
+  }
+  if (appearance.benchmark) parts.push("目安の畑");
+  if (appearance.unconfirmed) parts.push("未確定の写真あり");
   return parts.join("、");
 }
 
@@ -98,10 +104,10 @@ function draw(L: Leaflet, layers: LayerGroup, items: MapParcel[], onSelect: (fie
     const latlngs = item.parcel.polygon.map(([lat, lng]) => L.latLng(lat, lng));
     const { appearance } = item;
     const line = lineStyle(appearance);
-    // 下の薄い影（明るい畑の上でも白線が見える。太い黒枠にはしない）
+    // 下の薄い影（明るい畑の上でも白線が見える。太い黒枠にはしない）。選んだ畑は影を濃く太くして浮かせる
     L.polygon(latlngs, {
-      color: "rgba(0,0,0,0.45)",
-      weight: line.weight + (appearance.selected ? 4 : 2.5),
+      color: appearance.selected ? "rgba(0,0,0,0.65)" : "rgba(0,0,0,0.45)",
+      weight: line.weight + (appearance.selected ? 6 : 2.5),
       fill: false,
       interactive: false,
       lineJoin: "round",
@@ -115,6 +121,10 @@ function draw(L: Leaflet, layers: LayerGroup, items: MapParcel[], onSelect: (fie
       lineJoin: "round",
       className: `map-parcel map-parcel-${appearance.fill}${appearance.selected ? " map-parcel-selected" : ""}`,
     }).addTo(layers);
+    if (appearance.selected && appearance.benchmark) {
+      // 目安を選んでも「目安」の金が消えないよう、白の太線の内側に金を重ねる
+      L.polygon(latlngs, { color: GOLD, weight: 2, fill: false, interactive: false, lineJoin: "round" }).addTo(layers);
+    }
     top.on("click", (e) => {
       L.DomEvent.stopPropagation(e);
       onSelect(item.field.id);
@@ -142,6 +152,21 @@ function draw(L: Leaflet, layers: LayerGroup, items: MapParcel[], onSelect: (fie
   }
 }
 
+/** 選んだ畑の中心が板や帯に隠れるなら、見える所まで最小限だけ動かす（地区を飛ばない。精査 #1） */
+function keepSelectedVisible(L: Leaflet, map: LeafletMap, items: MapParcel[], shown: { current: string | null }) {
+  const selected = items.find((i) => i.appearance.selected) ?? null;
+  const id = selected?.field.id ?? null;
+  if (id === shown.current) return;
+  shown.current = id;
+  if (!selected) return;
+  const [lat, lng] = polygonCentroid(selected.parcel.polygon);
+  map.panInside(L.latLng(lat, lng), {
+    paddingTopLeft: L.point(0, KEEP_VISIBLE_PADDING.top),
+    paddingBottomRight: L.point(0, KEEP_VISIBLE_PADDING.bottom),
+    animate: true,
+  });
+}
+
 /** 区画たちが入るように動かす（同じ key では 1 回だけ） */
 function fitIfNeeded(map: LeafletMap, items: MapParcel[], key: string, fitted: { current: string | null }) {
   if (fitted.current === key) return;
@@ -165,6 +190,7 @@ export function FieldMap({ parcels, fitItems, fitKey, onSelect }: Props) {
   const leafletRef = useRef<Leaflet | null>(null);
   const layersRef = useRef<LayerGroup | null>(null);
   const fittedRef = useRef<string | null>(null);
+  const shownRef = useRef<string | null>(null);
   const onSelectRef = useRef<Props["onSelect"]>(onSelect);
   const [ready, setReady] = useState(false);
 
@@ -220,6 +246,7 @@ export function FieldMap({ parcels, fitItems, fitKey, onSelect }: Props) {
     if (!ready || !L || !map || !layers) return;
     draw(L, layers, parcels, (id) => onSelectRef.current(id));
     fitIfNeeded(map, fitItems, fitKey, fittedRef);
+    keepSelectedVisible(L, map, parcels, shownRef);
   }, [ready, parcels, fitItems, fitKey]);
 
   return <div ref={containerRef} className="field-map" role="application" aria-label="圃場の航空写真の地図" />;

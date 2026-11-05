@@ -27,9 +27,18 @@ export function HomeClient() {
   const { selectedId, selected, select } = useFieldSelection();
   const latest = useLatestPhoto(selectedId);
   const districts = useMemo(() => [...new Set(map.pins.map((p) => p.field.district))], [map.pins]);
-  const [districtChoice, setDistrictChoice] = useState<string | null>(null);
-  // 圃場を選ぶとその地区に、選んでいなければ切り替えた地区（既定は最初の地区）
+  // 見ている地区。圃場を押すとその地区に変わり、閉じても戻らない（精査 #1）。既定は最初の地区（開いたときに選んでいればその地区）
+  const [districtChoice, setDistrictChoice] = useState<string | null>(() => selected?.district ?? null);
   const district = selected?.district ?? districtChoice ?? districts[0] ?? "";
+  // 地図を合わせ直すのは選択欄を変えたときだけ。圃場を押しても地図は動かさない（押した畑が指の下から動かない。精査 #1）
+  const [fit, setFit] = useState<{ district: string | null; seq: number }>(() => ({ district: selected?.district ?? null, seq: 0 }));
+  const fitDistrict = fit.district ?? districts[0] ?? "";
+
+  const choose = (id: string | null) => {
+    select(id);
+    const field = id === null ? undefined : map.pins.find((p) => p.field.id === id)?.field;
+    if (field) setDistrictChoice(field.district);
+  };
 
   const items = useMemo<MapParcel[]>(() => {
     const byField = new Map(parcels.map((p) => [p.fieldId, p]));
@@ -50,7 +59,7 @@ export function HomeClient() {
   }, [map.pins, map.summaries, selectedId]);
 
   const selectedItem = items.find((i) => i.field.id === selectedId) ?? null;
-  const districtItems = useMemo(() => items.filter((i) => i.field.district === district), [items, district]);
+  const fitItems = useMemo(() => items.filter((i) => i.field.district === fitDistrict), [items, fitDistrict]);
 
   return (
     <div className="home">
@@ -64,6 +73,7 @@ export function HomeClient() {
             onChange={(e) => {
               select(null);
               setDistrictChoice(e.target.value);
+              setFit((prev) => ({ district: e.target.value, seq: prev.seq + 1 }));
             }}
           >
             {districts.map((d) => (
@@ -92,14 +102,14 @@ export function HomeClient() {
         </div>
       )}
       <div className="home-map">
-        <FieldMap parcels={items} fitItems={districtItems} fitKey={district} onSelect={select} />
+        <FieldMap parcels={items} fitItems={fitItems} fitKey={`${fitDistrict}#${fit.seq}`} onSelect={choose} />
         {selectedItem ? (
           <SelectionDock
             field={selectedItem.field}
             appearance={selectedItem.appearance}
             statusLine={selectedItem.labelLines[1] ?? (map.message ? "判断を読み込めていません" : "判断を読み込んでいます")}
             latest={latest}
-            onClose={() => select(null)}
+            onClose={() => choose(null)}
           />
         ) : (
           <MapLegend />

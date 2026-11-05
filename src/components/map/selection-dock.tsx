@@ -19,13 +19,14 @@ interface Props {
   onClose: () => void;
 }
 
-/** 地図の札では印だけだが、板は凡例が見えないので言葉で言う */
+/** 地図では塗りだけだが、板は凡例が見えないので言葉で言う。日付は「いつ判断したか」と分かる形に（精査 #8） */
 const STATUS_WORD = { ready: "収穫可能", done: "収穫済" } as const;
 
 function statusText(appearance: ParcelAppearance, statusLine: string): string {
-  if (appearance.fill === "none") return statusLine;
-  const date = statusLine.split(" ")[1] ?? "";
-  return `${STATUS_WORD[appearance.fill]} ${date}`.trim();
+  // 未確認は「まだ無い」と言う（印の四角は押せる欄に見えるので出さない。精査 #7）。読み込み中などの文はそのまま
+  if (appearance.fill === "none") return statusLine === "未確認" ? "判断はまだありません" : statusLine;
+  const date = statusLine.split(" ")[1];
+  return date ? `${date}に${STATUS_WORD[appearance.fill]}と判断` : STATUS_WORD[appearance.fill];
 }
 
 function photoLine(latest: LatestPhotoState): string {
@@ -67,8 +68,8 @@ export function SelectionDock({ field, appearance, statusLine, latest, onClose }
               </span>
             )}
           </div>
-          <div className="dock-status">
-            <i className={`mark mark-${appearance.fill}`} aria-hidden="true" />
+          <div className={appearance.fill === "none" ? "dock-status dock-status-none" : "dock-status"}>
+            {appearance.fill !== "none" && <i className={`mark mark-${appearance.fill}`} aria-hidden="true" />}
             {statusText(appearance, statusLine)}
             {appearance.unconfirmed && (
               <span className="dock-unconfirmed">

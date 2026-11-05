@@ -65,6 +65,14 @@ body {
   overflow-wrap: anywhere;
 }
 
+/* 部品も同じ書体（select・button は既定で受け継がない。精査 #10） */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
 /* 読み上げ用（見えない） */
 .sr-only {
   position: absolute;
@@ -402,8 +410,8 @@ a:focus-visible {
 }
 
 .topbar-brand {
-  font-weight: 700;
-  font-size: 1rem;
+  font-weight: 600;
+  font-size: 0.95rem;
   color: var(--brand);
   white-space: nowrap;
 }
@@ -415,11 +423,12 @@ a:focus-visible {
   min-width: 0;
 }
 
+/* 操作の文字は畑の名前（14〜16px）より強くしない（精査 #5） */
 .topbar-district .input {
   min-height: 44px;
   min-width: 104px;
   padding: 0 var(--space-8);
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 700;
 }
 
@@ -428,6 +437,7 @@ a:focus-visible {
   padding: 0 var(--space-8);
   border-color: var(--brand);
   color: var(--brand);
+  font-size: 0.9rem;
   white-space: nowrap;
 }
 
@@ -443,8 +453,8 @@ a:focus-visible {
   background: #6f7a52;
 }
 
-/* Leaflet の既定を上書き: 書体、押せる大きさ（44px）、出典表記 */
-.leaflet-container {
+/* Leaflet の既定を上書き: 書体（leaflet.css の指定より強くする。精査 #10）、押せる大きさ（44px）、出典表記 */
+.field-map.leaflet-container {
   font-family: inherit;
   font-size: 14px;
 }
@@ -497,19 +507,6 @@ a:focus-visible {
   font-weight: 700;
 }
 
-.map-label-status {
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.map-label-status-ready {
-  color: #eef9c6;
-}
-
-.map-label-status-done {
-  color: #d6dbd3;
-}
-
 .map-label-benchmark {
   color: var(--wheat);
   font-size: 11px;
@@ -543,9 +540,8 @@ a:focus-visible {
   stroke-width: 5;
 }
 
-/* 縮小しているときは名前と判断を隠し、番号（と目安）だけに。選んでいる畑は全部出す */
-.map-zoom-compact .map-label:not(.map-label-selected) .map-label-name,
-.map-zoom-compact .map-label:not(.map-label-selected) .map-label-status {
+/* 縮小しているときは名前を隠し、番号（と目安）だけに。選んでいる畑は全部出す */
+.map-zoom-compact .map-label:not(.map-label-selected) .map-label-name {
   display: none;
 }
 
@@ -663,8 +659,13 @@ a:focus-visible {
 }
 
 .dock-status {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 700;
+}
+
+.dock-status-none {
+  font-weight: 400;
+  color: var(--text-2);
 }
 
 .dock-photo-line {
@@ -737,14 +738,15 @@ a:focus-visible {
   border-color: #c9a22e;
 }
 
-/* 航空写真の上の印は白い縁と影で浮かせる */
-.map-label .mark {
-  margin-right: 4px;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9), 0 0 3px rgba(0, 0, 0, 0.8);
-}
-
-.map-label .mark-done {
-  border-color: #ffffff;
+/* 凡例の「未確定の写真」の点（地図の札の点と同じ形） */
+.legend-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin: 0 2px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 0 1.5px #5a6356;
 }
 
 /* 線のアイコン: 文字の高さに合わせる */
@@ -759,7 +761,6 @@ a:focus-visible {
   margin-right: 6px;
 }
 
-.dock-status,
 .dock-photo-line,
 .dock-benchmark {
   display: inline-flex;
@@ -767,8 +768,13 @@ a:focus-visible {
   gap: 5px;
 }
 
-.dock-status {
-  flex-wrap: wrap;
+/* 判断の行: 印は文字の先頭に流し込む（折り返しても印だけ残らない） */
+.dock-status .mark {
+  margin-right: 5px;
+}
+
+.dock-unconfirmed {
+  margin-left: 6px;
 }
 
 .dock-unconfirmed {
@@ -820,8 +826,8 @@ a:focus-visible {
   min-height: 56px;
   border-radius: var(--radius-8);
   color: var(--text-2);
-  font-size: 0.95rem;
-  font-weight: 700;
+  font-size: 0.8rem;
+  font-weight: 400;
   text-decoration: none;
 }
 
@@ -833,6 +839,7 @@ a:focus-visible {
 .app-nav-current {
   background: var(--brand-soft);
   color: var(--brand);
+  font-weight: 700;
 }
 
 .app-nav-disabled {

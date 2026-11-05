@@ -18,6 +18,10 @@ export function MapLegend() {
         <i className="mark mark-benchmark" aria-hidden="true" />
         目安の畑
       </li>
+      <li>
+        <i className="legend-dot" aria-hidden="true" />
+        未確定の写真
+      </li>
     </ul>
   );
 }
