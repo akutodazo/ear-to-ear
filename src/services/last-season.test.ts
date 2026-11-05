@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayDiffSameYear, lastSeasonFor, lastSeasonLines, monthDay, type SeasonRecord } from "./last-season";
+import { isoToJstDate, lastSeasonFor, lastSeasonLines, monthDay, type SeasonRecord } from "./last-season";
 
 // 架空の昨年の記録（11-05。見比べるの画面の「昨年の同じ頃」）。場所（圃場）と年の作物・判断を分ける（輪作）
 const records: SeasonRecord[] = [
@@ -25,7 +25,7 @@ describe("lastSeasonFor（その圃場の前の年の記録）", () => {
   });
 });
 
-describe("monthDay・dayDiffSameYear（日付の見せ方と差）", () => {
+describe("monthDay・isoToJstDate（日付の見せ方）", () => {
   it("YYYY-MM-DD を「7/4」に（前の 0 は付けない）", () => {
     expect(monthDay("2025-07-04")).toBe("7/4");
     expect(monthDay("2025-12-31")).toBe("12/31");
@@ -35,40 +35,42 @@ describe("monthDay・dayDiffSameYear（日付の見せ方と差）", () => {
     expect(() => monthDay("2025/07/04")).toThrow(/日付ではない/);
   });
 
-  it("年を無視して、月日の差を日数で（a が b より前なら負）", () => {
-    expect(dayDiffSameYear("2026-07-19", "2025-07-24")).toBe(-5);
-    expect(dayDiffSameYear("2026-07-24", "2025-07-24")).toBe(0);
-    expect(dayDiffSameYear("2026-08-02", "2025-07-30")).toBe(3);
+  it("ISO の日時を日本時間の YYYY-MM-DD に（日をまたぐ例）", () => {
+    expect(isoToJstDate("2026-07-21T20:30:00.000Z")).toBe("2026-07-22");
+    expect(isoToJstDate("2026-07-22T01:00:00.000Z")).toBe("2026-07-22");
+  });
+
+  it("読めない日時は例外", () => {
+    expect(() => isoToJstDate("きのう")).toThrow(/日時ではない/);
   });
 });
 
-describe("lastSeasonLines（昨年の同じ頃の文。推定はしない）", () => {
+describe("lastSeasonLines（昨年と今年を同じ形で並べる。差や予想は出さない。精査 #2）", () => {
   it("記録が無ければ、無いと言う", () => {
     expect(lastSeasonLines(null, "2026", null)).toEqual(["昨年（2025年）の記録はありません"]);
   });
 
   it("小麦でなければ、作物だけ言って比べない（輪作）", () => {
-    expect(lastSeasonLines(records[1], "2026", "2026-07-19")).toEqual(["2025年は大豆（小麦ではない）"]);
+    expect(lastSeasonLines(records[1], "2026", { readyAt: "2026-07-22", doneAt: null })).toEqual(["2025年は大豆（小麦ではない）"]);
   });
 
-  it("小麦なら、判断した日と収穫した日を言う", () => {
-    expect(lastSeasonLines(records[0], "2026", null)).toEqual(["2025年は小麦", "7/20 に収穫可能と判断、7/24 に収穫済"]);
+  it("小麦なら、昨年の判断した日と収穫した日。今年の判断が無ければ、無いと言う", () => {
+    expect(lastSeasonLines(records[0], "2026", null)).toEqual(["2025年は小麦", "昨年 7/20 に収穫可能と判断、7/24 に収穫済", "今年 まだ判断はありません"]);
   });
 
-  it("収穫済が無ければ、判断だけ", () => {
-    expect(lastSeasonLines(records[2], "2026", null)).toEqual(["2025年は小麦", "7/27 に収穫可能と判断"]);
+  it("今年の判断があれば、昨年と同じ形で並べる（差の日数は言わない）", () => {
+    const lines = lastSeasonLines(records[0], "2026", { readyAt: "2026-07-22", doneAt: null });
+    expect(lines).toEqual(["2025年は小麦", "昨年 7/20 に収穫可能と判断、7/24 に収穫済", "今年 7/22 に収穫可能と判断"]);
+    expect(lines.join("\n")).not.toMatch(/日前|日後|あと/);
   });
 
-  it("今年の最新の写真があれば、昨年の判断の日付との差を言う（日付の比較であって、収穫の予想ではない）", () => {
-    expect(lastSeasonLines(records[0], "2026", "2026-07-19")[2]).toBe("今年の最新の写真（7/19）は、昨年の判断の 1 日前の日付");
-    expect(lastSeasonLines(records[0], "2026", "2026-07-20")[2]).toBe("今年の最新の写真（7/20）は、昨年の判断と同じ日付");
-    expect(lastSeasonLines(records[0], "2026", "2026-07-23")[2]).toBe("今年の最新の写真（7/23）は、昨年の判断の 3 日後の日付");
-  });
-
-  it("判断の日が無ければ、差は言わない", () => {
-    const noReady: SeasonRecord = { season: "2025", fieldId: "A-01", crop: "小麦", readyAt: null, doneAt: "2025-07-28" };
-    expect(lastSeasonLines(noReady, "2026", "2026-07-19")).toEqual(["2025年は小麦", "7/28 に収穫済"]);
+  it("収穫済が無ければ、判断だけ。判断の記録が何も無ければ「判断の記録なし」", () => {
+    expect(lastSeasonLines(records[2], "2026", null)[1]).toBe("昨年 7/27 に収穫可能と判断");
     const nothing: SeasonRecord = { season: "2025", fieldId: "A-01", crop: "小麦", readyAt: null, doneAt: null };
-    expect(lastSeasonLines(nothing, "2026", null)).toEqual(["2025年は小麦", "判断の記録なし"]);
+    expect(lastSeasonLines(nothing, "2026", null)[1]).toBe("昨年 判断の記録なし");
+  });
+
+  it("今年の収穫済もあれば並べる", () => {
+    expect(lastSeasonLines(records[0], "2026", { readyAt: "2026-07-22", doneAt: "2026-07-26" })[2]).toBe("今年 7/22 に収穫可能と判断、7/26 に収穫済");
   });
 });
