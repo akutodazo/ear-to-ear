@@ -1965,3 +1965,71 @@ ol.order-group .order-row-dragging {
   -webkit-user-drag: none;
   pointer-events: none;
 }
+
+/* ===== LINE に 1 枚（11-05、4 段目） ===== */
+.share {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-16);
+  border: 1px solid var(--brand);
+  border-radius: var(--radius-16);
+  background: var(--surface);
+}
+
+.share-body {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: var(--space-8);
+  align-items: start;
+}
+
+.share-image {
+  position: relative;
+  width: 120px;
+  aspect-ratio: 1080 / 1200;
+  overflow: hidden;
+  border-radius: var(--radius-8);
+  background: var(--background-2);
+}
+
+.share-image-link {
+  position: absolute;
+  inset: 0;
+}
+
+.share-image img {
+  object-fit: cover;
+}
+
+.share-image-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 6px;
+  font-size: 0.75rem;
+  color: var(--text-3);
+  text-align: center;
+}
+
+.share-text {
+  margin: 0;
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  color: var(--text-1);
+}
+
+.share-fallback {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.share-fallback .button-small {
+  min-height: 44px;
+  padding: 0 var(--space-16);
+  font-size: 0.95rem;
+}

@@ -126,3 +126,13 @@ export function IconChevron(props: Props) {
     </Svg>
   );
 }
+
+/** 送る（共有） */
+export function IconShare(props: Props) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3v12M7 8l5-5 5 5" />
+      <path d="M5 13v6a1 1 0 001 1h12a1 1 0 001-1v-6" />
+    </Svg>
+  );
+}

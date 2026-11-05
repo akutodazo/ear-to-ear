@@ -19,11 +19,15 @@ import { useDistrictPhotos } from "@/hooks/use-district-photos";
 import { useHarvestOrder } from "@/hooks/use-harvest-order";
 import { benchmarkFor, mapLabelLines, parcelAppearance } from "@/services/parcel-geometry";
 import { draftOrder, nextToShoot, orderRows } from "@/services/harvest-order";
+import { orderImageTitle, orderMessageText } from "@/services/order-message";
+import { useOrderShare } from "@/hooks/use-order-share";
+import type { OrderImageInput } from "@/lib/order-image";
 import { indexByDay } from "@/services/photo-compare";
 import { FieldMap, type MapParcel } from "@/components/map/field-map";
 import { OrderList } from "@/components/order/order-list";
 import { OrderActions } from "@/components/order/order-actions";
 import { NextToShoot } from "@/components/order/next-to-shoot";
+import { LineShare } from "@/components/order/line-share";
 import { AppNav } from "@/components/app-nav";
 import { IconMap } from "@/components/icons";
 
@@ -89,6 +93,30 @@ export function OrderClient() {
     });
   }, [districtFields, map.pins, map.summaries, rankOf, selectedId, benchmarkId, confirmedView]);
 
+  // LINE に 1 枚（4 段目）: 確定した順だけを絵と文にする（下書きは送らない）
+  const confirmedOrder = order.saved?.state === "confirmed" && !order.differsFromConfirmed ? order.saved : null;
+  const shareImage = useMemo<OrderImageInput | null>(() => {
+    if (confirmedOrder === null || confirmedOrder.confirmedAt === null) return null;
+    const ranks = new Map(confirmedOrder.ranked.map((id, i) => [id, i + 1]));
+    const byField = new Map(parcels.map((p) => [p.fieldId, p]));
+    return {
+      title: orderImageTitle(district, confirmedOrder.confirmedAt),
+      note: "区画・番号・順番は架空",
+      parcels: districtFields.flatMap((f) => {
+        const parcel = byField.get(f.id);
+        if (!parcel) return [];
+        const row = rows[f.id];
+        return [{ fieldId: f.id, name: f.name, polygon: parcel.polygon, fill: row?.status ?? "none", benchmark: f.id === benchmarkId, rank: ranks.get(f.id) ?? null }];
+      }),
+    };
+  }, [confirmedOrder, district, districtFields, rows, benchmarkId]);
+  const shareText =
+    confirmedOrder && confirmedOrder.confirmedAt
+      ? orderMessageText({ district, confirmedAt: confirmedOrder.confirmedAt, ranked: confirmedOrder.ranked, fieldsById, benchmarkId })
+      : "";
+  const shareFile = `order-${SEASON}-${districtIds[0] ?? "district"}.jpg`;
+  const share = useOrderShare(shareImage, shareText, shareFile);
+
   // 地図で畑を押したら、一覧のその行を見える所へ
   useEffect(() => {
     if (selectedId === null) return;
@@ -143,6 +171,9 @@ export function OrderClient() {
               onRevert={order.revert}
               onReset={order.resetToRecords}
             />
+            {shareImage && (
+              <LineShare state={share.state} text={shareText} fileName={shareFile} canShareFile={share.canShareFile} message={share.message} onShare={share.share} onCopy={share.copyText} />
+            )}
             <OrderList
               order={order.order}
               rows={rows}
