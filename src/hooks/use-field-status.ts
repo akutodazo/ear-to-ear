@@ -6,7 +6,7 @@
  */
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { StatusEvent } from "@/types";
 import { STATUS_REF_PHOTOS_MAX, type StatusReasonCode } from "@/config";
 import { parseStatusInput } from "@/services/status-reason";
@@ -15,20 +15,15 @@ import {
   postOutcomeLabel,
   revokeOutcomeLabel,
   toggleRefPhoto as toggleRefPhotoIn,
+  withLocalChanges,
   withStatusEvent,
+  type LocalStatusChange,
 } from "@/services/status-view";
+import { loginOutcomeLabel } from "@/services/login-label";
 import { createFieldStatusRepository } from "@/repositories/create-field-status-repository";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
 import type { HistoryOutcome, IFieldStatusRepository } from "@/repositories/interfaces/i-field-status-repository";
-import type { IPhotoRepository, LoginOutcome } from "@/repositories/interfaces/i-photo-repository";
-
-const LOGIN_MESSAGES: Record<LoginOutcome, string | null> = {
-  ok: null,
-  wrong: "合言葉が違います",
-  "too-many": "何度も間違えたので、10分ほどおいてからもう一度",
-  "network-error": "つながりませんでした。電波のよい所でもう一度",
-  error: "うまくいきませんでした。時間をおいてもう一度",
-};
+import type { IPhotoRepository } from "@/repositories/interfaces/i-photo-repository";
 
 /** 入力中の判断 */
 export interface StatusDraft {
@@ -36,6 +31,12 @@ export interface StatusDraft {
   reasons: StatusReasonCode[];
   note: string;
   refPhotoIds: string[];
+}
+
+/** 1 回の読み込み。seq は読み込みの番号、since は始めたときの手元の変更の番号 */
+interface HistoryRead {
+  seq: number;
+  since: number;
 }
 
 const EMPTY_DRAFT: StatusDraft = { status: null, reasons: [], note: "", refPhotoIds: [] };
@@ -66,12 +67,34 @@ export function useFieldStatus(
   const [needsPassphrase, setNeedsPassphrase] = useState(false);
   const [loginMessage, setLoginMessage] = useState<string | null>(null);
   const [loggingIn, setLoggingIn] = useState(false);
+  // 遅れて届いた読み込みで、送った判断や取り消しを消さないための番号（Codex の点検 #114 と同じ種類の競合）。
+  // 最後に始めた読み込みの結果だけを使い、その読み込みを始めた後に手元で変えた判断を重ねる
+  const readSeq = useRef(0);
+  const changeStamp = useRef(0);
+  const changes = useRef<LocalStatusChange[]>([]);
 
-  const applyHistory = useCallback((outcome: HistoryOutcome) => {
+  const startRead = useCallback((): HistoryRead => {
+    readSeq.current += 1;
+    return { seq: readSeq.current, since: changeStamp.current };
+  }, []);
+
+  /** 送った・取り消した判断を履歴に入れ、後から届く古い読み込みにも重ねられるように覚える */
+  const recordChange = useCallback((event: StatusEvent) => {
+    changeStamp.current += 1;
+    changes.current = [...changes.current, { stamp: changeStamp.current, event }];
+    setHistory((h) => withStatusEvent(h, event));
+    setHistoryMessage(null);
+  }, []);
+
+  const applyHistory = useCallback((read: HistoryRead, outcome: HistoryOutcome) => {
+    if (read.seq !== readSeq.current) return;
     setHistoryLoading(false);
     if (outcome.kind === "ok") {
-      setHistory(outcome.events);
-      setHistoryMessage(outcome.events.length === 0 ? "まだ判断の記録はありません" : null);
+      const events = withLocalChanges(outcome.events, changes.current, read.since);
+      // 読み込みを始める前の変更は、もうサーバーの履歴に入っている
+      changes.current = changes.current.filter((c) => c.stamp > read.since);
+      setHistory(events);
+      setHistoryMessage(events.length === 0 ? "まだ判断の記録はありません" : null);
       return;
     }
     setHistoryMessage(
@@ -82,20 +105,22 @@ export function useFieldStatus(
   }, []);
 
   const loadHistory = useCallback(async () => {
+    const read = startRead();
     setHistoryLoading(true);
-    applyHistory(await statusRepo.listHistory(fieldId));
-  }, [statusRepo, fieldId, applyHistory]);
+    applyHistory(read, await statusRepo.listHistory(fieldId));
+  }, [statusRepo, fieldId, startRead, applyHistory]);
 
   useEffect(() => {
     // 開いたときに1回だけ読む（静的書き出しの事前描画では動かない）。閉じた後に届いた結果は捨てる
     let active = true;
+    const read = startRead();
     statusRepo.listHistory(fieldId).then((outcome) => {
-      if (active) applyHistory(outcome);
+      if (active) applyHistory(read, outcome);
     });
     return () => {
       active = false;
     };
-  }, [statusRepo, fieldId, applyHistory]);
+  }, [statusRepo, fieldId, startRead, applyHistory]);
 
   const chooseStatus = useCallback((status: StatusEvent["status"]) => {
     setDraft((d) => ({ ...d, status }));
@@ -140,8 +165,7 @@ export function useFieldStatus(
       const outcome = await statusRepo.postStatus(fieldId, parsed.value);
       setFormMessage({ text: postOutcomeLabel(outcome), ok: outcome.kind === "created" });
       if (outcome.kind === "created") {
-        setHistory((h) => withStatusEvent(h, outcome.event));
-        setHistoryMessage(null);
+        recordChange(outcome.event);
         setDraft(EMPTY_DRAFT);
       } else if (outcome.kind === "unauthorized") {
         setLoginMessage(null);
@@ -150,7 +174,7 @@ export function useFieldStatus(
     } finally {
       setSubmitting(false);
     }
-  }, [submitting, draft, confirmedPhotoIds, statusRepo, fieldId]);
+  }, [submitting, draft, confirmedPhotoIds, statusRepo, fieldId, recordChange]);
 
   const revoke = useCallback(
     async (eventId: number) => {
@@ -158,7 +182,7 @@ export function useFieldStatus(
       const outcome = await statusRepo.revoke(eventId);
       setRevokeStatus((s) => ({ ...s, [eventId]: { busy: false, message: revokeOutcomeLabel(outcome) } }));
       if (outcome.kind === "ok") {
-        setHistory((h) => withStatusEvent(h, outcome.event));
+        recordChange(outcome.event);
       } else if (outcome.kind === "unauthorized") {
         setLoginMessage(null);
         setNeedsPassphrase(true);
@@ -167,7 +191,7 @@ export function useFieldStatus(
         await loadHistory();
       }
     },
-    [statusRepo, loadHistory],
+    [statusRepo, loadHistory, recordChange],
   );
 
   const login = useCallback(
@@ -183,7 +207,7 @@ export function useFieldStatus(
           setFormMessage(null);
           setRevokeStatus({});
         } else {
-          setLoginMessage(LOGIN_MESSAGES[outcome]);
+          setLoginMessage(loginOutcomeLabel(outcome));
         }
       } finally {
         setLoggingIn(false);

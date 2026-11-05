@@ -1,0 +1,74 @@
+name: deploy
+
+# main に入ったら dev へ。demo は Actions の画面の「Run workflow」で人が押したときだけ（11-04 本人決定）。
+# pull_request では動かさない（フォークの PR に秘密を渡さない）。手順は docs/dev/deploy-actions.md。
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: デプロイ先
+        type: choice
+        options: [demo, dev]
+        default: demo
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.event_name == 'push' && 'dev' || inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  # リポジトリのコード（テスト・lint・build）を動かすジョブ。秘密を持たない
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - uses: actions/upload-artifact@v7
+        with:
+          name: out
+          path: out/
+          retention-days: 1
+
+  # 秘密を持つジョブ。リポジトリのコードを実行しない（依存の install スクリプトも止める）。
+  # wrangler は worker/ を esbuild でまとめるだけで、実行はしない
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    # 秘密は GitHub の Environment（dev・demo）ごとに置く。demo は人の承認を付ける
+    environment: ${{ github.event_name == 'push' && 'dev' || inputs.target }}
+    env:
+      TARGET: ${{ github.event_name == 'push' && 'dev' || inputs.target }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm ci --ignore-scripts
+      - uses: actions/download-artifact@v8
+        with:
+          name: out
+          path: out/
+      - name: D1 の migration（main にある SQL だけ）
+        run: npx wrangler d1 migrations apply DB --remote --env "$TARGET"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: デプロイ
+        run: npx wrangler deploy --env "$TARGET"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

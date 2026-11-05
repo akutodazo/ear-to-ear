@@ -18,6 +18,7 @@ import { FICTIONAL_AREA } from "../src/config.ts";
 const FIELDS_PATH = "src/data/fields.json";
 const SECRET_KINDS = {
   "anthropic-key": "API キーの形",
+  "cloudflare-token": "Cloudflare のトークンの形",
   "secret-assignment": "秘密の名前に値を入れている",
   "private-key": "秘密鍵",
 };

@@ -13,7 +13,23 @@
       "Bash(npx wrangler d1 * --remote*)",
       "PowerShell(npx wrangler d1 * --remote*)",
       "Bash(npx wrangler r2 * --remote*)",
-      "PowerShell(npx wrangler r2 * --remote*)"
+      "PowerShell(npx wrangler r2 * --remote*)",
+      "Bash(npx wrangler versions secret*)",
+      "PowerShell(npx wrangler versions secret*)",
+      "Bash(npx wrangler d1 create*)",
+      "PowerShell(npx wrangler d1 create*)",
+      "Bash(npx wrangler d1 delete*)",
+      "PowerShell(npx wrangler d1 delete*)",
+      "Bash(npx wrangler d1 time-travel*)",
+      "PowerShell(npx wrangler d1 time-travel*)",
+      "Bash(npx wrangler r2 bucket*)",
+      "PowerShell(npx wrangler r2 bucket*)",
+      "Bash(npx wrangler delete*)",
+      "PowerShell(npx wrangler delete*)",
+      "Bash(npx wrangler login*)",
+      "PowerShell(npx wrangler login*)",
+      "Bash(node scripts/ops/l6-*.mjs*)",
+      "PowerShell(node scripts/ops/l6-*.mjs*)"
     ]
   },
   "hooks": {

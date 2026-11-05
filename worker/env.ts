@@ -2,10 +2,12 @@
  * Worker の環境（バインディングと Secret）から Deps を作る（人が書く。檻の外）。
  * crypto.subtle・crypto.randomUUID・Date.now に触るのはここだけ。
  * バインディング名は wrangler.jsonc（本人が作る）との約束: DB・PHOTOS・ASSETS。
+ * fetch で Claude の Messages API を呼ぶのもここだけ（T31。SDK は使わない、11-04 先輩決定 #107）。
  */
+import { CLAUDE_TIMEOUT_MS } from "@/config";
 import fields from "@/data/fields.json";
 import type { Role } from "@/types";
-import type { BucketPort, DbPort, Deps } from "./deps";
+import type { BucketPort, ClaudePort, DbPort, Deps, LinePort } from "./deps";
 
 export interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> };
@@ -14,6 +16,90 @@ export interface Env {
   MEMBER_PASSPHRASE: string;
   ADMIN_PASSPHRASE: string;
   SESSION_SECRET: string;
+  /** Claude API のキー（Worker の秘密、本人が登録）。無ければ Claude を呼ばない */
+  CLAUDE_API_KEY?: string;
+  /** "false" なら Claude を全部止める（docs/spec.md §6） */
+  CLAUDE_ENABLED?: string;
+  /** LINE のチャネルアクセストークン（Worker の秘密、人が登録。L8）。無ければ LINE を使わない */
+  LINE_CHANNEL_ACCESS_TOKEN?: string;
+  /** LINE のチャネルシークレット（Worker の秘密、人が登録。webhook の署名の鍵）。無ければ LINE を使わない */
+  LINE_CHANNEL_SECRET?: string;
+  /** "false" なら LINE を全部止める（CLAUDE_ENABLED と同じ形） */
+  LINE_ENABLED?: string;
+}
+
+/** waitUntil を持つ実行の文脈（Workers の ExecutionContext のうち使う所だけ） */
+export interface WaitContext {
+  waitUntil(promise: Promise<unknown>): void;
+}
+
+const CLAUDE_URL = "https://api.anthropic.com/v1/messages";
+const ANTHROPIC_VERSION = "2026-10-21";
+
+/**
+ * Messages API を 1 回呼ぶ口。30 秒で打ち切り、再試行しない。通信の失敗・時間切れは { status: 0, body: null }、
+ * JSON でない本文は body null。キーは見出しにだけ入れ、例外やログに出さない
+ */
+function createClaude(env: Env): ClaudePort | null {
+  const key = env.CLAUDE_API_KEY;
+  // 大文字小文字と前後の空白は見ない（"FALSE"・" false " でも止まる。レビュー #113 の指摘 5）
+  if (env.CLAUDE_ENABLED?.trim().toLowerCase() === "false" || !key) return null;
+  return async (requestBody) => {
+    try {
+      const response = await fetch(CLAUDE_URL, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": ANTHROPIC_VERSION },
+        body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(CLAUDE_TIMEOUT_MS),
+      });
+      let body: unknown = null;
+      try {
+        body = await response.json();
+      } catch {
+        body = null;
+      }
+      return { status: response.status, body };
+    } catch {
+      return { status: 0, body: null };
+    }
+  };
+}
+
+const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
+const LINE_TIMEOUT_MS = 10_000;
+
+/**
+ * LINE の口（L8、#139）。SDK は使わず fetch で呼ぶ（Claude と同じ形、11-05 先輩決定）。
+ * push は 10 秒で打ち切り、再試行しない。通信の失敗・時間切れは 0。トークンは見出しにだけ入れる
+ */
+function createLine(env: Env): LinePort | null {
+  const token = env.LINE_CHANNEL_ACCESS_TOKEN;
+  const channelSecret = env.LINE_CHANNEL_SECRET;
+  if (env.LINE_ENABLED?.trim().toLowerCase() === "false" || !token || !channelSecret) return null;
+  const key = crypto.subtle.importKey(
+    "raw",
+    encoder.encode(channelSecret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  return {
+    // 写しを作って ArrayBuffer に載せる（SharedArrayBuffer の上の本文を型で受けないため）
+    sign: async (body) => new Uint8Array(await crypto.subtle.sign("HMAC", await key, new Uint8Array(body))),
+    push: async (groupId, text) => {
+      try {
+        const response = await fetch(LINE_PUSH_URL, {
+          method: "POST",
+          headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+          body: JSON.stringify({ to: groupId, messages: [{ type: "text", text }] }),
+          signal: AbortSignal.timeout(LINE_TIMEOUT_MS),
+        });
+        return response.status;
+      } catch {
+        return 0;
+      }
+    },
+  };
 }
 
 /** Workers の crypto.subtle には timingSafeEqual がある。lib dom の型には無いので広げる */
@@ -37,7 +123,12 @@ function encodeBase64url(bytes: Uint8Array): string {
 /** 圃場の番号だけを持つ（座標は Worker の判定に使わない） */
 const knownFieldIds: ReadonlySet<string> = new Set(fields.map((field) => field.id));
 
-export function createDeps(env: Env): Deps {
+/** 文脈が無いとき（テストなど）は約束を待たず、失敗も外に漏らさない */
+function detached(promise: Promise<unknown>): void {
+  promise.catch(() => undefined);
+}
+
+export function createDeps(env: Env, context?: WaitContext): Deps {
   const secret = requireSecret(env.SESSION_SECRET, "SESSION_SECRET");
   const member = requireSecret(env.MEMBER_PASSPHRASE, "MEMBER_PASSPHRASE");
   const admin = requireSecret(env.ADMIN_PASSPHRASE, "ADMIN_PASSPHRASE");
@@ -81,5 +172,8 @@ export function createDeps(env: Env): Deps {
     nowMs: () => Date.now(),
     newId: () => crypto.randomUUID(),
     knownFieldIds,
+    claude: createClaude(env),
+    line: createLine(env),
+    waitUntil: context ? (promise) => context.waitUntil(promise) : detached,
   };
 }
