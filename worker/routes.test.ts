@@ -6,6 +6,7 @@ import { health, notImplemented, routes } from "./routes";
 import { deleteStatusEvent } from "./status-events";
 import { getFieldHandover } from "./handover";
 import { postFieldHandover } from "./handover-post";
+import { postLineWebhook } from "./line-webhook";
 import { getFieldStatusEvents } from "./status-history";
 
 describe("経路の表（docs/spec.md §6 の L0）", () => {
@@ -25,6 +26,7 @@ describe("経路の表（docs/spec.md §6 の L0）", () => {
       ["GET", "/api/fields/:id/status-events", "none"],
       ["GET", "/api/fields/:id/handover", "none"],
       ["POST", "/api/fields/:id/handover", "admin"],
+      ["POST", "/api/line/webhook", "none"],
     ]);
   });
 
@@ -54,6 +56,15 @@ describe("経路の表（docs/spec.md §6 の L0）", () => {
 
   it("POST /api/fields/:id/handover は postFieldHandover（T31）", () => {
     expect(routes.find((r) => r.method === "POST" && r.pattern === "/api/fields/:id/handover")?.handler).toBe(postFieldHandover);
+  });
+
+  it("POST /api/line/webhook は postLineWebhook で、表の末尾（#140）", () => {
+    expect(routes.at(-1)).toStrictEqual({
+      method: "POST",
+      pattern: "/api/line/webhook",
+      auth: "none",
+      handler: postLineWebhook,
+    });
   });
 
   it("GET /api/photos は getPhotosByField（T22。501 の経路は無い）", () => {
