@@ -20,10 +20,14 @@ export interface MapParcel {
   appearance: ParcelAppearance;
   /** 札の行（1 行目は番号と名前、2 行目は判断） */
   labelLines: string[];
+  /** 刈る順番の順位（刈る順番の画面だけ）。下書きは破線の丸、確定は実線の丸 */
+  rank?: { n: number; confirmed: boolean } | null;
 }
 
 interface Props {
   parcels: MapParcel[];
+  /** 選んだ畑を隠さない余白（px）。既定は地図の画面の板の高さ。刈る順番の地図は板が無いので小さく */
+  keepVisiblePadding?: { top: number; bottom: number };
   /** 地図を合わせる相手（見ている地区の区画）。fitKey が変わったときにこれらが入るように動かす */
   fitItems: MapParcel[];
   fitKey: string;
@@ -35,7 +39,7 @@ const COMPACT_BELOW_ZOOM = 15.5;
 /** 地区に合わせるときの上限の倍率（1 つの地区が画面いっぱいより寄らない） */
 const FIT_MAX_ZOOM = 17.25;
 /** 選んだ畑が板や上の帯に隠れるときだけ、最小限だけ動かす。下は板の高さ、上は注記の分 */
-const KEEP_VISIBLE_PADDING = { top: 56, bottom: 240 } as const;
+const KEEP_VISIBLE_PADDING = { top: 56, bottom: 240 };
 
 type Leaflet = typeof import("leaflet");
 
@@ -79,7 +83,8 @@ function labelHtml(item: MapParcel): string {
   const benchmark = appearance.benchmark ? '<span class="map-label-benchmark">目安</span>' : "";
   const dot = appearance.unconfirmed ? '<span class="map-label-dot" title="未確定の写真あり"></span>' : "";
   const name = nameParts.length > 0 ? `<span class="map-label-name">${escapeHtml(nameParts.join(" "))}</span>` : "";
-  return `${benchmark}<span class="map-label-id">${escapeHtml(id)}${dot}</span>${name}`;
+  const rank = item.rank ? `<span class="rank${item.rank.confirmed ? " rank-confirmed" : ""} map-rank">${item.rank.n}</span>` : "";
+  return `${rank}${benchmark}<span class="map-label-id">${escapeHtml(id)}${dot}</span>${name}`;
 }
 
 /** 読み上げ。「可 7/21」は「7/21 に収穫可能と判断」と言葉で言う */
@@ -94,6 +99,7 @@ function ariaLabel(item: MapParcel): string {
   }
   if (appearance.benchmark) parts.push("目安の畑");
   if (appearance.unconfirmed) parts.push("未確定の写真あり");
+  if (item.rank) parts.push(`刈る順番 ${item.rank.n} 番目${item.rank.confirmed ? "（確定）" : "（下書き）"}`);
   return parts.join("、");
 }
 
@@ -153,7 +159,7 @@ function draw(L: Leaflet, layers: LayerGroup, items: MapParcel[], onSelect: (fie
 }
 
 /** 選んだ畑の中心が板や帯に隠れるなら、見える所まで最小限だけ動かす（地区を飛ばない。精査 #1） */
-function keepSelectedVisible(L: Leaflet, map: LeafletMap, items: MapParcel[], shown: { current: string | null }) {
+function keepSelectedVisible(L: Leaflet, map: LeafletMap, items: MapParcel[], shown: { current: string | null }, padding: { top: number; bottom: number }) {
   const selected = items.find((i) => i.appearance.selected) ?? null;
   const id = selected?.field.id ?? null;
   if (id === shown.current) return;
@@ -161,8 +167,8 @@ function keepSelectedVisible(L: Leaflet, map: LeafletMap, items: MapParcel[], sh
   if (!selected) return;
   const [lat, lng] = polygonCentroid(selected.parcel.polygon);
   map.panInside(L.latLng(lat, lng), {
-    paddingTopLeft: L.point(0, KEEP_VISIBLE_PADDING.top),
-    paddingBottomRight: L.point(0, KEEP_VISIBLE_PADDING.bottom),
+    paddingTopLeft: L.point(0, padding.top),
+    paddingBottomRight: L.point(0, padding.bottom),
     animate: true,
   });
 }
@@ -184,7 +190,7 @@ function fitIfNeeded(map: LeafletMap, items: MapParcel[], key: string, fitted: {
   );
 }
 
-export function FieldMap({ parcels, fitItems, fitKey, onSelect }: Props) {
+export function FieldMap({ parcels, fitItems, fitKey, onSelect, keepVisiblePadding = KEEP_VISIBLE_PADDING }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const leafletRef = useRef<Leaflet | null>(null);
@@ -246,8 +252,8 @@ export function FieldMap({ parcels, fitItems, fitKey, onSelect }: Props) {
     if (!ready || !L || !map || !layers) return;
     draw(L, layers, parcels, (id) => onSelectRef.current(id));
     fitIfNeeded(map, fitItems, fitKey, fittedRef);
-    keepSelectedVisible(L, map, parcels, shownRef);
-  }, [ready, parcels, fitItems, fitKey]);
+    keepSelectedVisible(L, map, parcels, shownRef, keepVisiblePadding);
+  }, [ready, parcels, fitItems, fitKey, keepVisiblePadding]);
 
   return <div ref={containerRef} className="field-map" role="application" aria-label="圃場の航空写真の地図" />;
 }

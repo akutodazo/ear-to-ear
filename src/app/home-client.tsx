@@ -125,7 +125,7 @@ export function HomeClient() {
         )}
         <span className="map-fictional-note">区画の形・番号・判断は架空のもの</span>
       </div>
-      <AppNav current="map" compareHref={compareHref} />
+      <AppNav current="map" compareHref={compareHref} orderHref={selected ? `/order#${selected.id}` : "/order"} />
     </div>
   );
 }

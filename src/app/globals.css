@@ -1592,3 +1592,353 @@ a:focus-visible {
 .compare-body > .target:first-child {
   padding-top: var(--space-8);
 }
+
+/* ===== 刈る順番 /order（11-05、3 段目） ===== */
+.order {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 480px;
+}
+
+.order-map {
+  position: relative;
+  flex: none;
+  height: 30dvh;
+  min-height: 180px;
+  border-bottom: 1px solid var(--border);
+}
+
+.order-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-8) var(--space-16) var(--space-24);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+/* 順位の丸: 下書きは破線、確定は実線（地図と一覧で同じ形） */
+.rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border: 2px dashed var(--brand);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--brand);
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.rank-confirmed {
+  border-style: solid;
+  background: var(--brand);
+  color: var(--text-on-brand);
+}
+
+.rank-none {
+  border: 2px dotted var(--border-strong);
+  background: transparent;
+}
+
+.rank-small {
+  width: 18px;
+  height: 18px;
+  border-width: 2px;
+}
+
+.field-map .map-rank {
+  width: 26px;
+  height: 26px;
+  margin-bottom: 2px;
+  font-size: 0.85rem;
+  text-shadow: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+.order-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.order-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-weight: 700;
+}
+
+.order-state-warn {
+  color: #8a5a12;
+}
+
+.order-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.order-buttons .button-small {
+  min-height: 44px;
+  padding: 0 var(--space-16);
+  font-size: 0.95rem;
+}
+
+.order-reset {
+  min-height: 44px;
+  margin-left: auto;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.order-ask-text {
+  flex-basis: 100%;
+  font-weight: 700;
+}
+
+.order-error {
+  color: var(--assertive);
+}
+
+.order-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.order-group {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.order-group-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.order-row {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-8);
+  background: var(--surface);
+}
+
+.order-row-selected {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 2px var(--brand-soft);
+}
+
+.order-row-dragging {
+  position: relative;
+  z-index: 3;
+  box-shadow: 0 8px 20px rgba(21, 41, 29, 0.25);
+}
+
+.order-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px 6px 8px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.order-thumb {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--background-2);
+  color: var(--text-3);
+}
+
+.order-thumb img {
+  object-fit: cover;
+}
+
+.order-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.35;
+}
+
+.order-title {
+  font-weight: 700;
+}
+
+.order-benchmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  color: #5a4408;
+  font-size: 0.8rem;
+}
+
+.order-lines {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.85rem;
+  color: var(--text-2);
+}
+
+.order-missing {
+  font-size: 0.8rem;
+  color: var(--text-3);
+}
+
+/* 操作: 2 列 2 段（▲ 持ち手 ／ ▼ 外す） */
+.order-controls {
+  flex: none;
+  display: grid;
+  grid-template-columns: 44px 44px;
+  grid-auto-rows: 36px;
+  align-content: center;
+  padding: 2px 4px 2px 0;
+}
+
+.order-step,
+.order-unrank,
+.order-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.order-step:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.order-unrank {
+  font-size: 0.75rem;
+  text-decoration: underline;
+}
+
+.order-handle {
+  cursor: grab;
+  touch-action: none;
+}
+
+.order-rank-button {
+  align-self: center;
+  min-height: 44px;
+  margin-right: 6px;
+  padding: 0 10px;
+  border: 1.5px solid var(--brand);
+  border-radius: 22px;
+  background: var(--surface);
+  color: var(--brand);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.order-empty {
+  margin: 0;
+  color: var(--text-2);
+}
+
+.order-done {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-2);
+}
+
+.shoot-list {
+  list-style: none;
+  margin: 0 0 var(--space-8);
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.shoot-why {
+  margin-left: 4px;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-3);
+}
+
+.shoot-send {
+  min-height: 44px;
+}
+
+.order-local-note {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+
+/* 小さい主ボタン（.button-small が文字色を薄くするのを打ち消す） */
+.button-primary.button-small {
+  border-color: var(--brand);
+  color: var(--text-on-brand);
+}
+
+.order-controls-single {
+  display: flex;
+  align-items: center;
+}
+
+.order-rank-button {
+  white-space: nowrap;
+}
+
+.order-lines .mark {
+  flex: none;
+}
+
+/* 一覧の記録の文は少し小さく（細い列で折り返しすぎない） */
+.order-row .order-lines,
+.order-row .order-missing {
+  font-size: 0.78rem;
+}

@@ -215,7 +215,7 @@ export function FieldClient({ field }: { field: Field }) {
           onCancel={stopWriting}
         />
       )}
-      <AppNav current="compare" compareHref={`/fields/${field.id}`} />
+      <AppNav current="compare" compareHref={`/fields/${field.id}`} orderHref={`/order#${field.id}`} />
     </div>
   );
 }

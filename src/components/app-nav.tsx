@@ -4,11 +4,13 @@ import { IconCompare, IconMap, IconOrder } from "@/components/icons";
 
 interface Props {
   current: "map" | "compare" | "order";
-  /** 選んでいる圃場。無ければ「見比べる」は押せない */
+  /** 見比べるの行き先。無ければ押せない */
   compareHref: string | null;
+  /** 刈る順番の行き先 */
+  orderHref: string;
 }
 
-export function AppNav({ current, compareHref }: Props) {
+export function AppNav({ current, compareHref, orderHref }: Props) {
   const cls = (key: Props["current"]) => (current === key ? "app-nav-item app-nav-current" : "app-nav-item");
   return (
     <nav className="app-nav" aria-label="画面の切り替え">
@@ -27,10 +29,10 @@ export function AppNav({ current, compareHref }: Props) {
           見比べる
         </span>
       )}
-      <span className="app-nav-item app-nav-disabled" aria-disabled="true">
+      <Link href={orderHref} className={cls("order")} aria-current={current === "order" ? "page" : undefined}>
         <IconOrder />
         刈る順番
-      </span>
+      </Link>
     </nav>
   );
 }
