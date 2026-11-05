@@ -9,6 +9,7 @@ import {
   parcelAppearance,
   polygonBounds,
   polygonCentroid,
+  polygonsOverlap,
   unionBounds,
   type LatLng,
 } from "./parcel-geometry";
@@ -195,5 +196,51 @@ describe("benchmarkFor（年・地区の目安の畑）", () => {
   it("無ければ null（目安なしでも動く）", () => {
     expect(benchmarkFor(list, "2026", "南地区")).toBeNull();
     expect(benchmarkFor([], "2026", "北地区")).toBeNull();
+  });
+});
+
+describe("polygonsOverlap（輪郭どうしが重なるか。傾いた帯は四角で見ると重なって見えるので、形で見る）", () => {
+  // 北へ傾いた 2 本の帯（隣どうし）。四角（bounds）は重なるが、形は離れている
+  const stripA: LatLng[] = [
+    [43.2400, 141.7500],
+    [43.2401, 141.7512],
+    [43.2440, 141.7502],
+    [43.2439, 141.7490],
+  ];
+  const stripB: LatLng[] = [
+    [43.2401, 141.7514],
+    [43.2402, 141.7526],
+    [43.2441, 141.7516],
+    [43.2440, 141.7504],
+  ];
+
+  it("重なれば true（一部でも、片方が中に入っていても）", () => {
+    const shifted: LatLng[] = square.map(([lat, lng]) => [lat + 0.001, lng + 0.001]);
+    expect(polygonsOverlap(square, shifted)).toBe(true);
+    const inner: LatLng[] = [
+      [43.2405, 141.7505],
+      [43.2405, 141.7510],
+      [43.2410, 141.7510],
+      [43.2410, 141.7505],
+    ];
+    expect(polygonsOverlap(square, inner)).toBe(true);
+    expect(polygonsOverlap(inner, square)).toBe(true);
+  });
+
+  it("離れていれば false。辺が触れるだけでも false", () => {
+    const apart: LatLng[] = square.map(([lat, lng]) => [lat + 0.01, lng]);
+    expect(polygonsOverlap(square, apart)).toBe(false);
+    const touching: LatLng[] = square.map(([lat, lng]) => [lat, lng + 0.002]);
+    expect(polygonsOverlap(square, touching)).toBe(false);
+  });
+
+  it("傾いた隣の帯は、四角で見ると重なるが、形で見ると重ならない", () => {
+    expect(boundsOverlap(polygonBounds(stripA), polygonBounds(stripB))).toBe(true);
+    expect(polygonsOverlap(stripA, stripB)).toBe(false);
+    expect(polygonsOverlap(stripB, stripA)).toBe(false);
+  });
+
+  it("どちらかが空なら例外", () => {
+    expect(() => polygonsOverlap([], square)).toThrow(/輪郭に点が無い/);
   });
 });

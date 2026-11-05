@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FICTIONAL_AREA } from "@/config";
 import type { Field, Parcel } from "@/types";
-import { boundsOverlap, containsPoint, polygonBounds } from "@/services/parcel-geometry";
+import { containsPoint, polygonBounds, polygonsOverlap } from "@/services/parcel-geometry";
 import fieldsData from "./fields.json";
 import parcelsData from "./parcels.json";
 
@@ -58,12 +58,29 @@ describe("架空の区画（src/data/parcels.json）", () => {
     }
   });
 
-  it("区画どうしは重ならない（四角で見ても離れている）", () => {
-    const bounds = parcels.map((p) => ({ id: p.fieldId, b: polygonBounds(p.polygon) }));
-    for (let i = 0; i < bounds.length; i++) {
-      for (let j = i + 1; j < bounds.length; j++) {
-        expect(boundsOverlap(bounds[i].b, bounds[j].b), `${bounds[i].id} と ${bounds[j].id}`).toBe(false);
+  it("区画どうしは重ならない（形で見る。傾いた帯は四角で見ると重なって見えるので bounds では見ない）", () => {
+    for (let i = 0; i < parcels.length; i++) {
+      for (let j = i + 1; j < parcels.length; j++) {
+        expect(polygonsOverlap(parcels[i].polygon, parcels[j].polygon), `${parcels[i].fieldId} と ${parcels[j].fieldId}`).toBe(false);
       }
+    }
+  });
+
+  it("同じ形の繰り返しではない（幅・長さが違う。面積を 0.5 ha 刻みで見て 4 種類以上）", () => {
+    const kinds = new Set(parcels.map((p) => Math.round(areaHa(p.polygon) * 2)));
+    expect(kinds.size).toBeGreaterThanOrEqual(4);
+  });
+
+  it("帯の形（長い辺が短い辺の 2.5 倍以上。空知の殖民区画のような細長い畑）", () => {
+    for (const p of parcels) {
+      const b = polygonBounds(p.polygon);
+      // 傾いた帯なので bounds では測れない。隣り合う 2 辺の長さ（m）で見る
+      const [p0, p1, p2] = p.polygon;
+      const side = (a: readonly [number, number], c: readonly [number, number]) =>
+        Math.hypot((a[0] - c[0]) * M_PER_DEG_LAT, (a[1] - c[1]) * M_PER_DEG_LNG);
+      const s1 = side(p0, p1);
+      const s2 = side(p1, p2);
+      expect(Math.max(s1, s2) / Math.min(s1, s2), `${p.fieldId} ${JSON.stringify(b)}`).toBeGreaterThanOrEqual(2.5);
     }
   });
 
