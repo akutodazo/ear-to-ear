@@ -16,7 +16,9 @@ export type ErrorCode =
   // L6（T31）: Claude の 1 日の上限・Claude の失敗・Claude を止めている
   | "too_many_requests"
   | "bad_gateway"
-  | "claude_disabled";
+  | "claude_disabled"
+  // L8（#140）: LINE の口が無い（LINE_ENABLED が "false"・秘密が無い）
+  | "line_disabled";
 
 /** Content-Type: application/json; charset=utf-8 */
 export function json(status: number, body: unknown): Response {
