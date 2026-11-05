@@ -49,7 +49,10 @@ https://github.com/akutodazo/ear-to-ear/settings/environments で:
 - 自動を止める: Actions の画面の deploy → 右上の **…** → **Disable workflow**
 - トークンを消す: Cloudflare の API Tokens で **Delete**。GitHub の Environment の秘密も消す
 
-## 確かめていないこと
-- 上の権限でデプロイ・migration が通るか（足りなければ、wrangler のエラーに出た権限を足す）
-- `d1 migrations apply` が CI で確認を聞かずに進むか（wrangler は CI では聞かない、と理解している）。最初の dev の実行のログで確かめる
-- `npm ci --ignore-scripts` のままで wrangler（esbuild）が動くか。動かなければ `--ignore-scripts` を外す（依存は `package-lock.json` を人が読むことで守る）
+## 確かめたこと（11-05、dev の最初の成功、run 41937362702）
+本人が Environment の `dev`・`demo` に秘密を置き（`main` だけ、`demo` は本人か先輩の承認）、「Run workflow」で `dev` を選んで走らせた。build と deploy のジョブがすべて成功した。
+- **上の権限でデプロイ・migration が通る**（Workers Scripts・D1 の Edit、Account Settings の Read で足りた）
+- **`d1 migrations apply` は CI で確認を聞かずに進む**（ログは「No migrations to apply!」。0002 まで入っていた）
+- **`npm ci --ignore-scripts` のままで wrangler（esbuild）が動く**（70 ファイルを送り、`harvest-share-dev` を更新）
+- それまでの 5 回（#125 のマージ〜11-04 夜）は、秘密が無くて失敗していた
+- まだ: `demo` へのデプロイ（承認を通る流れ）と、migration が実際に新しい SQL を当てるとき
