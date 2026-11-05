@@ -87,17 +87,21 @@ describe("resolveSameDay（同じ日に撮った別の畑と）", () => {
   });
 });
 
-describe("resolveSameField（この畑の前の日と）", () => {
+describe("resolveSameField（この畑の前の日と。上は必ず選んだ日より前。精査 3 回目 #3）", () => {
   const days = indexByDay(byField);
 
-  it("下は選んだ日（既定は最新）、上はその前の日。上の候補は選んだ日以外", () => {
+  it("下は選んだ日（既定は最新）、上はその前の日。上の候補は選んだ日より前の日だけ（新しい順）", () => {
     const r = resolveSameField(days, "A-04", {});
     expect(r).toEqual({ date: "2026-07-19", earlier: "2026-07-02", earlierOptions: ["2026-07-02"] });
   });
 
-  it("上を指定できる。選んだ日と同じ日は上にしない", () => {
-    const r = resolveSameField(days, "A-03", { date: "2026-07-19", earlier: "2026-07-19" });
-    expect(r.earlier).toBe("2026-07-10");
+  it("上を指定できる。選んだ日と同じ日・後の日は上にしない", () => {
+    expect(resolveSameField(days, "A-03", { date: "2026-07-19", earlier: "2026-07-19" }).earlier).toBe("2026-07-10");
+    expect(resolveSameField(days, "A-03", { date: "2026-07-10", earlier: "2026-07-19" }).earlier).toBeNull();
+  });
+
+  it("選んだ日がいちばん古い日なら、上は null（後の日を上に出さない）", () => {
+    expect(resolveSameField(days, "A-03", { date: "2026-07-10" })).toEqual({ date: "2026-07-10", earlier: null, earlierOptions: [] });
   });
 
   it("写真が 1 日分だけなら上は null。写真が無ければ全部 null", () => {
