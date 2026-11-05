@@ -29,6 +29,7 @@ import { OrderActions } from "@/components/order/order-actions";
 import { NextToShoot } from "@/components/order/next-to-shoot";
 import { LineShare } from "@/components/order/line-share";
 import { AppNav } from "@/components/app-nav";
+import { useDemoToday } from "@/hooks/use-last-season-memo";
 import { IconMap } from "@/components/icons";
 
 const fields: Field[] = fieldsData;
@@ -42,6 +43,8 @@ const districts = [...new Set(fields.map((f) => f.district))];
 const MAP_PADDING = { top: 40, bottom: 16 };
 
 export function OrderClient() {
+  // デモで今日を差し替えているときの表示（精査 4 回目 #5）
+  const demoDate = useDemoToday();
   const map = useFieldMap();
   const { selectedId, selected, select } = useFieldSelection();
   const [districtChoice, setDistrictChoice] = useState<string | null>(null);
@@ -191,7 +194,7 @@ export function OrderClient() {
           </>
         )}
       </main>
-      <AppNav current="order" compareHref={`/fields/${selectedId ?? benchmarkId ?? districtIds[0]}`} orderHref="/order" />
+      <AppNav current="order" compareHref={`/fields/${selectedId ?? benchmarkId ?? districtIds[0]}`} orderHref="/order" demoDate={demoDate} />
     </div>
   );
 }

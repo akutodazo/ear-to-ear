@@ -76,8 +76,9 @@ function originLabel(note: HandoverNote, kind: "status" | "photo", id: string): 
   return m ? `${m[1]}/${Number(m[2])}/${Number(m[3])} の${KIND_WORD[kind]}` : `${note.season}年の${KIND_WORD[kind]}`;
 }
 
-export function demoTodayLabel(_date: string): string {
-  throw new Error("未実装");
+/** 今日を差し替えているときに画面に出す言葉（「7/20 として表示中（デモ）」。精査 4 回目 #5） */
+export function demoTodayLabel(date: string): string {
+  return `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))} として表示中（デモ）`;
 }
 
 /** 昨年のメモを画面の形にする（文と出所の言葉。リンクは持たない） */

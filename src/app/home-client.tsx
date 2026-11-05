@@ -12,7 +12,7 @@ import { useLatestPhoto } from "@/hooks/use-latest-photo";
 import { benchmarkFor, mapLabelLines, parcelAppearance } from "@/services/parcel-geometry";
 import { FieldMap, type MapParcel } from "@/components/map/field-map";
 import { SelectionDock } from "@/components/map/selection-dock";
-import { useLastSeasonMemo } from "@/hooks/use-last-season-memo";
+import { useDemoToday, useLastSeasonMemo } from "@/hooks/use-last-season-memo";
 import { useElementHeight } from "@/hooks/use-element-height";
 import { MapLegend } from "@/components/map/map-legend";
 import { AppNav } from "@/components/app-nav";
@@ -25,6 +25,8 @@ const benchmarks: Benchmark[] = benchmarksData;
 const SEASON = "2026";
 
 export function HomeClient() {
+  // デモで今日を差し替えているときの表示（精査 4 回目 #5）
+  const demoDate = useDemoToday();
   const map = useFieldMap();
   const { selectedId, selected, select } = useFieldSelection();
   const latest = useLatestPhoto(selectedId);
@@ -133,7 +135,7 @@ export function HomeClient() {
         )}
         <span className="map-fictional-note">区画の形・番号・判断は架空のもの</span>
       </div>
-      <AppNav current="map" compareHref={compareHref} orderHref={selected ? `/order#${selected.id}` : "/order"} />
+      <AppNav current="map" compareHref={compareHref} orderHref={selected ? `/order#${selected.id}` : "/order"} demoDate={demoDate} />
     </div>
   );
 }

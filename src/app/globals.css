@@ -2145,3 +2145,35 @@ ol.order-group .order-row-dragging {
   font-size: 1.2rem;
   line-height: 1;
 }
+
+/* デモで今日を差し替えているときの表示（下の帯の上。精査 4 回目 #5） */
+.demo-date {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 2px var(--space-16);
+  background: var(--warning-soft);
+  border-top: 1px solid var(--border);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.demo-date svg {
+  width: 14px;
+  height: 14px;
+}
+
+.demo-date-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-left: 2px;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+}

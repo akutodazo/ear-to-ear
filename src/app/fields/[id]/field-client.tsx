@@ -27,7 +27,7 @@ import { SplitViewer, type PartnerPicker, type SlotPhoto } from "@/components/co
 import { FieldSwitcher } from "@/components/compare/field-switcher";
 import { PhotoStream } from "@/components/compare/photo-stream";
 import { LastSeasonNote } from "@/components/compare/last-season-note";
-import { useLastSeasonMemo } from "@/hooks/use-last-season-memo";
+import { useDemoToday, useLastSeasonMemo } from "@/hooks/use-last-season-memo";
 import { useHashIs } from "@/hooks/use-hash-is";
 import { StatusPanel } from "@/components/compare/status-panel";
 import { StatusActions } from "@/components/compare/status-actions";
@@ -44,6 +44,8 @@ const seasons: SeasonRecord[] = seasonsData;
 const SEASON = "2026";
 
 export function FieldClient({ field }: { field: Field }) {
+  // デモで今日を差し替えているときの表示（精査 4 回目 #5）
+  const demoDate = useDemoToday();
   const districtFields = useMemo(() => fields.filter((f) => f.district === field.district), [field.district]);
   const districtIds = useMemo(() => districtFields.map((f) => f.id), [districtFields]);
   const fieldsById = useMemo(() => Object.fromEntries(districtFields.map((f) => [f.id, f])) as Record<string, Field>, [districtFields]);
@@ -254,7 +256,7 @@ export function FieldClient({ field }: { field: Field }) {
           onCancel={stopWriting}
         />
       )}
-      <AppNav current="compare" compareHref={`/fields/${field.id}`} orderHref={`/order#${field.id}`} />
+      <AppNav current="compare" compareHref={`/fields/${field.id}`} orderHref={`/order#${field.id}`} demoDate={demoDate} />
     </div>
   );
 }

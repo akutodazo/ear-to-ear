@@ -10,17 +10,21 @@ import { LAST_SEASON_HANDOVER_DAYS } from "@/config";
 import notesData from "@/data/handover-2025.json";
 import seasonsData from "@/data/seasons.json";
 import { lastSeasonFor, type SeasonRecord } from "@/services/last-season";
-import { isNearLastSeason, lastSeasonMemoView, lastSeasonNoteFor, type LastSeasonMemoView } from "@/services/last-season-handover";
-import { readToday } from "@/lib/today";
+import { demoTodayLabel, isNearLastSeason, lastSeasonMemoView, lastSeasonNoteFor, type LastSeasonMemoView } from "@/services/last-season-handover";
+import { clearDemoToday, readDemoToday, readToday, subscribeToday } from "@/lib/today";
 
 const notes = notesData as HandoverNote[];
 const seasons: SeasonRecord[] = seasonsData;
 
-const subscribe = () => () => {};
-
 /** 今日（日本時間）。書き出しのときは null（ブラウザで読む） */
 export function useToday(): string | null {
-  return useSyncExternalStore(subscribe, readToday, () => null);
+  return useSyncExternalStore(subscribeToday, readToday, () => null);
+}
+
+/** 今日を差し替えているか（デモ）。差し替えていれば、画面に出す言葉と外す操作（精査 4 回目 #5） */
+export function useDemoToday(): { label: string; onClear: () => void } | null {
+  const date = useSyncExternalStore(subscribeToday, readDemoToday, () => null);
+  return useMemo(() => (date === null ? null : { label: demoTodayLabel(date), onClear: clearDemoToday }), [date]);
 }
 
 export function useLastSeasonMemo(fieldId: string | null, season: string): LastSeasonMemoView | null {
