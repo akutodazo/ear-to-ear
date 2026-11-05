@@ -46,6 +46,11 @@ export function fakeDeps(overrides: Partial<Deps> = {}): Deps {
     newId: () => "00000000-0000-4000-8000-000000000001",
     knownFieldIds: new Set(Array.from({ length: 12 }, (_, i) => `A-${String(i + 1).padStart(2, "0")}`)),
     claude: null,
+    line: null,
+    // 既定では待たない。送信を確かめるテストは上書きして約束を集める
+    waitUntil: (promise) => {
+      promise.catch(() => undefined);
+    },
     ...overrides,
   };
 }

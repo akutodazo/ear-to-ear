@@ -37,6 +37,16 @@ export interface ClaudeReply {
 /** Messages API（POST /v1/messages）を 1 回呼ぶ。キー・版・30 秒の打ち切りは env.ts が持つ。再試行しない（T31） */
 export type ClaudePort = (requestBody: unknown) => Promise<ClaudeReply>;
 
+/**
+ * LINE の Messaging API の口（L8、#139）。トークン・シークレット・10 秒の打ち切りは env.ts が持つ。再試行しない。
+ * sign: チャネルシークレットを鍵にした本文（生のバイト列）の HMAC-SHA256。webhook の署名の検証に使う
+ * push: グループに文字のメッセージを 1 通送り、状態コードを返す。通信の失敗・時間切れは 0
+ */
+export interface LinePort {
+  sign: (body: Uint8Array) => Promise<Uint8Array>;
+  push: (groupId: string, text: string) => Promise<number>;
+}
+
 export interface Deps {
   /** D1（バインディング名 DB） */
   db: DbPort;
@@ -62,6 +72,10 @@ export interface Deps {
   knownFieldIds: ReadonlySet<string>;
   /** Claude を呼ぶ口（L6、T31）。CLAUDE_ENABLED が "false"、または CLAUDE_API_KEY が無いなら null（呼ばない） */
   claude: ClaudePort | null;
+  /** LINE の口（L8）。LINE_ENABLED が "false"、または秘密が片方でも無いなら null（送らない・webhook は 503） */
+  line: LinePort | null;
+  /** 応答を返した後も約束を走らせる（Workers の ctx.waitUntil）。LINE の送信に使い、失敗しても応答は変わらない */
+  waitUntil: (promise: Promise<unknown>) => void;
 }
 
 export type AuthLevel = "none" | "member" | "admin";
