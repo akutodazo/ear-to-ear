@@ -13,6 +13,7 @@ import { benchmarkFor, mapLabelLines, parcelAppearance } from "@/services/parcel
 import { FieldMap, type MapParcel } from "@/components/map/field-map";
 import { SelectionDock } from "@/components/map/selection-dock";
 import { useLastSeasonMemo } from "@/hooks/use-last-season-memo";
+import { useElementHeight } from "@/hooks/use-element-height";
 import { MapLegend } from "@/components/map/map-legend";
 import { AppNav } from "@/components/app-nav";
 import { IconCamera } from "@/components/icons";
@@ -28,6 +29,9 @@ export function HomeClient() {
   const { selectedId, selected, select } = useFieldSelection();
   const latest = useLatestPhoto(selectedId);
   const lastMemo = useLastSeasonMemo(selectedId, SEASON);
+  // 選んだ畑を隠さない下の余白は、板の実際の高さから決める（精査 4 回目 #1）。測る前は地図の既定
+  const [dockRef, dockHeight] = useElementHeight<HTMLElement>();
+  const keepVisiblePadding = useMemo(() => (dockHeight > 0 ? { top: 56, bottom: dockHeight + 24 } : undefined), [dockHeight]);
   const districts = useMemo(() => [...new Set(map.pins.map((p) => p.field.district))], [map.pins]);
   // 見ている地区。圃場を押すとその地区に変わり、閉じても戻らない（精査 #1）。既定は最初の地区（開いたときに選んでいればその地区）
   const [districtChoice, setDistrictChoice] = useState<string | null>(() => selected?.district ?? null);
@@ -112,15 +116,16 @@ export function HomeClient() {
         </div>
       )}
       <div className="home-map">
-        <FieldMap parcels={items} fitItems={fitItems} fitKey={fitKey} onSelect={choose} />
+        <FieldMap parcels={items} fitItems={fitItems} fitKey={fitKey} onSelect={choose} keepVisiblePadding={keepVisiblePadding} />
         {selectedItem ? (
           <SelectionDock
+            ref={dockRef}
             field={selectedItem.field}
             appearance={selectedItem.appearance}
             statusLine={selectedItem.labelLines[1] ?? (map.message ? "判断を読み込めていません" : "判断を読み込んでいます")}
             latest={latest}
             compareLabel={compareLabel}
-            lastSeasonMemo={lastMemo && lastMemo.first !== null ? { season: lastMemo.season, first: lastMemo.first } : null}
+            lastSeasonMemo={lastMemo ? { season: lastMemo.season, href: `/fields/${selectedItem.field.id}#last-season` } : null}
             onClose={() => choose(null)}
           />
         ) : (

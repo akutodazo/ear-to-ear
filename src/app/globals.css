@@ -2088,49 +2088,60 @@ ol.order-group .order-row-dragging {
   box-shadow: var(--focus-ring);
 }
 
-/* 来年の引き継ぎ（5 段目）。昨年のメモの印はリンクにしない（押せる形に見せない） */
-.memo-last .season-title {
+/* 来年の引き継ぎ（5 段目）。「昨年の同じ頃」の段に畳んで入れる（精査 4 回目 #4） */
+.season-memo {
+  margin-top: var(--space-8);
+}
+
+.season-memo summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--brand);
+  cursor: pointer;
+}
+
+.season-memo summary svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* 出所は札にせず、灰色の小さな文字（押せる形に見せない。精査 4 回目 #3） */
+.memo-origin {
+  margin-left: 2px;
+  font-size: 0.8rem;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+/* 地図の板から来たとき、上に残る写真の下に段の頭が来るように */
+#last-season {
+  scroll-margin-top: 50vh;
+}
+
+/* 地図の板: 昨年の引き継ぎへの 1 行の入口（文は出さない。精査 4 回目 #2） */
+.dock-last-memo {
   display: flex;
   align-items: center;
   gap: 6px;
-}
-
-.memo-last .season-title svg {
-  width: 16px;
-  height: 16px;
-}
-
-.badge-source-static {
-  border-style: dashed;
-  cursor: default;
-}
-
-/* 地図の板: 昨年の引き継ぎの 1 文目（2 行まで） */
-.dock-last-memo {
-  display: flex;
-  gap: 6px;
-  margin: 0 0 var(--space-8);
-  font-size: 0.85rem;
-  line-height: 1.5;
-  color: var(--text-2);
+  min-height: 32px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--brand);
+  text-decoration: none;
 }
 
 .dock-last-memo svg {
   flex: none;
   width: 16px;
   height: 16px;
-  margin-top: 2px;
 }
 
-.dock-last-memo > span {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.dock-last-memo-head {
-  margin-right: 6px;
-  font-weight: 700;
-  color: var(--text-1);
+.dock-last-memo-arrow {
+  margin-left: auto;
+  font-size: 1.2rem;
+  line-height: 1;
 }

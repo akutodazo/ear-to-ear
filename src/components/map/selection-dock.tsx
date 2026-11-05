@@ -1,6 +1,7 @@
 /**
  * 地図の上に出る、選んだ圃場の板（11-05 のデザインの引き継ぎ: 畑を押すと最新の写真が出る）。
- * 左に最新の写真、右に番号・名前・判断（地図と同じ印＋言葉）・目安。昨年の判断の頃なら、昨年の引き継ぎの 1 文目（5 段目）。
+ * 左に最新の写真、右に番号・名前・判断（地図と同じ印＋言葉）・目安。昨年の判断の頃なら、昨年の引き継ぎへの 1 行の入口（5 段目。
+ * 文は出さない: 途中で切れる・今年の判断と同じ形で並ぶため。精査 4 回目 #2）。
  * 下は「目安の畑と見比べる」への入口。props だけで受け取る
  */
 import Image from "next/image";
@@ -19,8 +20,10 @@ interface Props {
   latest: LatestPhotoState;
   /** 下のボタンの文言（地区に目安があるかで親が決める。精査 #3） */
   compareLabel: string;
-  /** 昨年の引き継ぎ（昨年の判断の頃だけ）。年と 1 文目。無ければ null */
-  lastSeasonMemo?: { season: string; first: string } | null;
+  /** 昨年の引き継ぎ（昨年の判断の頃だけ）。年と、見比べるの全文への行き先。無ければ null */
+  lastSeasonMemo?: { season: string; href: string } | null;
+  /** 板の高さを親が測るため（選んだ畑を隠さない余白。精査 4 回目 #1） */
+  ref?: React.Ref<HTMLElement>;
   onClose: () => void;
 }
 
@@ -48,10 +51,10 @@ function photoLine(latest: LatestPhotoState): string {
   }
 }
 
-export function SelectionDock({ field, appearance, statusLine, latest, compareLabel, lastSeasonMemo = null, onClose }: Props) {
+export function SelectionDock({ field, appearance, statusLine, latest, compareLabel, lastSeasonMemo = null, ref, onClose }: Props) {
   const photo = latest.kind === "ok" ? latest.photo : null;
   return (
-    <section className="dock" aria-label="選んだ圃場">
+    <section ref={ref} className="dock" aria-label="選んだ圃場">
       <div className="dock-body">
         <Link href={`/fields/${field.id}`} className="dock-photo" aria-label={photo ? `${field.id} の写真を見る` : undefined} aria-hidden={photo === null ? "true" : undefined} tabIndex={photo === null ? -1 : undefined}>
           {photo ? (
@@ -93,13 +96,11 @@ export function SelectionDock({ field, appearance, statusLine, latest, compareLa
         </button>
       </div>
       {lastSeasonMemo && (
-        <p className="dock-last-memo">
+        <Link className="dock-last-memo" href={lastSeasonMemo.href}>
           <IconCalendar />
-          <span>
-            <span className="dock-last-memo-head">昨年の引き継ぎ（{lastSeasonMemo.season}年）</span>
-            {lastSeasonMemo.first}
-          </span>
-        </p>
+          昨年の引き継ぎ（{lastSeasonMemo.season}年）あり
+          <span className="dock-last-memo-arrow" aria-hidden="true">›</span>
+        </Link>
       )}
       <Link className="button button-primary button-block" href={`/fields/${field.id}`}>
         <IconCompare />

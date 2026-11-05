@@ -9,7 +9,7 @@ import type { SeasonRecord } from "./last-season";
 
 export interface LastSeasonMemoSentence {
   text: string;
-  /** 根拠の印の言葉（例「判断 7/20」「写真 7/18」）。リンクにしない */
+  /** 出所の言葉（例「2025/7/20 の判断」「2025/7/18 の写真」）。今年の札と区別するため年を入れ、リンクにしない（精査 4 回目 #3） */
   labels: string[];
   uncited: boolean;
 }
@@ -66,8 +66,18 @@ export function demoToday(search: string): string | null {
   return value;
 }
 
-/** 昨年のメモを画面の形にする（文と根拠の印の言葉。リンクは持たない） */
+const RECORD_DATE = /(\d{4})-(\d{2})-(\d{2})/;
+const KIND_WORD = { status: "判断", photo: "写真" } as const;
+
+/** 記録 1 件の出所の言葉。日付が読めなければ「昨年の判断」のように年だけ言う */
+function originLabel(note: HandoverNote, kind: "status" | "photo", id: string): string {
+  const record = note.records.find((r) => r.kind === kind && r.id === id);
+  const m = record ? RECORD_DATE.exec(record.text) : null;
+  return m ? `${m[1]}/${Number(m[2])}/${Number(m[3])} の${KIND_WORD[kind]}` : `${note.season}年の${KIND_WORD[kind]}`;
+}
+
+/** 昨年のメモを画面の形にする（文と出所の言葉。リンクは持たない） */
 export function lastSeasonMemoView(note: HandoverNote): LastSeasonMemoView {
-  const sentences = handoverSentences(note).map((s) => ({ text: s.text, labels: s.sources.map((src) => src.label), uncited: s.uncited }));
+  const sentences = handoverSentences(note).map((s) => ({ text: s.text, labels: s.sources.map((src) => originLabel(note, src.kind, src.id)), uncited: s.uncited }));
   return { season: note.season, sentences, first: sentences[0]?.text ?? null };
 }
