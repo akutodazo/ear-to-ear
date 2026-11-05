@@ -2036,10 +2036,33 @@ ol.order-group .order-row-dragging {
   font-size: 0.95rem;
 }
 
-/* 引き継ぎメモ（L6、main の #120 から）。文ごとに根拠の印、印を押すと判断の履歴・写真へ */
+/* 引き継ぎメモ（L6、main の #120 から）。文ごとに根拠の印、印を押すと判断の履歴・写真へ。
+   見た目は「昨年の同じ頃」「判断の履歴」と同じ段（.season）で、枠で囲まない */
+.memo {
+  display: flex;
+  flex-direction: column;
+}
+
+.memo-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
 .memo-sentence {
   margin: 0;
   line-height: 1.7;
+}
+
+.memo-created {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-2);
+}
+
+.memo-create {
+  align-self: flex-start;
+  margin-top: var(--space-8);
 }
 
 /* 根拠の無い文は灰色で「根拠なし」（合格条件 13） */
