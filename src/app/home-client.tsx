@@ -31,8 +31,11 @@ export function HomeClient() {
   const [districtChoice, setDistrictChoice] = useState<string | null>(() => selected?.district ?? null);
   const district = selected?.district ?? districtChoice ?? districts[0] ?? "";
   // 地図を合わせ直すのは選択欄を変えたときだけ。圃場を押しても地図は動かさない（押した畑が指の下から動かない。精査 #1）
-  const [fit, setFit] = useState<{ district: string | null; seq: number }>(() => ({ district: selected?.district ?? null, seq: 0 }));
-  const fitDistrict = fit.district ?? districts[0] ?? "";
+  // 最初の描画ではハッシュがまだ読めない（事前描画の値は null）ので、初期値に selected を入れず、描画のたびに決める。
+  // key は選択欄を変えるまで "initial" のままなので、畑を押して地区が変わっても合わせ直さない（精査 2 回目の #1）
+  const [fit, setFit] = useState<{ district: string | null; seq: number }>({ district: null, seq: 0 });
+  const fitDistrict = fit.district ?? selected?.district ?? districts[0] ?? "";
+  const fitKey = fit.district === null ? "initial" : `${fit.district}#${fit.seq}`;
 
   const choose = (id: string | null) => {
     select(id);
@@ -107,7 +110,7 @@ export function HomeClient() {
         </div>
       )}
       <div className="home-map">
-        <FieldMap parcels={items} fitItems={fitItems} fitKey={`${fitDistrict}#${fit.seq}`} onSelect={choose} />
+        <FieldMap parcels={items} fitItems={fitItems} fitKey={fitKey} onSelect={choose} />
         {selectedItem ? (
           <SelectionDock
             field={selectedItem.field}

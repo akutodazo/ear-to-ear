@@ -14,13 +14,14 @@ import { useFieldPhotos } from "@/hooks/use-field-photos";
 import { useFieldStatus } from "@/hooks/use-field-status";
 import { useLatestPhoto } from "@/hooks/use-latest-photo";
 import { benchmarkFor, monthDayJst } from "@/services/parcel-geometry";
-import { lastSeasonFor, lastSeasonLines, type SeasonRecord } from "@/services/last-season";
+import { isoToJstDate, lastSeasonFor, lastSeasonLines, type SeasonDates, type SeasonRecord } from "@/services/last-season";
 import { statusLabel } from "@/services/status-view";
 import { BenchmarkPane } from "@/components/compare/benchmark-pane";
 import { FieldSwitcher } from "@/components/compare/field-switcher";
 import { PhotoStream } from "@/components/compare/photo-stream";
 import { LastSeasonNote } from "@/components/compare/last-season-note";
 import { StatusPanel } from "@/components/compare/status-panel";
+import { StatusActions } from "@/components/compare/status-actions";
 import { StatusHistory } from "@/components/compare/status-history";
 import { AppNav } from "@/components/app-nav";
 import { IconMap, IconPen } from "@/components/icons";
@@ -42,12 +43,32 @@ export function FieldClient({ field }: { field: Field }) {
   const status = useFieldStatus(field.id, photos.confirmedPhotoIds);
   const [writing, setWriting] = useState(false);
 
-  const latestTakenAt = photos.groups[0]?.photos[0]?.takenAt ?? null;
-  const seasonLines = lastSeasonLines(lastSeasonFor(seasons, field.id, SEASON), SEASON, latestTakenAt);
-  const latestJudgment = useMemo(() => {
-    const live = status.history.filter((e) => e.revokedAt === null);
-    return live.length === 0 ? null : live.reduce((a, b) => (a.at > b.at || (a.at === b.at && a.id > b.id) ? a : b));
-  }, [status.history]);
+  const live = useMemo(() => status.history.filter((e) => e.revokedAt === null), [status.history]);
+  const latestJudgment = useMemo(
+    () => (live.length === 0 ? null : live.reduce((a, b) => (a.at > b.at || (a.at === b.at && a.id > b.id) ? a : b))),
+    [live],
+  );
+  // 今年の判断の日（取り消していないもののうち、最新の収穫可能・収穫済）。昨年と同じ形で並べる
+  const thisSeason = useMemo<SeasonDates | null>(() => {
+    if (live.length === 0) return null;
+    const latestOf = (kind: "ready" | "done") => {
+      const list = live.filter((e) => e.status === kind);
+      return list.length === 0 ? null : isoToJstDate(list.reduce((a, b) => (a.at > b.at ? a : b)).at);
+    };
+    return { readyAt: latestOf("ready"), doneAt: latestOf("done") };
+  }, [live]);
+  const seasonLines = lastSeasonLines(lastSeasonFor(seasons, field.id, SEASON), SEASON, thisSeason);
+  // 記録できたら入力を閉じる（成功の文は上の判断の行の下に出す）
+  const recorded = status.formMessage?.ok === true;
+  const open = writing && !recorded;
+  const startWriting = () => {
+    status.resetDraft();
+    setWriting(true);
+  };
+  const stopWriting = () => {
+    status.resetDraft();
+    setWriting(false);
+  };
 
   const refSet = useMemo(() => new Set(status.draft.refPhotoIds), [status.draft.refPhotoIds]);
 
@@ -60,14 +81,16 @@ export function FieldClient({ field }: { field: Field }) {
         </Link>
         <FieldSwitcher fields={districtFields} currentId={field.id} benchmarkId={benchmarkId} />
       </header>
-      {isBenchmark ? <BenchmarkPane kind="self" field={field} /> : benchmarkField ? <BenchmarkPane kind="other" field={benchmarkField} latest={bench} /> : <BenchmarkPane kind="none" />}
+      <div className={open ? "bench-wrap bench-wrap-compact" : "bench-wrap"}>
+        {isBenchmark ? <BenchmarkPane kind="self" field={field} /> : benchmarkField ? <BenchmarkPane kind="other" field={benchmarkField} latest={bench} /> : <BenchmarkPane kind="none" />}
+      </div>
       <main className="compare-body">
         <section className="target">
           <div className="target-head">
             <h1 className="target-title">
               <span className="dock-id">{field.id}</span> {field.name}
             </h1>
-            <button type="button" className="button button-small target-write" onClick={() => setWriting((w) => !w)} aria-expanded={writing}>
+            <button type="button" className="button button-small target-write" onClick={open ? stopWriting : startWriting} aria-expanded={open}>
               <IconPen />
               判断を残す
             </button>
@@ -84,19 +107,14 @@ export function FieldClient({ field }: { field: Field }) {
               "判断はまだありません"
             )}
           </p>
-          {writing && (
+          {recorded && status.formMessage && <p className="note note-ok">{status.formMessage.text}</p>}
+          {open && (
             <StatusPanel
               draft={status.draft}
               onChooseStatus={status.chooseStatus}
               onToggleReason={status.toggleReason}
               onNote={status.setNote}
               onSubmit={status.submit}
-              onCancel={() => {
-                status.resetDraft();
-                setWriting(false);
-              }}
-              submitting={status.submitting}
-              message={status.formMessage}
               needsPassphrase={status.needsPassphrase}
               loginMessage={status.loginMessage}
               loggingIn={status.loggingIn}
@@ -107,15 +125,26 @@ export function FieldClient({ field }: { field: Field }) {
         <PhotoStream
           groups={photos.groups}
           fieldId={field.id}
+          fieldName={field.name}
           loading={photos.loading}
           message={photos.message}
           onRetry={photos.refresh}
-          refs={writing ? { selected: refSet, onToggle: status.toggleRefPhoto } : undefined}
+          refs={open ? { selected: refSet, onToggle: status.toggleRefPhoto } : undefined}
         />
         <LastSeasonNote lines={seasonLines} />
         <StatusHistory history={status.history} loading={status.historyLoading} message={status.historyMessage} revokeStatus={status.revokeStatus} onRevoke={status.revoke} onRetry={status.refreshHistory} />
         <p className="map-fictional-note compare-fictional">番号・判断・昨年の記録は架空のもの</p>
       </main>
+      {open && (
+        <StatusActions
+          refCount={status.draft.refPhotoIds.length}
+          canSubmit={status.draft.status !== null}
+          submitting={status.submitting}
+          message={status.formMessage}
+          onSubmit={status.submit}
+          onCancel={stopWriting}
+        />
+      )}
       <AppNav current="compare" compareHref={`/fields/${field.id}`} />
     </div>
   );

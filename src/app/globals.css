@@ -895,10 +895,10 @@ a:focus-visible {
   align-items: center;
   gap: 4px;
   flex: none;
-  min-height: 40px;
-  padding: 0 10px;
+  min-height: 44px;
+  padding: 0 12px;
   border: 1.5px solid var(--border);
-  border-radius: 20px;
+  border-radius: 22px;
   color: var(--text-2);
   font-size: 0.85rem;
   font-weight: 600;
@@ -924,10 +924,20 @@ a:focus-visible {
   align-items: center;
   gap: 6px;
   padding: 6px var(--space-16);
-  background: var(--warning-soft);
-  color: #5a4408;
+  background: var(--background-2);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-2);
   font-size: 0.85rem;
   font-weight: 700;
+}
+
+/* 入力中は目安の写真を低くして、下の送れる範囲を広げる（精査 #4） */
+.bench-wrap {
+  flex: none;
+}
+
+.bench-wrap-compact .bench-photo {
+  max-height: 20dvh;
 }
 
 .bench-photo {
@@ -1142,7 +1152,41 @@ a:focus-visible {
   object-fit: cover;
 }
 
-.stream-photo figcaption {
+/* 写真ごとの帯（目安の帯と同じ形・同じ位置） */
+.stream-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 12px 6px;
+  background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.55));
+  color: #ffffff;
+  font-size: 0.9rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.stream-caption .dock-id {
+  color: #e6e9e1;
+}
+
+.stream-caption-title {
+  font-weight: 700;
+}
+
+.stream-caption-date {
+  margin-left: auto;
+  font-size: 0.85rem;
+}
+
+.stream-photo-chosen .stream-photo-frame {
+  outline: 3px solid var(--brand);
+  outline-offset: 0;
+}
+
+.stream-photo-actions {
   display: flex;
   justify-content: flex-end;
   padding-top: 4px;
@@ -1243,6 +1287,43 @@ a:focus-visible {
 
 .history-revoked {
   opacity: 0.55;
+}
+
+/* 入力中だけ下の帯の上に出る「記録する」（どこまで送っても押せる） */
+.status-actions {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-8) var(--space-16);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 -6px 16px rgba(21, 41, 29, 0.08);
+}
+
+.status-actions-message {
+  margin: 0;
+}
+
+.status-actions-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-8);
+}
+
+.status-actions-row .button {
+  min-height: 52px;
+  padding: 0 var(--space-16);
+}
+
+.status-actions-submit {
+  gap: 10px;
+}
+
+.status-actions-refs {
+  font-size: 0.85rem;
+  font-weight: 400;
+  opacity: 0.9;
 }
 
 .compare-fictional {

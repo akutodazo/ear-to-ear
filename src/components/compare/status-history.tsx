@@ -13,8 +13,12 @@ interface Props {
   onRetry: () => void;
 }
 
+const NO_HISTORY = "まだ判断の記録はありません";
+
 export function StatusHistory({ history, loading, message, revokeStatus, onRevoke, onRetry }: Props) {
-  const failed = message !== null && message !== "まだ判断の記録はありません";
+  const failed = message !== null && message !== NO_HISTORY;
+  // 中身が無い段は見出しごと出さない（空の段を並べない。精査 #5）
+  if (history.length === 0 && !loading && !failed) return null;
   return (
     <section className="history" aria-label="判断の履歴">
       <h2 className="season-title">判断の履歴</h2>
