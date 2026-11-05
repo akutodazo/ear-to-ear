@@ -16,6 +16,8 @@ interface Props {
   /** 判断の文（「可 7/21」「未確認」「判断を読み込んでいます」など。親が決める） */
   statusLine: string;
   latest: LatestPhotoState;
+  /** 下のボタンの文言（地区に目安があるかで親が決める。精査 #3） */
+  compareLabel: string;
   onClose: () => void;
 }
 
@@ -43,21 +45,21 @@ function photoLine(latest: LatestPhotoState): string {
   }
 }
 
-export function SelectionDock({ field, appearance, statusLine, latest, onClose }: Props) {
+export function SelectionDock({ field, appearance, statusLine, latest, compareLabel, onClose }: Props) {
   const photo = latest.kind === "ok" ? latest.photo : null;
   return (
     <section className="dock" aria-label="選んだ圃場">
       <div className="dock-body">
-        <div className="dock-photo" aria-hidden={photo === null ? "true" : undefined}>
+        <Link href={`/fields/${field.id}`} className="dock-photo" aria-label={photo ? `${field.id} の写真を見る` : undefined} aria-hidden={photo === null ? "true" : undefined} tabIndex={photo === null ? -1 : undefined}>
           {photo ? (
-            <Image src={`/api/photo-files/${encodeURIComponent(photo.id)}`} alt={`${field.id} の最新の写真`} fill sizes="96px" />
+            <Image src={`/api/photo-files/${encodeURIComponent(photo.id)}`} alt="" fill sizes="96px" />
           ) : (
             <span className="dock-photo-empty">
               <IconPhoto />
               {latest.kind === "ok" ? "写真なし" : ""}
             </span>
           )}
-        </div>
+        </Link>
         <div className="dock-text">
           <div className="dock-title">
             <span className="dock-id">{field.id}</span> {field.name}
@@ -89,7 +91,7 @@ export function SelectionDock({ field, appearance, statusLine, latest, onClose }
       </div>
       <Link className="button button-primary button-block" href={`/fields/${field.id}`}>
         <IconCompare />
-        {appearance.benchmark ? "この畑の写真を見る" : "目安の畑と見比べる"}
+        {compareLabel}
       </Link>
     </section>
   );

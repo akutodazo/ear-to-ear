@@ -59,6 +59,11 @@ export function HomeClient() {
   }, [map.pins, map.summaries, selectedId]);
 
   const selectedItem = items.find((i) => i.field.id === selectedId) ?? null;
+  // 見比べるの行き先: 選んだ畑。選んでいなければ、見ている地区の目安の畑（無ければ最初の畑）
+  const districtBenchmark = benchmarkFor(benchmarks, SEASON, district);
+  const compareHref = selected ? `/fields/${selected.id}` : `/fields/${districtBenchmark ?? items.find((i) => i.field.district === district)?.field.id ?? "A-01"}`;
+  // 板のボタン: 目安の畑と見比べられるのは、地区に目安があって、それが自分でないとき
+  const compareLabel = selectedItem && districtBenchmark !== null && !selectedItem.appearance.benchmark ? "目安の畑と見比べる" : "この畑の写真を見る";
   const fitItems = useMemo(() => items.filter((i) => i.field.district === fitDistrict), [items, fitDistrict]);
 
   return (
@@ -109,6 +114,7 @@ export function HomeClient() {
             appearance={selectedItem.appearance}
             statusLine={selectedItem.labelLines[1] ?? (map.message ? "判断を読み込めていません" : "判断を読み込んでいます")}
             latest={latest}
+            compareLabel={compareLabel}
             onClose={() => choose(null)}
           />
         ) : (
@@ -116,7 +122,7 @@ export function HomeClient() {
         )}
         <span className="map-fictional-note">区画の形・番号・判断は架空のもの</span>
       </div>
-      <AppNav current="map" compareHref={selected ? `/fields/${selected.id}` : null} />
+      <AppNav current="map" compareHref={compareHref} />
     </div>
   );
 }
