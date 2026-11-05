@@ -178,6 +178,7 @@ Next.js（App Router、`output: 'export'`）＋ Leaflet。地図の下地は**�
 | 13 | 引き継ぎメモの各文に引用で根拠が付き、タップで元の記録に戻れる。根拠の無い文は「根拠なし」と区別する | L6 | `services/handover-document`・`handover-citations`・`handover-request`・`handover-view`、`worker/handover`・`handover-post` | PR #108〜#110・#112・#113・#116・#119・#120 | 自動＋実機（`docs/dev/l6-live.md`） | **一部**: 自動は済（引用は渡した記録の範囲だけ。範囲の外の引用は捨て、返事の形が違えば 502）。指示文は試作台の疑似で確かめた（#119）。本物の API と実機は予定（dev のデプロイと `CLAUDE_API_KEY` の後） |
 | 14 | LINE の通知が失敗しても、写真の保存・判断の記録は成功する。月の送信数が上限の手前で止まる | L8 | `services/usage-limit`（回数の部分）・`line-signature`・`line-webhook`・`line-notice`、`worker/line-webhook`・`line-notify` | PR #143〜#147 ほか | 自動＋実機（`docs/dev/line.md` の台本） | **一部**: 自動は作成中。LINE 側の設定と実機は予定 |
 | 15 | 送信内容に撮影位置の座標も候補までの距離も無い | L0 | `services/upload-meta`（受け側で拒否）・`upload-request`、`lib/upload-steps`（送る meta に座標なし） | PR #41・#51・#57 | 自動＋画面（送る中身を内蔵ブラウザで確認） | **済** |
+| 16 | 来年の引き継ぎ: 昨年（2025）の引き継ぎメモを、昨年の判断の日の前後（`LAST_SEASON_HANDOVER_DAYS` 日、端を含む）だけ、地図の板（1 文目）と見比べる（全文と根拠の印）に出す。範囲の外・記録の無い畑・小麦でない年は出さない。日数の差・「あと n 日」は言わない。昨年のメモは**手で書いた架空の例**（`src/data/handover-2025.json`）で、Claude が作ったメモと言わない。根拠の印は今年の記録へのリンクにしない | 再設計（5 段目） | `services/last-season-handover`、`data/handover-2025` | （この PR） | 自動＋画面（`?today=2026-07-20` で今日を差し替えて見る） | 予定 |
 
 ### テスト（RED と GREEN は別コミット）
 | 対象 | テスト |
