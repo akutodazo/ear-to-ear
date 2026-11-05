@@ -7,7 +7,7 @@
  * 下はこの畑の写真の流れ（根拠を選ぶ）、判断を残す（useFieldStatus）、昨年の同じ頃（last-season）、履歴、引き継ぎメモ（useHandover、L6）（AGENTS.md §4）
  */
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import fieldsData from "@/data/fields.json";
 import benchmarksData from "@/data/benchmarks.json";
 import seasonsData from "@/data/seasons.json";
@@ -59,6 +59,14 @@ export function FieldClient({ field }: { field: Field }) {
   const lastMemo = useLastSeasonMemo(field.id, SEASON);
   // 地図の板の「昨年の引き継ぎ あり」から来たら、畳んだ全文を開いておく
   const fromDock = useHashIs("last-season");
+  // 写真を読み込むと段の位置が変わり、# で飛んだ先がずれる。読み込みが済んでから 1 回だけ「昨年の同じ頃」へ送る
+  const scrolledToMemo = useRef(false);
+  const contentReady = !photos.loading && !district.loading;
+  useEffect(() => {
+    if (!fromDock || lastMemo === null || !contentReady || scrolledToMemo.current) return;
+    scrolledToMemo.current = true;
+    document.getElementById("last-season")?.scrollIntoView({ block: "start" });
+  }, [fromDock, lastMemo, contentReady]);
   const [writing, setWriting] = useState(false);
 
   // 比べ方の選択。日付・相手・前の日は「希望」として持ち、実際に出せる形には Service が直す
