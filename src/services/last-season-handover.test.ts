@@ -88,9 +88,9 @@ describe("demoToday（デモで今日を差し替える ?today=YYYY-MM-DD）", (
 describe("lastSeasonMemoView（昨年のメモを画面の形に）", () => {
   const view = lastSeasonMemoView(note("A-03", "2025"));
 
-  it("年と、文ごとの根拠の印の言葉", () => {
+  it("年と、文ごとの出所の言葉。今年の札と区別するため年を入れる（精査 4 回目 #3）", () => {
     expect(view.season).toBe("2025");
-    expect(view.sentences.map((s) => s.labels)).toStrictEqual([["判断 7/20"], ["写真 7/18"], []]);
+    expect(view.sentences.map((s) => s.labels)).toStrictEqual([["2025/7/20 の判断"], ["2025/7/18 の写真"], []]);
     expect(view.sentences.map((s) => s.uncited)).toStrictEqual([false, false, true]);
   });
 
