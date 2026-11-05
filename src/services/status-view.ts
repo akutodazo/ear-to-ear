@@ -106,6 +106,50 @@ export function withStatusEvent(history: readonly StatusEvent[], event: StatusEv
   return [...history.filter((e) => e.id !== event.id), event].sort(newestFirst);
 }
 
+/** 手元で変えた判断 1 つ（送った・取り消した）。stamp は変えた順の番号（1 から増える） */
+export interface LocalStatusChange {
+  stamp: number;
+  event: StatusEvent;
+}
+
+/**
+ * 読んだ履歴に、その読み込みを始めた後（stamp が since より大きい）に手元で変えた判断を、stamp の順に重ねる。
+ * 遅れて届いた読み込みで、送った判断や取り消しが消えないようにする。元の配列は変えない。
+ * 取り消しは戻らない（判断で後から変わるのは revokedAt だけ）ので、読んだ履歴で取り消し済みの判断は、
+ * 手元の取り消し前の形で置き換えない（読み込みの間に別の端末が取り消したとき）
+ */
+export function withLocalChanges(
+  events: readonly StatusEvent[],
+  changes: readonly LocalStatusChange[],
+  since: number,
+): StatusEvent[] {
+  return changes
+    .filter((c) => c.stamp > since)
+    .sort((a, b) => a.stamp - b.stamp)
+    .reduce<StatusEvent[]>((history, c) => {
+      const current = history.find((e) => e.id === c.event.id);
+      if (current !== undefined && current.revokedAt !== null && c.event.revokedAt === null) return history;
+      return withStatusEvent(history, c.event);
+    }, [...events]);
+}
+
+/** 日本時間（UTC+9）。夏時間は無い */
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+/** ISO の時刻を日本時間の「月/日 時:分」にする（例 7/21 10:05、0 時は 0:30）。読めなければ「日時不明」 */
+export function jstDateTimeLabel(iso: string): string {
+  const ms = Date.parse(iso);
+  if (Number.isNaN(ms)) return "日時不明";
+  const jst = new Date(ms + JST_OFFSET_MS);
+  const minutes = String(jst.getUTCMinutes()).padStart(2, "0");
+  return `${jst.getUTCMonth() + 1}/${jst.getUTCDate()} ${jst.getUTCHours()}:${minutes}`;
+}
+
+/** メモの字数の表示（例「12/200字」）。数え方は送る前の確かめ（parseStatusInput）と同じく、前後の空白を除いた文字の数 */
+export function noteCountLabel(note: string): string {
+  return `${Array.from(note.trim()).length}/${STATUS_NOTE_MAX_CHARS}字`;
+}
+
 /** 地図のピンの状態。判断が無ければ none */
 export function pinState(summary: FieldSummary): PinState {
   return { status: summary.latest?.status ?? "none", unconfirmed: summary.hasUnconfirmed };

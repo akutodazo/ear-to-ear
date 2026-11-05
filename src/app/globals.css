@@ -57,7 +57,9 @@ body {
   padding: 0;
   color: var(--text-1);
   background: var(--background-2);
-  font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", sans-serif;
+  /* 日本語のフォントを system-ui より先に置く。iOS のシミュレータ（iOS 27 ベータ）では
+     system-ui・-apple-system が日本語を出せず、文字が「?」の枠になるため（#133） */
+  font-family: "Segoe UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Noto Sans JP", system-ui, sans-serif;
   font-size: 18px;
   line-height: 1.6;
   /* 番号・日付の桁をそろえ、長い語で横にはみ出さない */
@@ -2032,4 +2034,33 @@ ol.order-group .order-row-dragging {
   min-height: 44px;
   padding: 0 var(--space-16);
   font-size: 0.95rem;
+}
+
+/* 引き継ぎメモ（L6、main の #120 から）。文ごとに根拠の印、印を押すと判断の履歴・写真へ */
+.memo-sentence {
+  margin: 0;
+  line-height: 1.7;
+}
+
+/* 根拠の無い文は灰色で「根拠なし」（合格条件 13） */
+.memo-uncited {
+  color: var(--text-3);
+}
+
+.memo-uncited .badge {
+  background: var(--background-2);
+  color: var(--text-3);
+}
+
+/* 根拠の印。押すと元の記録へ */
+.badge-source {
+  margin-left: var(--space-4);
+  border: 1px solid var(--brand);
+  color: var(--brand);
+  text-decoration: none;
+}
+
+/* 印から戻ってきた履歴の項目を見失わないように */
+.history-item:target {
+  box-shadow: var(--focus-ring);
 }

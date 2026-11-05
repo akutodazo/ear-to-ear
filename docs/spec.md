@@ -19,7 +19,7 @@
 | 1 | **L0（必須）** | 合言葉（委員／管理者）、送る（ブラウザで前処理 → Worker が検査・保存）、新着一覧（未確定・確定、手動更新）、確定・訂正（履歴）、二重登録・日付不明、公開リポジトリの安全の仕組み、架空データ、開発用 Worker（HTTPS）での実機確認 | **11/4 夜まで** |
 | 2 | **L1** | 地図（番号ピン、未確定の写真がある圃場に印）、圃場ページ（撮影日ごと・日付不明は別枠）、判断ボタン（収穫可能／収穫済）に理由と根拠を付ける: 理由の選択肢（複数）＋短いメモ＋根拠の写真。取り消し。理由の選択肢に「農協の判定で中止（水分超過）」「同（砕けなどの傷）」を必ず入れる | 11/5 |
 | 3 | **L6（Claude の活用の中心）** | 圃場ごとの写真・判断から、次の年の委員が読める短い引き継ぎメモを作る。Claude API の引用（Citations）で各文に根拠の記録を付け、画面から元の記録に戻れる。記録に無い理由は「記録なし」 | 11/6 |
-| 4 | **L8** | LINE でお知らせ（片方向、Messaging API）。ハッカソンでは架空のグループにだけ送る。**L6 の後で時間があれば**（11-02 本人決定） | 11/6〜7 |
+| 4 | **L8** | LINE でお知らせ（片方向、Messaging API）。ハッカソンでは架空のグループにだけ送る。判断を残した・取り消したときに 1 通（番号・状態・理由の言葉・日時・URL。メモ・写真・撮影位置は送らない）。**11-05 に先輩が前倒しで作ると決めた**（11-02 本人決定の「L6 の後で時間があれば」を受けて）。手順は `docs/dev/line.md` | 11/5〜6 |
 | 5 | L5（実験） | 位置の無い写真について、人が選んだ候補2〜3圃場の写真と見比べて理由付きで並べ替える。確定は人。精度は主張しない | 時間があれば |
 | 6 | L4 | Android の共有メニューから送る（Web Share Target） | 時間があれば |
 | 7 | L9 | LINE から写真を受け取る | 後回し |
@@ -95,13 +95,14 @@ CREATE TABLE usage_counters (                 -- Claude の呼び出し回数・
   key TEXT PRIMARY KEY NOT NULL,              -- 例 'claude:2026-11-05'、'line:2026-11'、'login:<IPのハッシュ>:<10分の枠>'
   count INTEGER NOT NULL, expires_at TEXT NOT NULL
 );
--- 0002_handover.sql（L6・L8）
+-- 0002_handover.sql（L6）
 CREATE TABLE handover_notes (
   field_id TEXT NOT NULL, season TEXT NOT NULL,
   body TEXT NOT NULL,                         -- JSON（HandoverNote の records と blocks）
   model TEXT NOT NULL, created_at TEXT NOT NULL,
   PRIMARY KEY (field_id, season)
 );
+-- 0003_settings.sql（L8、#139）
 CREATE TABLE settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);  -- 'line_group_id' など
 ```
 
@@ -120,10 +121,11 @@ CREATE TABLE settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);  -- 
 | `PATCH /api/photos/:id/assignment` | admin | `{fieldId}`（圃場の一覧にある番号だけ） | 200 更新した写真（新着と同じ 11 項目）＋履歴1行。確定済みと同じ番号なら何も変えずに 200（履歴なし） | 400（形の違う本文）／401／403／404／413／415／422（一覧に無い番号・文字列でない番号） | L0 |
 | `POST /api/fields/:id/status` | member 以上 | `{status, reasons[], note?, refPhotoIds[]}`（根拠はその圃場の確定済みの写真だけ） | 201 残した判断（`StatusEvent`） | 400（JSON でない）／401／413（2048 バイト超）／415／422 `{error, reason}`（一覧に無い圃場は `unknown_field`、中身は T12 の理由のコード）（11-04 先輩決定、T25） | L1 |
 | `DELETE /api/status-events/:id` | member 以上 | — | 200 | 401／404 | L1 |
+| `GET /api/fields/:id/status-events` | なし | — | 200 `StatusEvent[]`（その圃場の判断を取り消したものも含めて全件、`at` の新しい順・同じなら id の大きい順。件数の上限なし） | 404（一覧に無い圃場）（11-04 先輩決定、T26、#99） | L1 |
 | `GET /api/fields/summary` | なし | — | 200 `{ fields: FieldSummary[] }`（全圃場を一覧の順）。各圃場の有効な最新の判断（取り消していないもので `at` が新しいもの、同じなら id の大きい方）と、未確定の写真の候補（最大3）か委員が選んだ番号に含まれるか（11-04 本人承認、#90） | — | L1 |
-| `POST /api/fields/:id/handover` | admin | — | 200 `HandoverNote`（作り直して保存） | 401／429／502 | L6 |
-| `GET /api/fields/:id/handover` | なし | — | 200 `HandoverNote`／404 | — | L6 |
-| `POST /api/line/webhook` | LINE の署名 | LINE のイベント | 200（`join` だけ処理してグループ ID を保存） | 401 | L8 |
+| `POST /api/fields/:id/handover` | admin | — | 200 `HandoverNote`（作り直して保存。同じ圃場・シーズンは上書き） | 401／403／404（一覧に無い圃場）／422 `no_records`（記録 0 件、Claude を呼ばない）／429（その日の上限、Retry-After は日本時間 0 時まで）／502 `{error, reason}`（http・refusal・truncated・shape、保存しない）／503 `claude_disabled`（`CLAUDE_ENABLED=false` かキーなし）（11-04 先輩決定、T31、#111） | L6 |
+| `GET /api/fields/:id/handover` | なし | — | 200 `HandoverNote`（今のシーズン＝日本時間の年のメモ） | 404（メモが無い・一覧に無い圃場）（11-04 先輩決定、T29、#106） | L6 |
+| `POST /api/line/webhook` | LINE の署名 | LINE のイベント | 200（`join` だけ処理してグループ ID を保存） | 401（署名）・413（64KB 超）・503 `line_disabled`（LINE の秘密が無い・`LINE_ENABLED` が false） | L8 |
 | `POST /api/photos/:id/suggest` | admin | `{candidateFieldIds}`（人が選んだ2〜3圃場） | 200 `{suggestions:[{fieldId, reason}]}` | 401／422／429／502 | L5 |
 
 - meta: `{contentHash(64桁16進), takenAt|null, takenAtSource, candidateFieldIds(最大3, 存在する圃場, 重複なし), chosenFieldId?}`。**距離・座標の項目があれば 422**（K6）。chosenFieldId があっても state は unconfirmed
@@ -166,9 +168,9 @@ Next.js（App Router、`output: 'export'`）＋ Leaflet。デモと開発の地�
 | 9 | 父の試用（架空データ）: 見つける比較（LINE のトーク vs このサイト、各3問）、送る・見つける・確定・判断の成否と助言回数。試用の後に提案し、引き出された声も記録 | L0〜L1 | — | — | 試用（P5） | 予定 |
 | 10 | リポジトリに実データ・秘密が無い（手元の検査＋CI＋提出前に履歴全体の検査） | L0 | `scripts/safety-rules`（`npm run check:safety`、CI） | PR #39・#42 | 自動（毎回）＋提出前の履歴全体 | **一部**: 手元と CI は済。提出前の履歴全体の検査は予定 |
 | 11 | 動画に、期間中に作ったもの・架空データだけが映る。冒頭1分で「A が送る → B の画面で見える」 | — | — | — | 録画を人が見る | 予定 |
-| 12 | 判断ボタンで理由と根拠（写真）を残せ、取り消しも残る。根拠に他の圃場の記録は選べない | L1 | （予定）`status-reason` | — | 自動＋実機 | 予定 |
-| 13 | 引き継ぎメモの各文に引用で根拠が付き、タップで元の記録に戻れる。根拠の無い文は「根拠なし」と区別する | L6 | （予定）`handover-document`・`handover-citations` | — | 自動＋実機 | 予定 |
-| 14 | LINE の通知が失敗しても、写真の保存・判断の記録は成功する。月の送信数が上限の手前で止まる | L8 | `services/usage-limit`（回数の部分） | — | 自動 | 予定（L8 は時間があれば） |
+| 12 | 判断ボタンで理由と根拠（写真）を残せ、取り消しも残る。根拠に他の圃場の記録は選べない | L1 | `services/status-reason`・`status-request`・`status-events`、`worker/field-status`・`status-events`・`status-history` | PR #93・#96・#100・#101・#102・#115・#120 | 自動＋実機 | **一部**: 自動は済（他の圃場の写真は 422）。dev の実機は予定 |
+| 13 | 引き継ぎメモの各文に引用で根拠が付き、タップで元の記録に戻れる。根拠の無い文は「根拠なし」と区別する | L6 | `services/handover-document`・`handover-citations`・`handover-request`・`handover-view`、`worker/handover`・`handover-post` | PR #108〜#110・#112・#113・#116・#119・#120 | 自動＋実機（`docs/dev/l6-live.md`） | **一部**: 自動は済（引用は渡した記録の範囲だけ。範囲の外の引用は捨て、返事の形が違えば 502）。指示文は試作台の疑似で確かめた（#119）。本物の API と実機は予定（dev のデプロイと `CLAUDE_API_KEY` の後） |
+| 14 | LINE の通知が失敗しても、写真の保存・判断の記録は成功する。月の送信数が上限の手前で止まる | L8 | `services/usage-limit`（回数の部分）・`line-signature`・`line-webhook`・`line-notice`、`worker/line-webhook`・`line-notify` | PR #143〜#147 ほか | 自動＋実機（`docs/dev/line.md` の台本） | **一部**: 自動は作成中。LINE 側の設定と実機は予定 |
 | 15 | 送信内容に撮影位置の座標も候補までの距離も無い | L0 | `services/upload-meta`（受け側で拒否）・`upload-request`、`lib/upload-steps`（送る meta に座標なし） | PR #41・#51・#57 | 自動＋画面（送る中身を内蔵ブラウザで確認） | **済** |
 
 ### テスト（RED と GREEN は別コミット）
@@ -190,7 +192,7 @@ Next.js（App Router、`output: 'export'`）＋ Leaflet。デモと開発の地�
 ## 10. 公開リポジトリの安全
 - 入れてはいけないもの: 実写真、実在の圃場の座標、委員会シート、番号対応表、合言葉、API キー、`.dev.vars`、`.env*`、個人名・住所、既存プロジェクトのコード
 - `.gitignore`: `.dev.vars`、`.env*`、`/private/`、`*.local.*`
-- GitHub の設定（外から見える設定は本人が承認してから）: Secret scanning と Push protection をオン／コミットのメールは noreply／main は Ruleset で守る（削除禁止・force push 禁止・PR 必須・CI の status check 必須）／マージ後のブランチを自動削除／Dependabot alerts だけオン（自動の更新 PR はオフ）／GitHub Pages・Wiki・Projects は使わない／Actions に Cloudflare の秘密を置かない（デプロイは本人の手元から。期間中は自動デプロイにしない）／ライセンスは MIT の予定（先輩に確認中。決まるまで LICENSE は置かない）
+- GitHub の設定（外から見える設定は本人が承認してから）: Secret scanning と Push protection をオン／コミットのメールは noreply／main は Ruleset で守る（削除禁止・force push 禁止・PR 必須・CI の status check 必須）／マージ後のブランチを自動削除／Dependabot alerts だけオン（自動の更新 PR はオフ）／GitHub Pages・Wiki・Projects は使わない／デプロイは GitHub Actions（11-04 本人決定。main へのマージで dev、demo は人が画面で押して承認。Cloudflare のトークンは GitHub の Environment の秘密にだけ置き、`pull_request` では動かさない。`docs/dev/deploy-actions.md`）／ライセンスは MIT の予定（先輩に確認中。決まるまで LICENSE は置かない）
 - `npm run check:safety`（手元と CI）: コミットされた全ファイル（`git ls-files`）を対象に、画像の APP1〜15、CSV、`.dev.vars` に似た名前、合言葉らしい文字列、架空データの座標の範囲を検査する。T17（11-03）で中身まで: 判定は `scripts/safety-rules.ts`。**JPEG は `public/demo/` の下だけ許し、APP1〜15 が無いことを T03 の `inspectJpeg` で確かめる**。**座標は圃場の一覧 `src/data/fields.json` だけ**を `FICTIONAL_AREA`（`src/config.ts`）と比べる（端を含む）。秘密らしい文字列は値を表示せず、ファイル・行・種類だけ出す
 - 架空の圃場は 12 圃場（A-01〜A-12、4列×3行）、座標は沖合の四角（北緯 41.800〜41.815、東経 144.500〜144.520）の中に機械的に並べる（P15、11-02 決定）。合成写真は `node scripts/make-fixtures.mjs` で `/private/fixtures/` に出す（コミットしない。T10、11-03）。8種類（XMP 位置あり・EXIF 位置あり・0/0・位置なし・日時なし・APP2 付き・壊れた画像・重複）と、期待の一覧 `README.md`。JPEG は依存なしの書き出し（`scripts/fixtures/jpeg-encoder.ts`）で作る
 
@@ -224,7 +226,7 @@ Next.js（App Router、`output: 'export'`）＋ Leaflet。デモと開発の地�
 | P5 | 父の試用の日程（11/5 ごろ、オンライン） | 父 | 11/5 に試用する前提。できなければ合格条件 9 を「本人による再現」に下げる | 未確定 |
 | — | `POST /api/session` の回数の制限と CSRF・Cookie 名（先輩の決定、#54） | 本人（承認） | 先輩の決定どおりに動いている（`decisions.md` 11-03） | 本人の承認待ち |
 | — | demo の合言葉を審査員に渡すか | 本人・先輩 | なし（まだ考えていない） | 未決定 |
-| — | L6・L8 のサーバー側をどちらが持つか | 本人・先輩 | L0 の後に決める | 未決定 |
+| — | L8 のサーバー側をどちらが持つか | 本人・先輩 | **先輩**（11-05 先輩が作ると決めた。#131） | 決定（11-05） |
 | — | 合格条件 7 の48枚の正解表で、候補3つに入る割合 | 本人（手元の実写真） | 主張しない（測るまで数字を書かない） | 未測定 |
 
 P5・P19・P20 の仮置きは `docs/hypotheses.md` の「既決の代替」の**案**（11-02 提案。期限と代替は本人の決定待ち）。

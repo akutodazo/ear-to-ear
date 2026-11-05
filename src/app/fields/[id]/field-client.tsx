@@ -4,7 +4,7 @@
  * /fields/[id] の配線（11-05: 見比べる）。2 つの比べ方を上の段に置く:
  * 「同じ日に撮った別の畑と」（相手の既定は目安。日をまたいで比べない。上下 2 つの窓）と「この畑の前の日と」（重ねる）。境目を指で動かす。
  * 上の段は本文と一緒に送り、札の段は流れ去って 2 枚の写真だけが上に残る（精査 3 回目 #1）。
- * 下はこの畑の写真の流れ（根拠を選ぶ）、判断を残す（useFieldStatus）、昨年の同じ頃（last-season）、履歴（AGENTS.md §4）
+ * 下はこの畑の写真の流れ（根拠を選ぶ）、判断を残す（useFieldStatus）、昨年の同じ頃（last-season）、履歴、引き継ぎメモ（useHandover、L6）（AGENTS.md §4）
  */
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -15,11 +15,13 @@ import type { Benchmark, Field } from "@/types";
 import { useFieldPhotos } from "@/hooks/use-field-photos";
 import { useFieldStatus } from "@/hooks/use-field-status";
 import { useDistrictPhotos } from "@/hooks/use-district-photos";
+import { useHandover } from "@/hooks/use-handover";
 import { benchmarkFor, monthDayJst } from "@/services/parcel-geometry";
 import { isoToJstDate, lastSeasonFor, lastSeasonLines, type SeasonDates, type SeasonRecord } from "@/services/last-season";
 import { daysOf, indexByDay, resolveSameDay, resolveSameField } from "@/services/photo-compare";
 import { monthDay } from "@/services/last-season";
 import { statusLabel } from "@/services/status-view";
+import { handoverCreatedLabel } from "@/services/handover-labels";
 import { CompareControls, type CompareMode } from "@/components/compare/compare-controls";
 import { SplitViewer, type PartnerPicker, type SlotPhoto } from "@/components/compare/split-viewer";
 import { FieldSwitcher } from "@/components/compare/field-switcher";
@@ -28,6 +30,8 @@ import { LastSeasonNote } from "@/components/compare/last-season-note";
 import { StatusPanel } from "@/components/compare/status-panel";
 import { StatusActions } from "@/components/compare/status-actions";
 import { StatusHistory } from "@/components/compare/status-history";
+import { HandoverMemo } from "@/components/field/handover-memo";
+import { PassphraseForm } from "@/components/upload/passphrase-form";
 import { AppNav } from "@/components/app-nav";
 import { IconMap, IconPen, IconPhoto } from "@/components/icons";
 
@@ -46,6 +50,7 @@ export function FieldClient({ field }: { field: Field }) {
   const photos = useFieldPhotos(field.id);
   const district = useDistrictPhotos(districtIds);
   const status = useFieldStatus(field.id, photos.confirmedPhotoIds);
+  const handover = useHandover(field.id);
   const [writing, setWriting] = useState(false);
 
   // 比べ方の選択。日付・相手・前の日は「希望」として持ち、実際に出せる形には Service が直す
@@ -203,7 +208,35 @@ export function FieldClient({ field }: { field: Field }) {
         />
         <LastSeasonNote lines={seasonLines} />
         <StatusHistory history={status.history} loading={status.historyLoading} message={status.historyMessage} revokeStatus={status.revokeStatus} onRevoke={status.revoke} onRetry={status.refreshHistory} />
-        <p className="map-fictional-note compare-fictional">番号・判断・昨年の記録は架空のもの</p>
+        {/* 取り消しで合言葉を聞かれたとき（判断の入力を閉じていても出す。main の #120 と同じ） */}
+        {status.needsPassphrase && !open && (
+          <PassphraseForm
+            lead="判断を取り消すには合言葉が要ります。入った後に、もう一度押してください。"
+            submitLabel="入る"
+            message={status.loginMessage}
+            busy={status.loggingIn}
+            onSubmit={status.login}
+          />
+        )}
+        <HandoverMemo
+          sentences={handover.sentences}
+          createdLabel={handover.note ? handoverCreatedLabel(handover.note) : null}
+          loading={handover.loading}
+          message={handover.message}
+          creating={handover.creating}
+          createMessage={handover.createMessage}
+          onCreate={handover.create}
+        />
+        {handover.needsPassphrase && (
+          <PassphraseForm
+            lead="メモを作るには管理者の合言葉が要ります。入った後に、もう一度「メモを作る」を押してください。"
+            submitLabel="入る"
+            message={handover.loginMessage}
+            busy={handover.loggingIn}
+            onSubmit={handover.login}
+          />
+        )}
+        <p className="map-fictional-note compare-fictional">番号・判断・昨年の記録・メモは架空のもの</p>
       </main>
       {open && (
         <StatusActions

@@ -16,8 +16,8 @@
 |---|---|---|---|
 | 前日 | 人 | RED → 攻撃役 → 凍結 → main（従来どおり）。**翌日の列車の長さは、ここでそろえた RED の本数で決まる** | 1 本 30〜60 分 |
 | 朝 1 | 人 | `git switch main; git pull`。`get_usage`（または claude.ai/settings/usage）の週次 %・5 時間 % を `docs/run/USAGE.md` に 1 行。PC のスリープ・ロックを切る | 3 分 |
-| 朝 2 | 人 | 待ち行列 `%LOCALAPPDATA%\ear-train\trains\<MMDD>.json` を書く（§2）。`run-day --prepare` で worktree をパケット分作り `npm ci` | 5 分＋2 分/本 |
-| 朝 3 | 人 | 本体の `.dev.vars` を `%LOCALAPPDATA%\ear-train\secrets\` に退避（wrangler dev を使うときだけ戻す） | 1 分 |
+| 朝 2 | 人 | 待ち行列 `<ホーム>\dev\ear-train\ops\trains\<MMDD>.json` を書く（§2）。`run-day --prepare` で worktree をパケット分作り `npm ci` | 5 分＋2 分/本 |
+| 朝 3 | 人 | 本体の `.dev.vars` を `<ホーム>\dev\ear-train\ops\secrets\` に退避（wrangler dev を使うときだけ戻す） | 1 分 |
 | 朝 4 | 人 | 通知係のセッションを起動（§4）→ 固定文を貼る → 通知係が進行役を背景で起動 | 5 分 |
 | 日中 | 無人 | 1 本 15〜30 分 × 本数（実測: T19〜T21 は GREEN まで数分〜14 分、REPORT 1 分） | — |
 | 日中 | 人（スマホ） | ask／stopped／done の通知だけ。返事は「Txx を飛ばして続けて」か「止めて」の 2 語 | — |
@@ -49,7 +49,7 @@
 | `PACKET.txt`・`NOTIFIER.txt`・`NIGHT.txt` | 固定の指示文。`Txx` だけ置換、経緯は足さない（T18〜T21 の指示文が正本） |
 | `docs/dev/relay.md`・`docs/dev/night-review.md` | 決まり（この文書を分けて正本にする） |
 
-リポジトリの外 `%LOCALAPPDATA%\ear-train\`（`C:\tmp` は他の Claude セッションの作業フォルダなので使わない）:
+リポジトリの外 `<ホーム>\dev\ear-train\ops\`（`C:\tmp` は他の Claude セッションの作業フォルダなので使わない）:
 `trains/<MMDD>.json`、`state/<MMDD>.json`、`STATUS.json`（1 行 `{seq,packet,state,reason}`。`reason` は列挙 `limit|ask|commits|scope|size|check|dirty|log|budget|dep|usage|unknown|done` だけ、自由文禁止）、`ledger-<MMDD>.jsonl`（追記のみ、消さない）、`logs/<MMDD>-Txx.jsonl`（CAGE_LOG。write_file の全文が残るので 11/7 の点検前に `--purge-logs`）、`usage.json`（通知係が `get_usage` で書く）、`secrets/`（退避した `.dev.vars`）、`STOP`。
 worktree は **パケットごと** `<ホーム>\dev\ear-train\Txx`（1 つを使い回すと、止まったパケットの未追跡 QUESTIONS が次に持ち越されて全部 ask に倒れる）。`npm ci` 必須、junction 禁止（T04）。
 
@@ -128,7 +128,7 @@ claude --model sonnet --add-dir %USERPROFILE%\dev\ear-train\ops --allowedTools "
 
 ## 6. 夜番（監査。直さない・コミットしない・テストを走らせない）
 対象（`night-targets.mjs`、モデルではない）: 当日 00:00 JST 以降に main に入った差分＋当日の `run/<MMDD>-*` ブランチの `src/**`・`worker/**` の `.ts/.tsx`（テスト・docs・public/demo は除く）。中身は `git show` でスクリプトが JSON に入れて渡す。
-場所: `%LOCALAPPDATA%\ear-train\night\<MMDD>` に `git clone --depth 1 --branch main --single-branch file://<本体>`（`.dev.vars`・`private/`・`.env*` が物理的に無い。run ブランチの REPORT も入らない）。clone から `docs/run/` を消してから起動。`gh`・`wrangler`・ネットは使わない。
+場所: `<ホーム>\dev\ear-train\ops\night\<MMDD>` に `git clone --depth 1 --branch main --single-branch file://<本体>`（`.dev.vars`・`private/`・`.env*` が物理的に無い。run ブランチの REPORT も入らない）。clone から `docs/run/` を消してから起動。`gh`・`wrangler`・ネットは使わない。
 
 起動（人、寝る前。clone の中で。会話の経緯を持たない新しいセッション）:
 ```
@@ -152,7 +152,7 @@ claude --model opus --allowedTools "Workflow,Write(docs/reviews/night-*)" --disa
 | 中（通常） | 塊 × 4 観点、≤ 8 体 | 12 | Sonnet 1 票＋止める候補に Opus ≤ 3 | ≤ 25 | 実測から「3%」相当 |
 Fable は夜番に使わない（詰まったときの相談の枠を残す）。
 
-置き場: 「止める」「直す」が RED になるか閉じるまでは詳細を `%LOCALAPPDATA%\ear-train\reviews\` に置き、リポジトリの `docs/reviews/night-<日付>.md` には件数表と対応済みの項目だけ（`night.mjs --collect`）。**リポジトリは公開（11-03 確認）なので、この形を採る**（直す前の脆弱性を自分で公開しない）。
+置き場: 「止める」「直す」が RED になるか閉じるまでは詳細を `<ホーム>\dev\ear-train\ops\reviews\` に置き、リポジトリの `docs/reviews/night-<日付>.md` には件数表と対応済みの項目だけ（`night.mjs --collect`）。**リポジトリは公開（11-03 確認）なので、この形を採る**（直す前の脆弱性を自分で公開しない）。
 夜番は「会話を見ていない別セッションのレビュー」（K6・K10 の PR、11/7 の全体点検）の代わりではない。モデルを下げるのは「下読み」だから（`docs/claude-usage.md` の「レビューのモデルは下げない」とは別物として §8 で承認）。
 
 ## 7. 人の確認の最小形（夕方、1 本 10 分）

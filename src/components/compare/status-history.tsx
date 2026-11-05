@@ -1,8 +1,12 @@
-/** 判断の履歴（新しい順）。取り消したものは薄く「取り消し」。props だけで受け取る */
+/**
+ * 判断の履歴（新しい順）。取り消したものは薄く「取り消し」。
+ * 各項目に statusAnchorId の id を付ける（引き継ぎメモの根拠の印から戻ってくる先）。props だけで受け取る
+ */
 import type { StatusEvent } from "@/types";
 import type { RevokeStatus } from "@/hooks/use-field-status";
 import { reasonsLabel, statusLabel } from "@/services/status-view";
 import { monthDayJst } from "@/services/parcel-geometry";
+import { statusAnchorId } from "@/services/handover-view";
 
 interface Props {
   history: StatusEvent[];
@@ -34,7 +38,7 @@ export function StatusHistory({ history, loading, message, revokeStatus, onRevok
           const revoked = e.revokedAt !== null;
           const r = revokeStatus[e.id];
           return (
-            <li key={e.id} className={revoked ? "history-item history-revoked" : "history-item"}>
+            <li key={e.id} id={statusAnchorId(String(e.id))} className={revoked ? "history-item history-revoked" : "history-item"}>
               <div className="history-head">
                 <i className={`mark mark-${e.status}`} aria-hidden="true" />
                 <span className="history-when">{monthDayJst(e.at)}</span>

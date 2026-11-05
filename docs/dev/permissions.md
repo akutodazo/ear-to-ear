@@ -16,7 +16,7 @@ Claude Code が「許可しますか？（常に許可・一度だけ）」と�
 | A 読むだけ・手元で確かめるだけ | `npm run check`・`lint`・`typecheck`・`test`・`build`、`npx tsc --noEmit`、`node scripts/check-safety.mjs`、読むだけの MCP | 常に許可（決まった形だけ） |
 | B 外に出るが、今の決まりで Claude に任せているもの | `git add/commit/push`、`gh pr create`・`gh pr merge * --squash --auto`・`gh pr edit`・`gh issue create` | 常に許可 |
 | C 取り消しにくいもの | `gh pr close`・`gh issue close`、`--auto` の無い `gh pr merge`、`rm`、`taskkill`、`git worktree remove`、`curl` | 毎回聞く（設定に書かない） |
-| D 人の手で行うもの | main への push・強制 push、`wrangler deploy`・`secret`・`d1/r2 … --remote`、`.dev.vars`・`.env*`・`private/` を読む | 禁止 |
+| D 人の手で行うもの | main への push・強制 push、`wrangler deploy`・`secret`・`d1/r2 … --remote`・`d1 create・delete・time-travel`・`r2 bucket`・`wrangler delete`・`wrangler login`・`scripts/ops/l6-live.mjs`（11-04 に足した）、`.dev.vars`・`.env*`・`private/` を読む | 禁止 |
 
 - `grep`・`cat`・`git status/log/diff`・`gh pr view` などは Claude Code が最初から許しているので書かない
 - `npx vitest run *`・`python *`・`node -e *`・`npx -y …` のように**何でも実行できる形は許可しない**（テストは `npm run test` の決まった形で許可）
