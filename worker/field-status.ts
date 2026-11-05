@@ -1,6 +1,6 @@
 /**
  * POST /api/fields/:id/status（判断と理由・根拠を残す、L1、docs/spec.md §6、Issue #91）。委員以上。
- * 判定は Service（status-request・status-reason・status-events）、外の世界は deps.db だけ。例外は握らない。
+ * 判定は Service（status-request・status-reason・status-events）、外の世界は deps.db と、記録の後の LINE（line-notify）。例外は握らない。
  */
 import { isJsonContentType } from "@/services/session-request";
 import { STATUS_EVENT_COLUMNS, statusEventFromRow, type StatusEventRow } from "@/services/status-events";
@@ -9,6 +9,7 @@ import { requireSession } from "./auth";
 import { declaredTooLarge, readBodyLimited } from "./body";
 import type { Handler } from "./deps";
 import { errorResponse, json } from "./http";
+import { notifyLine } from "./line-notify";
 
 /** 根拠にできるのは、その圃場に確定済みの写真だけ。番号は bind で渡す */
 const CONFIRMED_PHOTOS_SQL = "SELECT id FROM uploaded_photos WHERE state = 'confirmed' AND field_id = ?";
@@ -57,5 +58,8 @@ export const postFieldStatus: Handler = async (request, ctx) => {
     )
     .first<StatusEventRow>();
   if (row === null) throw new Error("field_status_events の INSERT が行を返さなかった");
-  return json(201, statusEventFromRow(row));
+  const event = statusEventFromRow(row);
+  // 記録の後に LINE に 1 通（失敗しても 201 は変わらない、#141）
+  deps.waitUntil(notifyLine(deps, event, "recorded", ctx.url.origin));
+  return json(201, event);
 };
