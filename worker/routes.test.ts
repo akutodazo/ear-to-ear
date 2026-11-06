@@ -28,6 +28,8 @@ describe("経路の表（docs/spec.md §6 の L0）", () => {
       ["POST", "/api/fields/:id/handover", "admin"],
       ["POST", "/api/line/webhook", "none"],
       ["POST", "/api/shares", "member"],
+      ["GET", "/api/shares/:id", "none"],
+      ["GET", "/api/share-files/:id", "none"],
     ]);
   });
 
