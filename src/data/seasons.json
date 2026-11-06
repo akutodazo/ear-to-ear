@@ -1,0 +1,13 @@
+[
+  { "season": "2025", "fieldId": "A-01", "crop": "小麦", "readyAt": "2025-07-23", "doneAt": "2025-07-27" },
+  { "season": "2025", "fieldId": "A-02", "crop": "小麦", "readyAt": "2025-07-24", "doneAt": "2025-07-28" },
+  { "season": "2025", "fieldId": "A-03", "crop": "小麦", "readyAt": "2025-07-20", "doneAt": "2025-07-24" },
+  { "season": "2025", "fieldId": "A-04", "crop": "小麦", "readyAt": "2025-07-25", "doneAt": "2025-07-29" },
+  { "season": "2025", "fieldId": "A-05", "crop": "小麦", "readyAt": "2025-07-22", "doneAt": "2025-07-26" },
+  { "season": "2025", "fieldId": "A-06", "crop": "大豆", "readyAt": null, "doneAt": null },
+  { "season": "2025", "fieldId": "A-07", "crop": "小麦", "readyAt": "2025-07-19", "doneAt": "2025-07-23" },
+  { "season": "2025", "fieldId": "A-08", "crop": "小麦", "readyAt": "2025-07-26", "doneAt": "2025-07-30" },
+  { "season": "2025", "fieldId": "A-09", "crop": "小麦", "readyAt": "2025-07-24", "doneAt": "2025-07-29" },
+  { "season": "2025", "fieldId": "A-11", "crop": "小麦", "readyAt": "2025-07-23", "doneAt": "2025-07-27" },
+  { "season": "2025", "fieldId": "A-12", "crop": "小麦", "readyAt": "2025-07-27", "doneAt": null }
+]

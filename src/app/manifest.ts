@@ -10,8 +10,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "小麦収穫委員会の写真共有",
     start_url: "/",
     display: "standalone",
-    background_color: "#f4f6f8",
-    theme_color: "#1f6fb5",
+    background_color: "#f5f4ec",
+    theme_color: "#2d6441",
     lang: "ja",
     icons: [{ src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" }],
   };

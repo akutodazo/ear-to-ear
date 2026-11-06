@@ -37,8 +37,8 @@ export function useFieldMap(repository?: IFieldStatusRepository) {
     }
     setMessage(
       outcome.kind === "network-error"
-        ? "つながりませんでした。電波のよい所で「更新」を押してください"
-        : "読み込めませんでした。時間をおいて「更新」を押してください",
+        ? "つながりませんでした。電波のよい所で「もう一度読み込む」を押してください"
+        : "読み込めませんでした。時間をおいて「もう一度読み込む」を押してください",
     );
   }, []);
 
@@ -66,5 +66,5 @@ export function useFieldMap(repository?: IFieldStatusRepository) {
     });
   }, [summaries]);
 
-  return { pins, loading, message, fetchedAt, refresh };
+  return { pins, summaries, loading, message, fetchedAt, refresh };
 }

@@ -1,0 +1,87 @@
+"use client";
+
+/**
+ * 刈る順番の状態と操作（11-05、3 段目）。下書きか確定か・確定した順と違うか、を印と短い文で。
+ * 「保存」は誰でも、「確定する」は委員長だけ（委員には最初から出さない）。確定・記録に戻すは 2 段。props だけで受け取る
+ */
+import { useState } from "react";
+import type { SavedOrder } from "@/repositories/interfaces/i-harvest-order-repository";
+import { monthDayJst } from "@/services/parcel-geometry";
+
+interface Props {
+  saved: SavedOrder | null;
+  dirty: boolean;
+  differsFromConfirmed: boolean;
+  canConfirm: boolean;
+  busy: boolean;
+  message: { text: string; ok: boolean } | null;
+  hasRanked: boolean;
+  onSave: () => void;
+  onConfirm: () => void;
+  onRevert: () => void;
+  onReset: () => void;
+}
+
+export function OrderActions({ saved, dirty, differsFromConfirmed, canConfirm, busy, message, hasRanked, onSave, onConfirm, onRevert, onReset }: Props) {
+  const [asking, setAsking] = useState<"confirm" | "reset" | null>(null);
+  const confirmed = saved?.state === "confirmed";
+  const state = confirmed
+    ? differsFromConfirmed
+      ? { tone: "warn", text: `${monthDayJst(saved.confirmedAt ?? saved.savedAt)} に確定した順と違います` }
+      : { tone: "ok", text: `${monthDayJst(saved.confirmedAt ?? saved.savedAt)} に確定した順` }
+    : dirty
+      ? { tone: "draft", text: "下書き（保存していません）" }
+      : saved
+        ? { tone: "draft", text: `下書き（${monthDayJst(saved.savedAt)} に保存）` }
+        : { tone: "draft", text: "記録から並べた下書き" };
+
+  return (
+    <section className="order-actions" aria-label="刈る順番の状態">
+      <p className={`order-state order-state-${state.tone}`}>
+        <span className={confirmed && !differsFromConfirmed ? "rank rank-confirmed rank-small" : "rank rank-small"} aria-hidden="true" />
+        {state.text}
+      </p>
+      {asking === null ? (
+        <div className="order-buttons">
+          {(dirty || !saved) && (
+            <button type="button" className="button button-small" onClick={onSave} disabled={busy}>
+              {busy ? "保存しています…" : "保存"}
+            </button>
+          )}
+          {differsFromConfirmed && (
+            <button type="button" className="button button-small" onClick={onRevert} disabled={busy}>
+              確定した順に戻す
+            </button>
+          )}
+          {canConfirm && hasRanked && (!confirmed || differsFromConfirmed) && (
+            <button type="button" className="button button-primary button-small" onClick={() => setAsking("confirm")} disabled={busy}>
+              {confirmed ? "確定し直す" : "この順で確定"}
+            </button>
+          )}
+          <button type="button" className="order-reset" onClick={() => setAsking("reset")} disabled={busy}>
+            記録から並べ直す
+          </button>
+        </div>
+      ) : (
+        <div className="order-buttons order-ask" role="group" aria-label={asking === "confirm" ? "確定の確認" : "並べ直しの確認"}>
+          <span className="order-ask-text">{asking === "confirm" ? "この順で確定しますか" : "並べた順を消して、記録から並べ直しますか"}</span>
+          <button
+            type="button"
+            className="button button-primary button-small"
+            onClick={() => {
+              setAsking(null);
+              if (asking === "confirm") onConfirm();
+              else onReset();
+            }}
+          >
+            {asking === "confirm" ? "確定する" : "並べ直す"}
+          </button>
+          <button type="button" className="button button-small" onClick={() => setAsking(null)}>
+            やめる
+          </button>
+        </div>
+      )}
+      {message && <p className={message.ok ? "note note-ok" : "note order-error"}>{message.text}</p>}
+    </section>
+  );
+}

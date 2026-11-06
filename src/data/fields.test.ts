@@ -4,7 +4,7 @@ import { distanceMeters } from "@/services/candidates";
 import type { Field } from "@/types";
 import data from "./fields.json";
 
-// 架空の 12 圃場（T09、P15）。4列×3行を北西から横に番号を振る（11-03 本人決定）
+// 架空の 12 圃場（T09、P15）。番号は北地区→中地区→南地区の順に 4 つずつ（11-03 本人決定。並べ方は 11-05 に帯へ）
 const fields: Field[] = data;
 const COLS = 4;
 const ROWS = 3;
@@ -37,34 +37,30 @@ describe("架空の圃場の一覧（src/data/fields.json）", () => {
     }
   });
 
-  it("行ごとに緯度がそろい、北から南へ並ぶ", () => {
-    for (let row = 0; row < ROWS; row++) {
-      for (let col = 1; col < COLS; col++) expect(at(row, col).lat).toBe(at(row, 0).lat);
-      if (row > 0) expect(at(row, 0).lat).toBeLessThan(at(row - 1, 0).lat);
-    }
-  });
-
-  it("列ごとに経度がそろい、西から東へ並ぶ", () => {
-    for (let col = 0; col < COLS; col++) {
-      for (let row = 1; row < ROWS; row++) expect(at(row, col).lng).toBe(at(0, col).lng);
-      if (col > 0) expect(at(0, col).lng).toBeGreaterThan(at(0, col - 1).lng);
-    }
-  });
-
-  it("隣の圃場の中心は 300〜500m 離れている（重ならず、範囲に収まる）", () => {
-    for (let row = 0; row < ROWS; row++) {
-      for (let col = 0; col < COLS; col++) {
-        if (col > 0) {
-          const d = distanceMeters(at(row, col - 1), at(row, col));
-          expect(d).toBeGreaterThanOrEqual(300);
-          expect(d).toBeLessThanOrEqual(500);
-        }
-        if (row > 0) {
-          const d = distanceMeters(at(row - 1, col), at(row, col));
-          expect(d).toBeGreaterThanOrEqual(300);
-          expect(d).toBeLessThanOrEqual(500);
-        }
+  // 11-05 のデザインの引き継ぎで、等間隔の格子（11-03）から「地区ごとにまとまった帯」に変えた。中心は区画（parcels.json）の重心
+  it("同じ地区の圃場は近くにまとまる（中心どうし 700m 以内）", () => {
+    for (const a of fields) {
+      for (const b of fields) {
+        if (a.district === b.district && a.id !== b.id) expect(distanceMeters(a, b), `${a.id} と ${b.id}`).toBeLessThanOrEqual(700);
       }
+    }
+  });
+
+  it("違う地区の圃場は離れている（中心どうし 400m 以上）", () => {
+    for (const a of fields) {
+      for (const b of fields) {
+        if (a.district !== b.district) expect(distanceMeters(a, b), `${a.id} と ${b.id}`).toBeGreaterThanOrEqual(400);
+      }
+    }
+  });
+
+  it("どの 2 つの中心も 90m 以上離れている（重ならない）。等間隔の格子ではない", () => {
+    const lats = new Set(fields.map((f) => f.lat));
+    const lngs = new Set(fields.map((f) => f.lng));
+    expect(lats.size).toBe(fields.length);
+    expect(lngs.size).toBe(fields.length);
+    for (let i = 0; i < fields.length; i++) {
+      for (let j = i + 1; j < fields.length; j++) expect(distanceMeters(fields[i], fields[j])).toBeGreaterThanOrEqual(90);
     }
   });
 

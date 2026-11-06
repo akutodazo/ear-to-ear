@@ -231,10 +231,10 @@ export function drawField(width: number, height: number, label: string): RgbImag
 }
 
 /** 架空の範囲の中の、圃場の中心から少しずらした位置（候補の一番目がその圃場になる） */
-const NEAR_A06: DmsPosition = { lat: 41.8078, lng: 144.5079 };
-const NEAR_A03: DmsPosition = { lat: 41.8112, lng: 144.5121 };
-const NEAR_A10: DmsPosition = { lat: 41.8038, lng: 144.5072 };
-const NEAR_A11: DmsPosition = { lat: 41.8032, lng: 144.5129 };
+const NEAR_A06: DmsPosition = { lat: 43.2393, lng: 141.7544 };
+const NEAR_A03: DmsPosition = { lat: 43.2438, lng: 141.7472 };
+const NEAR_A10: DmsPosition = { lat: 43.2396, lng: 141.7451 };
+const NEAR_A11: DmsPosition = { lat: 43.2386, lng: 141.7459 };
 
 /** 合成写真の一覧。JPEG の書き出しは引数で受け取る（scripts/ の TS は互いを import しない） */
 export function buildFixtures(encode: (image: RgbImage) => Uint8Array): Fixture[] {

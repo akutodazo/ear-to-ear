@@ -1,36 +1,38 @@
 /*
  * 屋外・手袋を想定: 文字は大きめ、ボタンは押しやすく（docs/spec.md 画面）。
  * 色・余白は役割ごとの変数にまとめる（11-03 本人決定: pixiv の charcoal の「役割で分ける」考え方だけを参考にし、値は自分で決める。依存・コードの写しは無し）。
- * ブランドの色は落ち着いた青（Claude のオレンジと対になる色）。麦の黄色はロゴと印だけに使う。
+ * 色の値は 11-04 夜の本人決定（docs/design/design-system.md 冒頭）: クリームの地、濃い緑のブランド、収穫可能と選択は黄緑、目安は金。
+ * 麦の色（金）は目安の札・未確定の印・ロゴにだけ使う。
  */
 :root {
   color-scheme: light;
 
   /* 文字（濃い順） */
-  --text-1: #1f2429;
-  --text-2: #4a535c;
-  --text-3: #7d868f;
+  --text-1: #253326;
+  --text-2: #5a6356;
+  --text-3: #6f776a;
   --text-on-brand: #ffffff;
 
   /* 背景・面・線 */
-  --background-1: #ffffff;
-  --background-2: #f4f6f8;
-  --surface: #ffffff;
-  --border: rgba(0, 0, 0, 0.08);
-  --border-strong: rgba(0, 0, 0, 0.24);
+  --background-1: #fffef9;
+  --background-2: #f5f4ec;
+  --surface: #fffef9;
+  --border: #dedfd4;
+  --border-strong: rgba(37, 51, 38, 0.3);
 
   /* ブランドと状態 */
-  --brand: #1f6fb5;
-  --brand-hover: #195d98;
-  --brand-soft: #e8f1fa;
-  --wheat: #d9b44a;
-  --assertive: #d93a1e;
-  --success: #3f7a1e;
-  --warning-soft: #fff6dc;
+  --brand: #2d6441;
+  --brand-hover: #244f34;
+  --brand-soft: #e6efe3;
+  --wheat: #f1cc65;
+  --accent: #d8f178;
+  --assertive: #c63a1e;
+  --success: #2d6441;
+  --warning-soft: #fbf3d6;
 
   /* 押せないとき・フォーカス */
   --disabled-opacity: 0.32;
-  --focus-ring: 0 0 0 4px rgba(31, 111, 181, 0.32);
+  --focus-ring: 0 0 0 4px rgba(45, 100, 65, 0.35);
 
   /* 余白・角の丸み（4・8・16・24・40 の段） */
   --space-4: 4px;
@@ -60,15 +62,27 @@ body {
   font-family: "Segoe UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Noto Sans JP", system-ui, sans-serif;
   font-size: 18px;
   line-height: 1.6;
+  /* 番号・日付の桁をそろえ、長い語で横にはみ出さない */
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
-/* ボタン・入力欄は文字の指定を引き継がない（ブラウザ既定の system-ui になる）。
-   上の日本語フォントの並びを引き継がせる */
+/* 部品も同じ書体（select・button は既定で受け継がない。精査 #10） */
 button,
 input,
 select,
 textarea {
   font-family: inherit;
+}
+
+/* 読み上げ用（見えない） */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 main {
@@ -374,56 +388,1681 @@ a:focus-visible {
   display: block;
 }
 
-/* 圃場ページ: 判断を残す・判断の履歴・引き継ぎメモ（L1・L6） */
-fieldset {
-  margin: 0;
+/* ===== 地図 `/`（L1。11-04 夜の本人決定: 航空写真と輪郭が主役、下の帯で画面を切り替える。11-05: 最初の視線を畑に） ===== */
+.home-main {
   padding: 0;
-  border: 0;
+}
+
+.home {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 480px;
+}
+
+/* 上の帯: 小さく。地区の切り替えと「写真を送る」だけ */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  height: 56px;
+  padding: 0 var(--space-16);
+  border-bottom: 1px solid var(--border);
+  background: var(--background-2);
+}
+
+.topbar-brand {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--brand);
+  white-space: nowrap;
+}
+
+.topbar-district {
+  flex: 1;
+  display: flex;
+  justify-content: center;
   min-width: 0;
 }
 
-/* 根拠に選んだ写真。色だけに頼らず、枠の太さでも分ける */
-button.thumb {
-  padding: 0;
-  border: 2px solid transparent;
+/* 操作の文字は畑の名前（14〜16px）より強くしない（精査 #5） */
+.topbar-district .input {
+  min-height: 44px;
+  min-width: 104px;
+  padding: 0 var(--space-8);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.topbar .button-small {
+  min-height: 44px;
+  padding: 0 var(--space-8);
+  border-color: var(--brand);
+  color: var(--brand);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.home-map {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.field-map {
+  position: absolute;
+  inset: 0;
+  background: #6f7a52;
+}
+
+/* Leaflet の既定を上書き: 書体（leaflet.css の指定より強くする。精査 #10）、押せる大きさ（44px）、出典表記 */
+.field-map.leaflet-container {
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.leaflet-touch .leaflet-bar a {
+  width: 44px;
+  height: 44px;
+  line-height: 44px;
+  font-size: 22px;
+  color: var(--text-1);
+  background: rgba(255, 254, 249, 0.92);
+}
+
+.leaflet-control-attribution {
+  font-size: 11px;
+  background: rgba(255, 254, 249, 0.8);
+}
+
+/* 札: 箱に入れず、影つきの白い文字だけ（航空写真を覆わない。11-05）。Leaflet の .leaflet-marker-icon より強くする */
+.field-map .map-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  width: max-content !important;
+  height: auto !important;
+  border: 0;
+  background: none;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  color: #ffffff;
+  text-align: center;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-shadow:
+    0 0 2px rgba(0, 0, 0, 0.95),
+    0 0 2px rgba(0, 0, 0, 0.95),
+    0 0 5px rgba(0, 0, 0, 0.7),
+    0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.map-label-id {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.map-label-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.map-label-benchmark {
+  color: var(--wheat);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+/* 未確定の写真あり: 番号の横の小さな白い点 */
+.map-label-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.6);
+  vertical-align: 1px;
+}
+
+.map-label-selected .map-label-name {
+  font-size: 16px;
+}
+
+.map-parcel {
   cursor: pointer;
 }
 
-/* button.thumb より詳細度を上げる（Codex の点検 P2。同じ詳細度だと選んでも枠が出なかった） */
-button.thumb.thumb-selected {
-  border: 4px solid var(--brand);
+.map-parcel:focus-visible {
+  outline: none;
+  stroke: var(--accent);
+  stroke-width: 5;
 }
 
-/* 取り消しの 2 段目（DS §12-13 の危険）。枠と文字を --assertive */
-.button-danger {
-  border-color: var(--assertive);
-  color: var(--assertive);
+/* 縮小しているときは名前を隠し、番号（と目安）だけに。選んでいる畑は全部出す */
+.map-zoom-compact .map-label:not(.map-label-selected) .map-label-name {
+  display: none;
+}
+
+/* 読み込み・つながらない（地図の上の帯） */
+.map-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-16);
+  border-bottom: 1px solid var(--border);
+  background: var(--background-2);
+  font-size: 0.95rem;
+  color: var(--text-2);
+}
+
+.map-note-button {
+  min-height: 44px;
+  padding: 0 var(--space-16);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-8);
+  background: var(--surface);
+  color: var(--brand);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.map-fictional-note {
+  position: absolute;
+  left: var(--space-8);
+  top: var(--space-8);
+  z-index: 500;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: rgba(255, 254, 249, 0.8);
+  font-size: 11px;
+  color: var(--text-2);
+  pointer-events: none;
+}
+
+/* 選んだ圃場の板: 左に最新の写真、右に番号・名前・判断 */
+.dock {
+  position: absolute;
+  left: var(--space-8);
+  right: var(--space-8);
+  bottom: var(--space-8);
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  border-radius: var(--radius-16);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(21, 41, 29, 0.18);
+}
+
+.dock-body {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-8);
+}
+
+.dock-photo {
+  position: relative;
+  flex: none;
+  width: 96px;
+  height: 96px;
+  overflow: hidden;
+  border-radius: var(--radius-8);
+  background: var(--background-2);
+}
+
+.dock-photo img {
+  object-fit: cover;
+}
+
+.dock-photo-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-3);
+  font-size: 0.8rem;
+}
+
+.dock-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 2px;
+  line-height: 1.35;
+}
+
+.dock-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.dock-id {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-2);
+}
+
+/* 目安の印は地図と同じ金の輪郭の印＋言葉（金の地の札にはしない） */
+.dock-benchmark {
+  margin-left: var(--space-8);
+  color: #5a4408;
+  font-size: 0.85rem;
+  font-weight: 700;
+  vertical-align: 2px;
+}
+
+.dock-status {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.dock-status-none {
+  font-weight: 400;
+  color: var(--text-2);
+}
+
+.dock-photo-line {
+  font-size: 0.85rem;
+  color: var(--text-2);
+}
+
+.dock-close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-8);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+
+/* 凡例（何も選んでいないとき）: 左下に小さく */
+.legend {
+  position: absolute;
+  left: var(--space-8);
+  bottom: var(--space-8);
+  z-index: 500;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  max-width: calc(100% - 16px);
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255, 254, 249, 0.88);
+  list-style: none;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 状態の印: 地図の札・凡例・板で同じ形（色だけに頼らず、塗り・破線・輪郭で分ける） */
+.mark {
+  display: inline-block;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid #8a9187;
+  border-radius: 2px;
+  background: var(--surface);
+  vertical-align: -1px;
+}
+
+.mark-ready {
+  border-color: #7f9a2e;
+  background: var(--accent);
+}
+
+.mark-done {
+  border-style: dashed;
+  border-color: #dedfd4;
+  background: rgba(37, 51, 38, 0.75);
+}
+
+.mark-benchmark {
+  border-width: 2px;
+  border-color: #c9a22e;
+}
+
+/* 凡例の「未確定の写真」の点（地図の札の点と同じ形） */
+.legend-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin: 0 2px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 0 1.5px #5a6356;
+}
+
+/* 線のアイコン: 文字の高さに合わせる */
+.icon {
+  flex: none;
+  width: 1.25em;
+  height: 1.25em;
+  vertical-align: -0.3em;
+}
+
+.button .icon {
+  margin-right: 6px;
+}
+
+.dock-photo-line,
+.dock-benchmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* 判断の行: 印は文字の先頭に流し込む（折り返しても印だけ残らない） */
+.dock-status .mark {
+  margin-right: 5px;
+}
+
+.dock-unconfirmed {
+  margin-left: 6px;
+}
+
+.dock-unconfirmed {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 400;
+  color: var(--text-2);
+}
+
+.dock-unconfirmed .map-label-dot {
+  margin: 0;
+  box-shadow: 0 0 0 1.5px #8a9187;
+}
+
+.dock-photo-empty .icon {
+  width: 28px;
+  height: 28px;
+  margin-bottom: 2px;
+}
+
+.dock-photo-empty {
+  flex-direction: column;
+}
+
+.dock-close .icon {
+  width: 22px;
+  height: 22px;
+  vertical-align: middle;
+}
+
+/* 下の帯（地図／見比べる／刈る順番） */
+.app-nav {
+  display: flex;
+  justify-content: space-evenly;
+  gap: var(--space-8);
+  padding: 2px var(--space-16) max(2px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  background: var(--background-2);
+}
+
+.app-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 96px;
+  min-height: 56px;
+  border-radius: var(--radius-8);
+  color: var(--text-2);
+  font-size: 0.8rem;
+  font-weight: 400;
+  text-decoration: none;
+}
+
+.app-nav-item .icon {
+  width: 24px;
+  height: 24px;
+}
+
+.app-nav-current {
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-weight: 700;
+}
+
+.app-nav-disabled {
+  opacity: 0.45;
+}
+
+@media (min-width: 960px) {
+  .dock {
+    left: auto;
+    width: 400px;
+  }
+}
+
+/* ===== 見比べる /fields/[id]（11-05）: 目安の写真を上に固定し、この畑の写真を縦に送る ===== */
+.compare {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 480px;
+}
+
+.compare-topbar {
+  gap: var(--space-8);
+  padding-right: 0;
+}
+
+.topbar-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  min-height: 44px;
+  padding: 0 var(--space-8) 0 0;
+  color: var(--brand);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* 同じ地区の畑の切り替え（横に送る） */
+.switcher {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  padding-right: var(--space-16);
+  scrollbar-width: none;
+}
+
+.switcher-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 22px;
+  color: var(--text-2);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-decoration: none;
+  background: var(--surface);
+}
+
+.switcher-current {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+/* 縦に送る本文 */
+.compare-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 var(--space-16) var(--space-24);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.target-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.target-title {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.3;
+}
+
+.target-write {
+  min-height: 44px;
+  padding: 0 var(--space-8);
+  font-size: 0.9rem;
+}
+
+.target-status {
+  margin: 2px 0 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.target-status .mark {
+  margin-right: 5px;
+}
+
+/* 判断を残す */
+.status-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin-top: var(--space-8);
+  padding: var(--space-16);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-16);
+  background: var(--surface);
+}
+
+.status-choice {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-8);
+}
+
+.choice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 52px;
+  border: 2px solid var(--border-strong);
+  border-radius: var(--radius-8);
+  background: var(--surface);
+  color: var(--text-1);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.choice-on {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.reason {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--text-1);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.reason-on {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: var(--text-on-brand);
+}
+
+/* 写真の流れ */
+.stream {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.stream-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: var(--space-24) 0;
+  color: var(--text-3);
+  font-size: 0.95rem;
+}
+
+.stream-empty .icon {
+  width: 32px;
+  height: 32px;
+}
+
+.stream-day {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.stream-day-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.stream-photo {
+  margin: 0;
+}
+
+.stream-photo-frame {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--radius-8);
+  background: var(--background-2);
+}
+
+.stream-photo-frame img {
+  object-fit: cover;
+}
+
+/* 写真ごとの帯（目安の帯と同じ形・同じ位置） */
+.stream-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 12px 6px;
+  background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.55));
+  color: #ffffff;
+  font-size: 0.9rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.stream-caption .dock-id {
+  color: #e6e9e1;
+}
+
+.stream-caption-title {
+  font-weight: 700;
+}
+
+.stream-caption-date {
+  margin-left: auto;
+  font-size: 0.85rem;
+}
+
+.stream-photo-chosen .stream-photo-frame {
+  outline: 3px solid var(--brand);
+  outline-offset: 0;
+}
+
+.stream-photo-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.ref-toggle {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 22px;
+  background: var(--surface);
+  color: var(--text-1);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.ref-toggle-on {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: var(--text-on-brand);
+}
+
+/* 昨年の同じ頃・履歴 */
+.season,
+.history {
+  padding-top: var(--space-8);
+  border-top: 1px solid var(--border);
+}
+
+.season-title {
+  margin: 0 0 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.season-head {
+  margin: 0;
+  font-weight: 700;
+}
+
+.season-line {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-2);
 }
 
 .history-list {
   list-style: none;
   margin: 0;
   padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
 }
 
-/* 取り消した判断。消さずに残し、薄くして線を引く */
-.card-revoked {
+.history-item {
+  padding: var(--space-8) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.history-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.history-when {
+  color: var(--text-2);
+  font-weight: 400;
+}
+
+.history-tag {
+  font-size: 0.8rem;
+  font-weight: 400;
   color: var(--text-3);
+}
+
+.history-revoke {
+  margin-left: auto;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-8);
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.history-body {
+  font-size: 0.9rem;
+  color: var(--text-2);
+}
+
+.history-revoked {
+  opacity: 0.55;
+}
+
+/* 入力中だけ下の帯の上に出る「記録する」（どこまで送っても押せる） */
+.status-actions {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-8) var(--space-16);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 -6px 16px rgba(21, 41, 29, 0.08);
+}
+
+.status-actions-message {
+  margin: 0;
+}
+
+.status-actions-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-8);
+}
+
+.status-actions-row .button {
+  min-height: 52px;
+  padding: 0 var(--space-16);
+}
+
+.status-actions-submit {
+  gap: 10px;
+}
+
+.status-actions-refs {
+  font-size: 0.85rem;
+  font-weight: 400;
+  opacity: 0.9;
+}
+
+.compare-fictional {
+  position: static;
+  align-self: flex-start;
+  background: none;
+  padding: 0;
+}
+
+/* ===== 見比べる: 上の段（比べ方・撮影日・相手の札と、上下に重ねた 2 枚）11-05 ===== */
+/* 上の段は本文と一緒に送る。札の段は流れ去り、2 枚の写真（.split）だけが上に残る（精査 3 回目 #1） */
+.stage {
+  display: contents;
+}
+
+.stage > .controls,
+.stage > .stage-empty {
+  margin: 0 calc(-1 * var(--space-16));
   background: var(--background-2);
 }
 
-.card-revoked .badge {
-  text-decoration: line-through;
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px var(--space-16) 6px;
 }
 
-/* 印から戻ってきた項目を見失わないように */
-.card:target {
-  box-shadow: var(--focus-ring);
+/* 比べ方: 2 つの札（アイコン＋短い文字） */
+.mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.mode-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-8);
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mode-current {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-weight: 700;
+}
+
+/* 撮影日・相手の札（横に送る） */
+.chips {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 0;
+}
+
+.chips-label {
+  flex: none;
+  font-size: 0.8rem;
+  color: var(--text-3);
+  margin-right: 2px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 22px;
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chip-current {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.chip:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* 2 枚を上下に重ねる枠。境目は .split-handle */
+.split {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  flex: none;
+  margin: 0 calc(-1 * var(--space-16));
+  height: 38dvh;
+  min-height: 200px;
+  overflow: hidden;
+  background: #1c2420;
+  touch-action: pan-x pinch-zoom;
+  /* 下に送る本文と分ける（精査 3 回目 #9） */
+  box-shadow: 0 6px 12px rgba(21, 41, 29, 0.22);
+}
+
+.stage-compact .split {
+  height: 24dvh;
+  min-height: 150px;
+}
+
+/* 同じ日の別の畑: 上下 2 つの窓に、それぞれの写真の真ん中を出す */
+.split-window {
+  position: absolute;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+}
+
+.split-window img {
+  object-fit: cover;
+  object-position: center;
+}
+
+.split-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.split-layer img {
+  object-fit: cover;
+}
+
+.split-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px var(--space-16);
+  color: #ffffff;
+  font-size: 0.9rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.split-caption-top {
+  top: 0;
+  padding-bottom: 18px;
+  background: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
+}
+
+.split-caption-bottom {
+  bottom: 0;
+  padding-top: 18px;
+  background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.55));
+}
+
+.split-caption .dock-id {
+  color: #e6e9e1;
+}
+
+.split-caption-title {
+  font-weight: 700;
+}
+
+/* 下（この畑・選んだ日）の帯は左端に白い線（上と見分ける。精査 3 回目 #7） */
+.split-caption-self {
+  border-left: 4px solid #ffffff;
+}
+
+.split-tag {
+  padding: 0 6px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* 上の帯を押すと相手を選べる（同じ日の別の畑） */
+.split-caption-button {
+  z-index: 2;
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.split-caption-chevron {
+  width: 20px;
+  height: 20px;
+  margin-left: 4px;
+}
+
+.split-picker {
+  position: absolute;
+  left: var(--space-8);
+  right: var(--space-8);
+  top: var(--space-8);
+  z-index: 10;
+  max-height: calc(100% - 16px);
+  overflow-y: auto;
+  border-radius: var(--radius-8);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.split-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px 2px var(--space-16);
+  border-bottom: 1px solid var(--border);
+}
+
+.split-picker-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.split-picker-close {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.split-picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+}
+
+.split-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 var(--space-16);
+  border: 0;
+  background: none;
+  color: var(--text-1);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.split-picker-current {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.split-picker-note {
+  margin-left: auto;
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: #5a4408;
+}
+
+.split-caption-date {
+  margin-left: auto;
+  font-size: 0.85rem;
+}
+
+.split-handle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 48px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: row-resize;
+  touch-action: none;
+}
+
+.split-handle:focus-visible {
+  outline: none;
+}
+
+.split-handle-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 3px;
+  transform: translateY(-50%);
+  background: #ffffff;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.7);
+}
+
+.split-handle-grip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: var(--text-1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.split-handle:focus-visible .split-handle-grip {
+  box-shadow: var(--focus-ring), 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.stage-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 120px;
+  padding: var(--space-16);
+  color: var(--text-3);
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.stage-empty .icon {
+  width: 28px;
+  height: 28px;
+}
+
+/* 上の段が無い（この畑に写真が無い）ときも、見出しを上の帯から離す */
+.compare-body > .target:first-child {
+  padding-top: var(--space-8);
+}
+
+/* ===== 刈る順番 /order（11-05、3 段目） ===== */
+.order {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 480px;
+}
+
+.order-map {
+  position: relative;
+  flex: none;
+  height: 30dvh;
+  min-height: 180px;
+  border-bottom: 1px solid var(--border);
+}
+
+.order-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-8) var(--space-16) var(--space-24);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+/* 順位の丸: 下書きは破線、確定は実線（地図と一覧で同じ形） */
+.rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border: 2px dashed var(--brand);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--brand);
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.rank-confirmed {
+  border-style: solid;
+  background: var(--brand);
+  color: var(--text-on-brand);
+}
+
+.rank-none {
+  border: 2px dotted var(--border-strong);
+  background: transparent;
+}
+
+.rank-small {
+  width: 18px;
+  height: 18px;
+  border-width: 2px;
+}
+
+.field-map .map-rank {
+  width: 26px;
+  height: 26px;
+  margin-bottom: 2px;
+  font-size: 0.85rem;
+  text-shadow: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+.order-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.order-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-weight: 700;
+}
+
+.order-state-warn {
+  color: #8a5a12;
+}
+
+.order-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.order-buttons .button-small {
+  min-height: 44px;
+  padding: 0 var(--space-16);
+  font-size: 0.95rem;
+}
+
+.order-reset {
+  min-height: 44px;
+  margin-left: auto;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.order-ask-text {
+  flex-basis: 100%;
+  font-weight: 700;
+}
+
+.order-error {
+  color: var(--assertive);
+}
+
+.order-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.order-group {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.order-group-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.order-row {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-8);
+  background: var(--surface);
+}
+
+.order-row-selected {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 2px var(--brand-soft);
+}
+
+.order-row-dragging {
+  position: relative;
+  z-index: 3;
+  box-shadow: 0 8px 20px rgba(21, 41, 29, 0.25);
+}
+
+.order-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px 6px 8px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.order-thumb {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--background-2);
+  color: var(--text-3);
+}
+
+.order-thumb img {
+  object-fit: cover;
+}
+
+.order-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.35;
+}
+
+.order-title {
+  font-weight: 700;
+}
+
+.order-benchmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  color: #5a4408;
+  font-size: 0.8rem;
+}
+
+.order-lines {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.85rem;
+  color: var(--text-2);
+}
+
+.order-missing {
+  font-size: 0.8rem;
+  color: var(--text-3);
+}
+
+/* 操作: 2 列 2 段（▲ 持ち手 ／ ▼ 外す） */
+.order-controls {
+  flex: none;
+  display: grid;
+  grid-template-columns: 44px 44px;
+  grid-auto-rows: 36px;
+  align-content: center;
+  padding: 2px 4px 2px 0;
+}
+
+.order-step,
+.order-unrank,
+.order-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.order-step:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.order-unrank {
+  font-size: 0.75rem;
+  text-decoration: underline;
+}
+
+.order-handle {
+  cursor: grab;
+  touch-action: none;
+}
+
+.order-rank-button {
+  align-self: center;
+  min-height: 44px;
+  margin-right: 6px;
+  padding: 0 10px;
+  border: 1.5px solid var(--brand);
+  border-radius: 22px;
+  background: var(--surface);
+  color: var(--brand);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.order-empty {
+  margin: 0;
+  color: var(--text-2);
+}
+
+.order-done {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-2);
+}
+
+.shoot-list {
+  list-style: none;
+  margin: 0 0 var(--space-8);
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.shoot-why {
+  margin-left: 4px;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-3);
+}
+
+.shoot-send {
+  min-height: 44px;
+}
+
+.order-local-note {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+
+/* 小さい主ボタン（.button-small が文字色を薄くするのを打ち消す） */
+.button-primary.button-small {
+  border-color: var(--brand);
+  color: var(--text-on-brand);
+}
+
+.order-controls-single {
+  display: flex;
+  align-items: center;
+}
+
+.order-rank-button {
+  white-space: nowrap;
+}
+
+.order-lines .mark {
+  flex: none;
+}
+
+/* 一覧の記録の文は少し小さく（細い列で折り返しすぎない） */
+.order-row .order-lines,
+.order-row .order-missing {
+  font-size: 0.78rem;
+}
+
+/* 長押しで並べ替え（プレイリストのように）: つかんだ行は浮き、ほかの行はよける */
+ol.order-group .order-row {
+  transition: transform 160ms ease, box-shadow 160ms ease;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+ol.order-group .order-row-dragging {
+  transition: box-shadow 160ms ease;
+  border-color: var(--brand);
+  box-shadow: 0 10px 24px rgba(21, 41, 29, 0.3);
+}
+
+.order-group-dragging .order-row:not(.order-row-dragging) {
+  opacity: 0.92;
+}
+
+.order-thumb img {
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+/* ===== LINE に 1 枚（11-05、4 段目） ===== */
+.share {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-16);
+  border: 1px solid var(--brand);
+  border-radius: var(--radius-16);
+  background: var(--surface);
+}
+
+.share-body {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: var(--space-8);
+  align-items: start;
+}
+
+.share-image {
+  position: relative;
+  width: 120px;
+  aspect-ratio: 1080 / 1200;
+  overflow: hidden;
+  border-radius: var(--radius-8);
+  background: var(--background-2);
+}
+
+.share-image-link {
+  position: absolute;
+  inset: 0;
+}
+
+.share-image img {
+  object-fit: cover;
+}
+
+.share-image-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 6px;
+  font-size: 0.75rem;
+  color: var(--text-3);
+  text-align: center;
+}
+
+.share-text {
+  margin: 0;
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  color: var(--text-1);
+}
+
+.share-fallback {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.share-fallback .button-small {
+  min-height: 44px;
+  padding: 0 var(--space-16);
+  font-size: 0.95rem;
+}
+
+/* 引き継ぎメモ（L6、main の #120 から）。文ごとに根拠の印、印を押すと判断の履歴・写真へ。
+   見た目は「昨年の同じ頃」「判断の履歴」と同じ段（.season）で、枠で囲まない */
+.memo {
+  display: flex;
+  flex-direction: column;
+}
+
+.memo-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
 }
 
 .memo-sentence {
   margin: 0;
   line-height: 1.7;
+}
+
+.memo-created {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-2);
+}
+
+.memo-create {
+  align-self: flex-start;
+  margin-top: var(--space-8);
 }
 
 /* 根拠の無い文は灰色で「根拠なし」（合格条件 13） */
@@ -442,4 +2081,9 @@ button.thumb.thumb-selected {
   border: 1px solid var(--brand);
   color: var(--brand);
   text-decoration: none;
+}
+
+/* 印から戻ってきた履歴の項目を見失わないように */
+.history-item:target {
+  box-shadow: var(--focus-ring);
 }

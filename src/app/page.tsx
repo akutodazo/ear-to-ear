@@ -1,18 +1,15 @@
-import Link from "next/link";
+import type { Metadata } from "next";
+import { HomeClient } from "./home-client";
 
+export const metadata: Metadata = {
+  title: "畑の地図 — ear-to-ear",
+};
+
+/** `/` は地図（L1）。配線だけ（AGENTS.md §4） */
 export default function Home() {
   return (
-    <main className="page">
-      <h1>ear-to-ear</h1>
-      <p>穂から穂へ、写真と判断をつなぐ</p>
-      <nav className="stack">
-        <Link className="button button-primary" href="/upload">
-          写真を送る
-        </Link>
-        <Link className="button" href="/recent">
-          新着を見る
-        </Link>
-      </nav>
+    <main className="home-main">
+      <HomeClient />
     </main>
   );
 }
