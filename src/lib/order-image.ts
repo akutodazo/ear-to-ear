@@ -7,6 +7,7 @@ import { MAP_TILES } from "@/config";
 import type { LatLng } from "@/services/parcel-geometry";
 import { polygonBounds, polygonCentroid, unionBounds } from "@/services/parcel-geometry";
 import { fitView, projectToView, tilesForView } from "@/services/tile-math";
+import { ORDER_IMAGE_SIZE, orderImageLayout } from "@/services/order-image-layout";
 
 export interface ImageParcel {
   fieldId: string;
@@ -25,9 +26,11 @@ export interface OrderImageInput {
   note?: string;
 }
 
-const W = 1080;
-const MAP_H = 1080;
-const BAND = 120;
+const W = ORDER_IMAGE_SIZE.width;
+const MAP_H = ORDER_IMAGE_SIZE.mapHeight;
+const BAND = ORDER_IMAGE_SIZE.band;
+/** LINE のサムネイルで切られない位置（見出し・注記・出典・区画） */
+const LAYOUT = orderImageLayout();
 const FONT = '"Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", system-ui, sans-serif';
 const GREEN = "#2d6441";
 const LIME = "rgba(216, 241, 120, 0.42)";
@@ -71,14 +74,14 @@ export async function drawOrderImage(input: OrderImageInput): Promise<Blob> {
   ctx.fillStyle = GREEN;
   ctx.font = `700 52px ${FONT}`;
   ctx.textBaseline = "middle";
-  ctx.fillText(input.title, 40, BAND / 2);
+  ctx.fillText(input.title, LAYOUT.titleX, BAND / 2);
 
   // 地図
   const bounds = unionBounds(input.parcels.map((p) => polygonBounds(p.polygon)));
   ctx.fillStyle = "#6f7a52";
   ctx.fillRect(0, BAND, W, MAP_H);
   if (bounds) {
-    const view = fitView(bounds, W, MAP_H, 90, MAP_TILES.maxZoom);
+    const view = fitView(bounds, W, MAP_H, LAYOUT.mapPadding, MAP_TILES.maxZoom);
     const tiles = tilesForView(view, W, MAP_H);
     const images = await Promise.all(tiles.map((t) => loadTile(tileUrl(t.z, t.x, t.y))));
     ctx.save();
@@ -143,16 +146,16 @@ export async function drawOrderImage(input: OrderImageInput): Promise<Blob> {
   const credit = "地理院タイル";
   const cw = ctx.measureText(credit).width + 24;
   ctx.fillStyle = "rgba(255, 254, 249, 0.88)";
-  ctx.fillRect(W - cw - 12, BAND + MAP_H - 48, cw, 36);
+  ctx.fillRect(LAYOUT.creditBoxRight - cw, BAND + MAP_H - 48, cw, 36);
   ctx.fillStyle = "#253326";
-  ctx.fillText(credit, W - 24, BAND + MAP_H - 30);
+  ctx.fillText(credit, LAYOUT.creditBoxRight - 12, BAND + MAP_H - 30);
   if (input.note) {
     ctx.textAlign = "left";
     const nw = ctx.measureText(input.note).width + 24;
     ctx.fillStyle = "rgba(255, 254, 249, 0.88)";
-    ctx.fillRect(12, BAND + MAP_H - 48, nw, 36);
+    ctx.fillRect(LAYOUT.noteBoxX, BAND + MAP_H - 48, nw, 36);
     ctx.fillStyle = "#253326";
-    ctx.fillText(input.note, 24, BAND + MAP_H - 30);
+    ctx.fillText(input.note, LAYOUT.noteBoxX + 12, BAND + MAP_H - 30);
   }
 
   return new Promise((resolve, reject) => {
