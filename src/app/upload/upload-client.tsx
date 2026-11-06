@@ -6,6 +6,7 @@ import { useEffect, useRef } from "react";
 import { useUpload } from "@/hooks/use-upload";
 import { PassphraseForm } from "@/components/upload/passphrase-form";
 import { PhotoCard } from "@/components/upload/photo-card";
+import { PhrasedText } from "@/components/upload/phrased-text";
 
 export function UploadClient() {
   const upload = useUpload();
@@ -58,7 +59,7 @@ export function UploadClient() {
           <div className="stack-tight">
             {upload.summary.split("。").map((sentence) => (
               <p key={sentence} className="label balance">
-                {sentence}
+                <PhrasedText text={sentence} />
               </p>
             ))}
           </div>
