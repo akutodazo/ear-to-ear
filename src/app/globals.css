@@ -425,11 +425,14 @@ a:focus-visible {
   background: var(--background-2);
 }
 
+/* ロゴ（I–1、src/components/brand.tsx）。横組みの縦横比は 318:98 */
 .topbar-brand {
-  font-weight: 600;
-  font-size: 0.95rem;
+  flex: none;
+  display: block;
+  height: 30px;
+  width: auto;
+  aspect-ratio: 318 / 98;
   color: var(--brand);
-  white-space: nowrap;
 }
 
 .topbar-district {

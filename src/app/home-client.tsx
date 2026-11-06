@@ -18,6 +18,7 @@ import { useLastDistrict } from "@/hooks/use-last-district";
 import { MapLegend } from "@/components/map/map-legend";
 import { AppNav } from "@/components/app-nav";
 import { IconCamera } from "@/components/icons";
+import { Brand } from "@/components/brand";
 
 // JSON の型は number[][] なので、[lat, lng] の組に読み替える（中身は src/data/parcels.test.ts が確かめる）
 const parcels: Parcel[] = parcelsData.map((p) => ({ fieldId: p.fieldId, polygon: p.polygon.map(([lat, lng]) => [lat, lng] as [number, number]) }));
@@ -87,7 +88,7 @@ export function HomeClient() {
   return (
     <div className="home">
       <header className="topbar">
-        <span className="topbar-brand">ear-to-ear</span>
+        <Brand className="topbar-brand" />
         <label className="topbar-district">
           <span className="sr-only">地区</span>
           <select
