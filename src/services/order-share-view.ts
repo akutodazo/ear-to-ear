@@ -3,6 +3,7 @@
  * URL を共有すると、LINE がページの og:image を読んでトークに地図のサムネイルを出す（#160）
  */
 import type { CreateOrderShareOutcome } from "@/repositories/interfaces/i-order-share-repository";
+import { stripAppSegments } from "./prepared-photo";
 
 /** navigator.share に渡すもの。text に URL を入れない（Android の LINE は text と url をつなぐので二重になる） */
 export function shareData(text: string, url: string): { text: string; url: string } {
@@ -26,4 +27,12 @@ const LABELS: Record<Exclude<CreateOrderShareOutcome["kind"], "created">, string
 /** 送る準備の結果の言葉。作れたときは null */
 export function createShareOutcomeLabel(outcome: CreateOrderShareOutcome): string | null {
   return outcome.kind === "created" ? null : LABELS[outcome.kind];
+}
+
+/**
+ * 送る前の絵。APP1〜15 を消す（iPhone の Safari は canvas の JPEG に色の情報 APP2 を付け、サーバーは APP1〜15 を断る。
+ * 写真の送信と同じ stripAppSegments）。JPEG として読めなければ null
+ */
+export function shareImageBytes(bytes: Uint8Array): Uint8Array | null {
+  return stripAppSegments(bytes);
 }
