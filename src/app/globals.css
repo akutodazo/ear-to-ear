@@ -2087,3 +2087,93 @@ ol.order-group .order-row-dragging {
 .history-item:target {
   box-shadow: var(--focus-ring);
 }
+
+/* 来年の引き継ぎ（5 段目）。「昨年の同じ頃」の段に畳んで入れる（精査 4 回目 #4） */
+.season-memo {
+  margin-top: var(--space-8);
+}
+
+.season-memo summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--brand);
+  cursor: pointer;
+}
+
+.season-memo summary svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* 出所は札にせず、灰色の小さな文字（押せる形に見せない。精査 4 回目 #3） */
+.memo-origin {
+  margin-left: 2px;
+  font-size: 0.8rem;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+/* 地図の板から来たとき、上に残る写真の下に段の頭が来るように */
+#last-season {
+  scroll-margin-top: 50vh;
+}
+
+/* 地図の板: 昨年の引き継ぎへの 1 行の入口（文は出さない。精査 4 回目 #2） */
+.dock-last-memo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--brand);
+  text-decoration: none;
+}
+
+.dock-last-memo svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.dock-last-memo-arrow {
+  margin-left: auto;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+/* デモで今日を差し替えているときの表示（下の帯の上。精査 4 回目 #5） */
+.demo-date {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 2px var(--space-16);
+  background: var(--warning-soft);
+  border-top: 1px solid var(--border);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.demo-date svg {
+  width: 14px;
+  height: 14px;
+}
+
+.demo-date-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-left: 2px;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+}

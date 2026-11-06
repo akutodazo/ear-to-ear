@@ -7,7 +7,7 @@
  * 下はこの畑の写真の流れ（根拠を選ぶ）、判断を残す（useFieldStatus）、昨年の同じ頃（last-season）、履歴、引き継ぎメモ（useHandover、L6）（AGENTS.md §4）
  */
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import fieldsData from "@/data/fields.json";
 import benchmarksData from "@/data/benchmarks.json";
 import seasonsData from "@/data/seasons.json";
@@ -27,6 +27,8 @@ import { SplitViewer, type PartnerPicker, type SlotPhoto } from "@/components/co
 import { FieldSwitcher } from "@/components/compare/field-switcher";
 import { PhotoStream } from "@/components/compare/photo-stream";
 import { LastSeasonNote } from "@/components/compare/last-season-note";
+import { useDemoToday, useLastSeasonMemo } from "@/hooks/use-last-season-memo";
+import { useHashIs } from "@/hooks/use-hash-is";
 import { StatusPanel } from "@/components/compare/status-panel";
 import { StatusActions } from "@/components/compare/status-actions";
 import { StatusHistory } from "@/components/compare/status-history";
@@ -42,6 +44,8 @@ const seasons: SeasonRecord[] = seasonsData;
 const SEASON = "2026";
 
 export function FieldClient({ field }: { field: Field }) {
+  // デモで今日を差し替えているときの表示（精査 4 回目 #5）
+  const demoDate = useDemoToday();
   const districtFields = useMemo(() => fields.filter((f) => f.district === field.district), [field.district]);
   const districtIds = useMemo(() => districtFields.map((f) => f.id), [districtFields]);
   const fieldsById = useMemo(() => Object.fromEntries(districtFields.map((f) => [f.id, f])) as Record<string, Field>, [districtFields]);
@@ -51,6 +55,18 @@ export function FieldClient({ field }: { field: Field }) {
   const district = useDistrictPhotos(districtIds);
   const status = useFieldStatus(field.id, photos.confirmedPhotoIds);
   const handover = useHandover(field.id);
+  // 来年の引き継ぎ（5 段目）: 昨年の判断の頃だけ、昨年のメモを「昨年の同じ頃」の下に
+  const lastMemo = useLastSeasonMemo(field.id, SEASON);
+  // 地図の板の「昨年の引き継ぎ あり」から来たら、畳んだ全文を開いておく
+  const fromDock = useHashIs("last-season");
+  // 写真を読み込むと段の位置が変わり、# で飛んだ先がずれる。読み込みが済んでから 1 回だけ「昨年の同じ頃」へ送る
+  const scrolledToMemo = useRef(false);
+  const contentReady = !photos.loading && !district.loading;
+  useEffect(() => {
+    if (!fromDock || lastMemo === null || !contentReady || scrolledToMemo.current) return;
+    scrolledToMemo.current = true;
+    document.getElementById("last-season")?.scrollIntoView({ block: "start" });
+  }, [fromDock, lastMemo, contentReady]);
   const [writing, setWriting] = useState(false);
 
   // 比べ方の選択。日付・相手・前の日は「希望」として持ち、実際に出せる形には Service が直す
@@ -206,7 +222,7 @@ export function FieldClient({ field }: { field: Field }) {
           onRetry={photos.refresh}
           refs={open ? { selected: refSet, onToggle: status.toggleRefPhoto } : undefined}
         />
-        <LastSeasonNote lines={seasonLines} />
+        <LastSeasonNote lines={seasonLines} memo={lastMemo} memoOpen={fromDock} />
         <StatusHistory history={status.history} loading={status.historyLoading} message={status.historyMessage} revokeStatus={status.revokeStatus} onRevoke={status.revoke} onRetry={status.refreshHistory} />
         {/* 取り消しで合言葉を聞かれたとき（判断の入力を閉じていても出す。main の #120 と同じ） */}
         {status.needsPassphrase && !open && (
@@ -248,7 +264,7 @@ export function FieldClient({ field }: { field: Field }) {
           onCancel={stopWriting}
         />
       )}
-      <AppNav current="compare" compareHref={`/fields/${field.id}`} orderHref={`/order#${field.id}`} />
+      <AppNav current="compare" compareHref={`/fields/${field.id}`} orderHref={`/order#${field.id}`} demoDate={demoDate} />
     </div>
   );
 }

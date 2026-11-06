@@ -158,26 +158,38 @@ function draw(L: Leaflet, layers: LayerGroup, items: MapParcel[], onSelect: (fie
   }
 }
 
-/** 選んだ畑の中心が板や帯に隠れるなら、見える所まで最小限だけ動かす（地区を飛ばない。精査 #1） */
+/**
+ * 選んだ畑が板や帯に隠れるなら、見える所まで最小限だけ動かす（地区を飛ばない。精査 #1）。
+ * 見るのは畑の上の端と下の端（中心だけだと、下の端が板に隠れる）。板の高さが変わったら動かし直す（精査 4 回目 #1）
+ */
 function keepSelectedVisible(L: Leaflet, map: LeafletMap, items: MapParcel[], shown: { current: string | null }, padding: { top: number; bottom: number }) {
   const selected = items.find((i) => i.appearance.selected) ?? null;
   const id = selected?.field.id ?? null;
-  if (id === shown.current) return;
-  shown.current = id;
+  const key = id === null ? null : `${id}|${padding.top}|${padding.bottom}`;
+  if (key === shown.current) return;
+  shown.current = key;
   if (!selected) return;
-  const [lat, lng] = polygonCentroid(selected.parcel.polygon);
-  map.panInside(L.latLng(lat, lng), {
-    paddingTopLeft: L.point(0, padding.top),
-    paddingBottomRight: L.point(0, padding.bottom),
-    animate: true,
-  });
+  // 板・注記が出て容れ物の大きさが変わっていることがあるので、測り直してから動かす
+  map.invalidateSize({ animate: false });
+  // 畑の上の端と下の端が、上の余白と下の余白（板）の間に入るよう、縦にだけ最小限動かす。入りきらないときは上の端を見せる
+  const ys = selected.parcel.polygon.map(([lat, lng]) => map.latLngToContainerPoint(L.latLng(lat, lng)).y);
+  const [north, south] = [Math.min(...ys), Math.max(...ys)];
+  const [top, bottom] = [padding.top, map.getSize().y - padding.bottom];
+  const dy = south - north > bottom - top || north < top ? north - top : south > bottom ? south - bottom : 0;
+  // 横は中心が画面の外に出たときだけ戻す
+  const [clat, clng] = polygonCentroid(selected.parcel.polygon);
+  const cx = map.latLngToContainerPoint(L.latLng(clat, clng)).x;
+  const width = map.getSize().x;
+  const dx = cx < 0 || cx > width ? cx - width / 2 : 0;
+  // 動かす途中で描き直し（板の高さが決まったときなど）が入ると、動きの途中で止まるので、すぐに動かす
+  if (dx !== 0 || dy !== 0) map.panBy(L.point(dx, dy), { animate: false });
 }
 
 /** 区画たちが入るように動かす（同じ key では 1 回だけ） */
-function fitIfNeeded(map: LeafletMap, items: MapParcel[], key: string, fitted: { current: string | null }) {
-  if (fitted.current === key) return;
+function fitIfNeeded(map: LeafletMap, items: MapParcel[], key: string, fitted: { current: string | null }): boolean {
+  if (fitted.current === key) return false;
   const bounds = unionBounds(items.map((p) => polygonBounds(p.parcel.polygon)));
-  if (!bounds) return;
+  if (!bounds) return false;
   fitted.current = key;
   // 置いた直後は容れ物の大きさを測り直してから合わせる（高さが決まる前に測ると中心がずれる）
   map.invalidateSize({ animate: false });
@@ -188,6 +200,7 @@ function fitIfNeeded(map: LeafletMap, items: MapParcel[], key: string, fitted: {
     ],
     { padding: [16, 16], maxZoom: FIT_MAX_ZOOM, animate: false },
   );
+  return true;
 }
 
 export function FieldMap({ parcels, fitItems, fitKey, onSelect, keepVisiblePadding = KEEP_VISIBLE_PADDING }: Props) {
@@ -251,7 +264,8 @@ export function FieldMap({ parcels, fitItems, fitKey, onSelect, keepVisiblePaddi
     const layers = layersRef.current;
     if (!ready || !L || !map || !layers) return;
     draw(L, layers, parcels, (id) => onSelectRef.current(id));
-    fitIfNeeded(map, fitItems, fitKey, fittedRef);
+    // 地区に合わせ直したら、選んだ畑が板に隠れないかを見直す（地区をまたいで選んだとき、合わせ直しが動きを打ち消すため。精査 4 回目 #1）
+    if (fitIfNeeded(map, fitItems, fitKey, fittedRef)) shownRef.current = null;
     keepSelectedVisible(L, map, parcels, shownRef, keepVisiblePadding);
   }, [ready, parcels, fitItems, fitKey, keepVisiblePadding]);
 

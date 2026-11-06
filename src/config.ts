@@ -30,6 +30,12 @@ export const STATUS_NOTE_MAX_CHARS = 200;
 /** 判断の根拠に付けられる写真の上限（11-03 本人決定） */
 export const STATUS_REF_PHOTOS_MAX = 5;
 
+/**
+ * 来年の引き継ぎ（5 段目、11-05 本人決定）: 昨年のメモを出すのは、昨年の判断の日（収穫可能、無ければ収穫済）の月日の前後この日数だけ（端を含む）。
+ * 「同じ週に出る」の幅。日数の差は画面に出さない
+ */
+export const LAST_SEASON_HANDOVER_DAYS = 7;
+
 /** 架空の圃場番号の形（例 A-01）。実在の番号体系と重ねない（K10） */
 export const FIELD_ID_PATTERN = /^[A-Z]-\d{2}$/;
 
