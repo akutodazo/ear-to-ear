@@ -27,6 +27,7 @@ describe("経路の表（docs/spec.md §6 の L0）", () => {
       ["GET", "/api/fields/:id/handover", "none"],
       ["POST", "/api/fields/:id/handover", "admin"],
       ["POST", "/api/line/webhook", "none"],
+      ["POST", "/api/shares", "member"],
     ]);
   });
 
@@ -58,8 +59,8 @@ describe("経路の表（docs/spec.md §6 の L0）", () => {
     expect(routes.find((r) => r.method === "POST" && r.pattern === "/api/fields/:id/handover")?.handler).toBe(postFieldHandover);
   });
 
-  it("POST /api/line/webhook は postLineWebhook で、表の末尾（#140）", () => {
-    expect(routes.at(-1)).toStrictEqual({
+  it("POST /api/line/webhook は postLineWebhook（#140）", () => {
+    expect(routes.find((r) => r.pattern === "/api/line/webhook")).toStrictEqual({
       method: "POST",
       pattern: "/api/line/webhook",
       auth: "none",

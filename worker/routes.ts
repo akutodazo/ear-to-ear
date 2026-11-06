@@ -13,6 +13,7 @@ import { postLineWebhook } from "./line-webhook";
 import { getPhotoFile } from "./photo-files";
 import { getPhotosByField, getRecentPhotos } from "./photos";
 import { getSession, postSession } from "./session";
+import { postShares } from "./shares";
 import { deleteStatusEvent } from "./status-events";
 import { getFieldStatusEvents } from "./status-history";
 import { postUploads } from "./uploads";
@@ -51,4 +52,6 @@ export const routes: readonly Route[] = [
   { method: "POST", pattern: "/api/fields/:id/handover", auth: "admin", handler: postFieldHandover },
   // L8 の webhook（#140）。Cookie ではなく LINE の署名で守る
   { method: "POST", pattern: "/api/line/webhook", auth: "none", handler: postLineWebhook },
+  // LINE に 1 枚の共有（#159）。委員も作れる（11-06 先輩決定）
+  { method: "POST", pattern: "/api/shares", auth: "member", handler: postShares },
 ];
