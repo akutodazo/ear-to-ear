@@ -21,6 +21,7 @@ import { benchmarkFor, mapLabelLines, parcelAppearance } from "@/services/parcel
 import { draftOrder, nextToShoot, orderRows } from "@/services/harvest-order";
 import { orderImageTitle, orderMessageText } from "@/services/order-message";
 import { useOrderShare } from "@/hooks/use-order-share";
+import type { OrderShareMeta } from "@/services/order-share-meta";
 import type { OrderImageInput } from "@/lib/order-image";
 import { indexByDay } from "@/services/photo-compare";
 import { FieldMap, type MapParcel } from "@/components/map/field-map";
@@ -115,7 +116,15 @@ export function OrderClient() {
       ? orderMessageText({ district, confirmedAt: confirmedOrder.confirmedAt, ranked: confirmedOrder.ranked, fieldsById, benchmarkId })
       : "";
   const shareFile = `order-${SEASON}-${districtIds[0] ?? "district"}.jpg`;
-  const share = useOrderShare(shareImage, shareText, shareFile);
+  // 共有の URL を作るときに送るもの（番号の並びだけ。座標・距離は送らない、K6）
+  const shareMeta = useMemo<OrderShareMeta | null>(
+    () =>
+      confirmedOrder && confirmedOrder.confirmedAt && confirmedOrder.ranked.length > 0
+        ? { season: SEASON, district, confirmedAt: confirmedOrder.confirmedAt, ranked: [...confirmedOrder.ranked], benchmarkId: benchmarkId && confirmedOrder.ranked.includes(benchmarkId) ? benchmarkId : null }
+        : null,
+    [confirmedOrder, district, benchmarkId],
+  );
+  const share = useOrderShare(shareImage, shareMeta, shareText, shareFile);
 
   // 地図で畑を押したら、一覧のその行を見える所へ
   useEffect(() => {
@@ -172,7 +181,21 @@ export function OrderClient() {
               onReset={order.resetToRecords}
             />
             {shareImage && (
-              <LineShare state={share.state} text={shareText} fileName={shareFile} canShareFile={share.canShareFile} message={share.message} onShare={share.share} onCopy={share.copyText} />
+              <LineShare
+                state={share.state}
+                link={share.link}
+                text={shareText}
+                fileName={shareFile}
+                canShare={share.canShare}
+                message={share.message}
+                needsPassphrase={share.needsPassphrase}
+                loginMessage={share.loginMessage}
+                loggingIn={share.loggingIn}
+                onPrepare={share.prepare}
+                onSend={share.send}
+                onCopy={share.copyUrl}
+                onLogin={share.login}
+              />
             )}
             <OrderList
               order={order.order}
