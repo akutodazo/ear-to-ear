@@ -178,7 +178,7 @@ Next.js（App Router、`output: 'export'`）＋ Leaflet。地図の下地は**�
 | 6 | 合言葉が無い端末は書き込めない（401）。委員の合言葉では確定・訂正できない（403） | L0 | `worker/auth`・`routes`・`session`、`services/session-token` | PR #24・#47・#58 | 自動＋実機（dev） | **一部**: 401・403 の判定は自動で済。管理者の合言葉で入れる・合言葉が要るときに入力が出るのは実機で済。委員の Cookie での確定・訂正が 403 なのは手元の `wrangler dev` で済、dev の実機は予定 |
 | 7 | 撮影位置あり48枚（非公開の実写真。手元だけ）で、正解表の番号が候補3つに入る割合 | L0 | `services/candidates`（計算） | PR #38 | 手元の実写真（リポジトリに入れない） | 予定 |
 | 9 | 父の試用（架空データ）: 見つける比較（LINE のトーク vs このサイト、各3問）、送る・見つける・確定・判断の成否と助言回数。試用の後に提案し、引き出された声も記録 | L0〜L1 | — | — | 試用（P5） | 予定 |
-| 10 | リポジトリに実データ・秘密が無い（手元の検査＋CI＋提出前に履歴全体の検査） | L0 | `scripts/safety-rules`（`npm run check:safety`、CI） | PR #39・#42 | 自動（毎回）＋提出前の履歴全体 | **一部**: 手元と CI は済。提出前の履歴全体の検査は予定 |
+| 10 | リポジトリに実データ・秘密が無い（手元の検査＋CI＋提出前に履歴全体の検査） | L0 | `scripts/safety-rules`（`npm run check:safety`、CI） | PR #39・#42 | 自動（毎回）＋提出前の履歴全体（`node scripts/check-history.mjs`、`docs/dev/final-review.md`） | **一部**: 手元と CI は済。履歴全体は 11-06 に 211 コミット・895 版で OK（検査が見つけられることは使い捨てのリポジトリで確かめた）。提出の直前の main でもう一度 |
 | 11 | 動画に、期間中に作ったもの・架空データだけが映る。冒頭1分で「A が送る → B の画面で見える」 | — | — | — | 録画を人が見る | 予定 |
 | 12 | 判断ボタンで理由と根拠（写真）を残せ、取り消しも残る。根拠に他の圃場の記録は選べない | L1 | `services/status-reason`・`status-request`・`status-events`、`worker/field-status`・`status-events`・`status-history` | PR #93・#96・#100・#101・#102・#115・#120 | 自動＋実機 | **一部**: 自動は済（他の圃場の写真は 422）。dev の実機は予定 |
 | 13 | 引き継ぎメモの各文に引用で根拠が付き、タップで元の記録に戻れる。根拠の無い文は「根拠なし」と区別する | L6 | `services/handover-document`・`handover-citations`・`handover-request`・`handover-view`、`worker/handover`・`handover-post` | PR #108〜#110・#112・#113・#116・#119・#120 | 自動＋実機（`docs/dev/l6-live.md`） | **一部**: 自動は済（引用は渡した記録の範囲だけ。範囲の外の引用は捨て、返事の形が違えば 502）。指示文は試作台の疑似で確かめた（#119）。本物の API と実機は予定（dev のデプロイと `CLAUDE_API_KEY` の後） |
