@@ -13,6 +13,7 @@ import { postLineWebhook } from "./line-webhook";
 import { getPhotoFile } from "./photo-files";
 import { getPhotosByField, getRecentPhotos } from "./photos";
 import { getSession, postSession } from "./session";
+import { getShareFile, getSharePage } from "./share-page";
 import { postShares } from "./shares";
 import { deleteStatusEvent } from "./status-events";
 import { getFieldStatusEvents } from "./status-history";
@@ -54,4 +55,7 @@ export const routes: readonly Route[] = [
   { method: "POST", pattern: "/api/line/webhook", auth: "none", handler: postLineWebhook },
   // LINE に 1 枚の共有（#159）。委員も作れる（11-06 先輩決定）
   { method: "POST", pattern: "/api/shares", auth: "member", handler: postShares },
+  // LINE のサーバーが Cookie 無しで読む（#160）
+  { method: "GET", pattern: "/api/shares/:id", auth: "none", handler: getSharePage },
+  { method: "GET", pattern: "/api/share-files/:id", auth: "none", handler: getShareFile },
 ];
