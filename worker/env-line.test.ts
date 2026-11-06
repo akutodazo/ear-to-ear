@@ -112,3 +112,99 @@ describe("waitUntil（#139）", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
 });
+
+// #172: L9 LINE から写真を受け取る口（画像の取得と reply）
+describe("LINE の口 getContent・reply（#172）", () => {
+  function streamOf(chunks: Uint8Array[], pulled: { n: number }): ReadableStream<Uint8Array> {
+    let i = 0;
+    return new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (i >= chunks.length) {
+          controller.close();
+          return;
+        }
+        pulled.n += chunks[i].byteLength;
+        controller.enqueue(chunks[i]);
+        i++;
+      },
+    });
+  }
+
+  it("getContent は api-data の content を GET する（トークンは見出しだけ、10 秒の打ち切り）", async () => {
+    const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
+    const fetchMock = vi.fn(async () => new Response(bytes, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const timeout = vi.spyOn(AbortSignal, "timeout");
+    const result = await createDeps(fakeEnv(both)).line?.getContent("100001", 1024);
+    expect(result).toStrictEqual({ ok: true, bytes });
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("https://api-data.line.me/v2/bot/message/100001/content");
+    expect(init.method ?? "GET").toBe("GET");
+    expect(init.headers).toStrictEqual({ authorization: `Bearer ${TOKEN_VALUE}` });
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+    expect(timeout).toHaveBeenCalledWith(10_000);
+  });
+
+  it("getContent はちょうど上限なら受け、上限を超えたら読むのをやめて too_large", async () => {
+    vi.stubGlobal("fetch", async () => new Response(new Uint8Array(1024), { status: 200 }));
+    expect(await createDeps(fakeEnv(both)).line?.getContent("1", 1024)).toStrictEqual({
+      ok: true,
+      bytes: new Uint8Array(1024),
+    });
+
+    const pulled = { n: 0 };
+    const chunks = Array.from({ length: 64 }, () => new Uint8Array(256));
+    vi.stubGlobal("fetch", async () => new Response(streamOf(chunks, pulled), { status: 200 }));
+    expect(await createDeps(fakeEnv(both)).line?.getContent("1", 1024)).toStrictEqual({ ok: false, reason: "too_large" });
+    expect(pulled.n).toBeLessThan(256 * 64);
+  });
+
+  it("getContent は content-length が上限を超えると読まずに too_large", async () => {
+    const pulled = { n: 0 };
+    vi.stubGlobal(
+      "fetch",
+      async () =>
+        new Response(streamOf([new Uint8Array(10)], pulled), { status: 200, headers: { "content-length": "4096" } }),
+    );
+    expect(await createDeps(fakeEnv(both)).line?.getContent("1", 1024)).toStrictEqual({ ok: false, reason: "too_large" });
+    expect(pulled.n).toBe(0);
+  });
+
+  it("getContent は 200 以外・通信の失敗で failed（例外を出さない）", async () => {
+    vi.stubGlobal("fetch", async () => new Response("not found", { status: 404 }));
+    expect(await createDeps(fakeEnv(both)).line?.getContent("1", 1024)).toStrictEqual({ ok: false, reason: "failed" });
+    vi.stubGlobal("fetch", async () => {
+      throw new DOMException("timeout", "TimeoutError");
+    });
+    expect(await createDeps(fakeEnv(both)).line?.getContent("1", 1024)).toStrictEqual({ ok: false, reason: "failed" });
+  });
+
+  it("getContent は数字でない message ID では fetch しない（URL のパスに入れるため）", async () => {
+    const fetchMock = vi.fn(async () => new Response(new Uint8Array(1), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    for (const id of ["", "../1", "1/content?x", "abc"]) {
+      expect(await createDeps(fakeEnv(both)).line?.getContent(id, 1024)).toStrictEqual({ ok: false, reason: "failed" });
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("reply は Messaging API の reply に POST し、状態コードを返す（通信の失敗は 0）", async () => {
+    const fetchMock = vi.fn(async () => Response.json({}, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await createDeps(fakeEnv(both)).line?.reply("reply-token-1", "受け取りました")).toBe(200);
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("https://api.line.me/v2/bot/message/reply");
+    expect(init.method).toBe("POST");
+    expect(init.headers).toStrictEqual({ "content-type": "application/json", authorization: `Bearer ${TOKEN_VALUE}` });
+    expect(JSON.parse(String(init.body))).toStrictEqual({
+      replyToken: "reply-token-1",
+      messages: [{ type: "text", text: "受け取りました" }],
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    vi.stubGlobal("fetch", async () => {
+      throw new Error("down");
+    });
+    expect(await createDeps(fakeEnv(both)).line?.reply("reply-token-1", "x")).toBe(0);
+  });
+});

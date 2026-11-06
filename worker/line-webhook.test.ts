@@ -5,7 +5,8 @@ import { handleRequest } from "./app";
 import type { DbPort, Deps, LinePort } from "./deps";
 import { LINE_WEBHOOK_MAX_BYTES } from "./line-webhook";
 import { createTestDb, type TestDb } from "./test-db";
-import { fakeDeps, repeatChunks, streamRequest } from "./test-helpers";
+import { createTestBucket } from "./test-bucket";
+import { fakeDeps, repeatChunks, streamRequest, tinyJpeg } from "./test-helpers";
 
 /** テスト用のチャネルの鍵（架空） */
 const CHANNEL_KEY = Buffer.alloc(32, 0x02);
@@ -52,6 +53,8 @@ function setup(line: Partial<LinePort> | null = {}): Setup {
             return new Uint8Array(createHmac("sha256", CHANNEL_KEY).update(body).digest());
           },
           push: async () => 200,
+          getContent: async () => ({ ok: false, reason: "failed" }),
+          reply: async () => 200,
           ...line,
         };
   return { deps: fakeDeps({ db, line: port }), testDb, signCalls: () => signs, dbCalls: () => dbs };
@@ -277,5 +280,163 @@ describe("POST /api/line/webhook LINE の口が無い・本文が大きい（#14
     });
     await handleRequest(signedRequest(eventsBody([joinEvent(GROUP_A)])), deps);
     expect(pushes).toBe(0);
+  });
+});
+
+// #172: L9 登録したグループの画像のメッセージは、応答の後（waitUntil）で LINE から取って「未確定」で入れる
+describe("POST /api/line/webhook 画像のメッセージ（#172）", () => {
+  function imageEvent(groupId: string, messageId: string, source: Record<string, unknown> | null = null): unknown {
+    return {
+      type: "message",
+      mode: "active",
+      replyToken: `reply-${messageId}`,
+      source: source ?? { type: "group", groupId, userId: "U" + "d".repeat(32) },
+      message: { type: "image", id: messageId, contentProvider: { type: "line" } },
+    };
+  }
+
+  interface ImageSetup {
+    deps: Deps;
+    testDb: TestDb;
+    contentCalls: string[];
+    replies: string[];
+    /** waitUntil に渡された約束を全部待つ */
+    settle: () => Promise<void>;
+    pending: () => number;
+  }
+
+  function imageSetup(): ImageSetup {
+    const testDb = createTestDb();
+    const bucket = createTestBucket();
+    const contentCalls: string[] = [];
+    const replies: string[] = [];
+    const waits: Promise<unknown>[] = [];
+    const ids = ["00000000-0000-4000-8000-0000000000a1", "00000000-0000-4000-8000-0000000000a2"];
+    let jpegSeed = 0;
+    const line: LinePort = {
+      sign: async (body) => new Uint8Array(createHmac("sha256", CHANNEL_KEY).update(body).digest()),
+      push: async () => 200,
+      getContent: async (messageId) => {
+        contentCalls.push(messageId);
+        jpegSeed++;
+        // 毎回違うバイト列（二重にならない）
+        return { ok: true, bytes: tinyJpeg({ width: 1200, height: 900, scanBytes: 2 + jpegSeed, apps: [1] }) };
+      },
+      reply: async (replyToken) => {
+        replies.push(replyToken);
+        return 200;
+      },
+    };
+    const deps = fakeDeps({
+      db: testDb.db,
+      photos: bucket.photos,
+      line,
+      newId: () => ids.shift() ?? "00000000-0000-4000-8000-0000000000ff",
+      waitUntil: (promise) => {
+        waits.push(promise);
+      },
+    });
+    return {
+      deps,
+      testDb,
+      contentCalls,
+      replies,
+      settle: async () => {
+        await Promise.all(waits);
+      },
+      pending: () => waits.length,
+    };
+  }
+
+  function saveGroup(testDb: TestDb, groupId: string): void {
+    testDb.raw.prepare("INSERT INTO settings (key, value) VALUES ('line_group_id', ?)").run(groupId);
+  }
+
+  function photoCount(testDb: TestDb): number {
+    return (testDb.raw.prepare("SELECT COUNT(*) AS n FROM uploaded_photos").get() as { n: number }).n;
+  }
+
+  it("登録したグループの画像は 200 を返した後で取りに行き、「未確定」で入れて reply する", async () => {
+    const s = imageSetup();
+    saveGroup(s.testDb, GROUP_A);
+    const response = await handleRequest(
+      signedRequest(eventsBody([imageEvent(GROUP_A, "300001"), imageEvent(GROUP_A, "300002")])),
+      s.deps,
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toStrictEqual({ ok: true });
+    expect(s.pending()).toBe(2);
+    await s.settle();
+    expect(s.contentCalls).toStrictEqual(["300001", "300002"]);
+    expect(photoCount(s.testDb)).toBe(2);
+    const states = s.testDb.raw.prepare("SELECT DISTINCT state, uploader_device FROM uploaded_photos").all();
+    expect(states).toStrictEqual([{ state: "unconfirmed", uploader_device: "line" }]);
+    expect(s.replies.sort()).toStrictEqual(["reply-300001", "reply-300002"]);
+  });
+
+  it("グループが登録されていなければ画像を取りに行かない", async () => {
+    const s = imageSetup();
+    await handleRequest(signedRequest(eventsBody([imageEvent(GROUP_A, "300001")])), s.deps);
+    await s.settle();
+    expect(s.pending()).toBe(0);
+    expect(s.contentCalls).toStrictEqual([]);
+    expect(photoCount(s.testDb)).toBe(0);
+  });
+
+  it("ほかのグループ・1 対 1 のトーク・room の画像は取りに行かない", async () => {
+    const s = imageSetup();
+    saveGroup(s.testDb, GROUP_A);
+    await handleRequest(
+      signedRequest(
+        eventsBody([
+          imageEvent(GROUP_B, "300001"),
+          imageEvent(GROUP_A, "300002", { type: "user", userId: "U" + "d".repeat(32) }),
+          imageEvent(GROUP_A, "300003", { type: "room", roomId: "R" + "c".repeat(32) }),
+        ]),
+      ),
+      s.deps,
+    );
+    await s.settle();
+    expect(s.contentCalls).toStrictEqual([]);
+    expect(photoCount(s.testDb)).toBe(0);
+    expect(s.replies).toStrictEqual([]);
+  });
+
+  it("同じ本文で join したグループの画像は受ける（join を先に保存する）", async () => {
+    const s = imageSetup();
+    await handleRequest(signedRequest(eventsBody([joinEvent(GROUP_A), imageEvent(GROUP_A, "300001")])), s.deps);
+    await s.settle();
+    expect(s.contentCalls).toStrictEqual(["300001"]);
+  });
+
+  it("署名が違えば画像を取りに行かない", async () => {
+    const s = imageSetup();
+    saveGroup(s.testDb, GROUP_A);
+    const body = eventsBody([imageEvent(GROUP_A, "300001")]);
+    const response = await handleRequest(webhookRequest(body, signWith(OTHER_KEY, new TextEncoder().encode(body))), s.deps);
+    expect(response.status).toBe(401);
+    await s.settle();
+    expect(s.contentCalls).toStrictEqual([]);
+  });
+
+  it("取得に失敗しても webhook は 200（応答の後の処理は応答に響かない）", async () => {
+    const s = imageSetup();
+    saveGroup(s.testDb, GROUP_A);
+    s.deps.line = {
+      ...(s.deps.line as LinePort),
+      getContent: async () => {
+        throw new Error("network");
+      },
+    };
+    const response = await handleRequest(signedRequest(eventsBody([imageEvent(GROUP_A, "300001")])), s.deps);
+    expect(response.status).toBe(200);
+    await s.settle();
+    expect(photoCount(s.testDb)).toBe(0);
+  });
+
+  it("画像の無い本文では settings を読まない（検証の本文で D1 に触らない）", async () => {
+    const { deps, dbCalls } = setup();
+    await handleRequest(signedRequest(eventsBody([])), deps);
+    expect(dbCalls()).toBe(0);
   });
 });
