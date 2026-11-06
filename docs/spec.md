@@ -106,6 +106,9 @@ CREATE TABLE handover_notes (
 );
 -- 0003_settings.sql（L8、#139）
 CREATE TABLE settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);  -- 'line_group_id' など
+-- 0004_order_shares.sql（LINE に 1 枚、#159）。番号の並びだけ。座標・距離は持たない（K6）
+CREATE TABLE order_shares (id TEXT PRIMARY KEY, season, district, ranked /* JSON */, benchmark_id /* NULL 可 */,
+  confirmed_at, r2_key, bytes, width, height, actor_device, created_at, expires_at /* 60 日後、索引あり */);
 ```
 
 **R2**: 新しいバケット（バインディング `PHOTOS`）、キー `uploads/<id>.jpg`。非公開のまま、Worker の `GET /api/photo-files/:id` で配信。
@@ -128,6 +131,7 @@ CREATE TABLE settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);  -- 
 | `POST /api/fields/:id/handover` | admin | — | 200 `HandoverNote`（作り直して保存。同じ圃場・シーズンは上書き） | 401／403／404（一覧に無い圃場）／422 `no_records`（記録 0 件、Claude を呼ばない）／429（その日の上限、Retry-After は日本時間 0 時まで）／502 `{error, reason}`（http・refusal・truncated・shape、保存しない）／503 `claude_disabled`（`CLAUDE_ENABLED=false` かキーなし）（11-04 先輩決定、T31、#111） | L6 |
 | `GET /api/fields/:id/handover` | なし | — | 200 `HandoverNote`（今のシーズン＝日本時間の年のメモ） | 404（メモが無い・一覧に無い圃場）（11-04 先輩決定、T29、#106） | L6 |
 | `POST /api/line/webhook` | LINE の署名 | LINE のイベント | 200（`join` だけ処理してグループ ID を保存） | 401（署名）・413（64KB 超）・503 `line_disabled`（LINE の秘密が無い・`LINE_ENABLED` が false） | L8 |
+| `POST /api/shares` | member | multipart `image`（JPEG 1.5MB 以下・長辺 2000px 以下・APP1〜15 無し）＋ `meta` `{season, district, confirmedAt, ranked[], benchmarkId}` | 201 `{id, url, imageUrl, expiresAt}`（期限は 60 日後。R2 `shares/<id>.jpg`・D1 `order_shares`） | 401／413／415／422 `reason`／429（端末ごとに 1 日 30 回） | LINE に 1 枚（#159） |
 | `POST /api/photos/:id/suggest` | admin | `{candidateFieldIds}`（人が選んだ2〜3圃場） | 200 `{suggestions:[{fieldId, reason}]}` | 401／422／429／502 | L5 |
 
 - meta: `{contentHash(64桁16進), takenAt|null, takenAtSource, candidateFieldIds(最大3, 存在する圃場, 重複なし), chosenFieldId?}`。**距離・座標の項目があれば 422**（K6）。chosenFieldId があっても state は unconfirmed
