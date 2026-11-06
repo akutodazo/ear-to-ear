@@ -147,7 +147,7 @@ describe("POST /api/shares 断る", () => {
 
   it("画像の検査: APP1 付きは metadata、JPEG でなければ not_jpeg、長辺 2000 超は bad_dimensions", async () => {
     const cases: [Uint8Array, string][] = [
-      [tinyJpeg({ apps: [0xe1] }), "metadata"],
+      [tinyJpeg({ apps: [1] }), "metadata"],
       [new TextEncoder().encode("not a jpeg"), "not_jpeg"],
       [tinyJpeg({ width: 2001, height: 100 }), "bad_dimensions"],
     ];
