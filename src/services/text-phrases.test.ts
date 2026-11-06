@@ -4,7 +4,7 @@ import { splitIntoPhrases } from "./text-phrases";
 /**
  * 日本語の文を、折り返してよい塊（文節ふう）に分ける。
  * Safari（iOS 18 まで）は CSS の `word-break: auto-phrase` に対応しておらず、
- * 「もう」の途中などで折り返される（Issue #179）。塊ごとに折り返さない指定を付けるために使う。
+ * 「もう」の途中などで折り返される（Issue #180）。塊ごとに折り返さない指定を付けるために使う。
  * 決まり: 平仮名だけの語は前の塊に付ける。数字の後ろは同じ塊。記号は前の塊に付ける
  */
 describe("splitIntoPhrases（折り返してよい塊に分ける）", () => {

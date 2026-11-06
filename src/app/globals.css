@@ -377,6 +377,11 @@ a:focus-visible {
   word-break: auto-phrase;
 }
 
+/* Safari は auto-phrase に未対応なので、塊（PhrasedText）の途中では折り返さない（Issue #180） */
+.phrase {
+  display: inline-block;
+}
+
 /* 圃場ページ: 撮影日の見出しと、写真の並び（スマホの幅で 3 枚） */
 .day-heading {
   margin: 0;
