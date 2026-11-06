@@ -7,6 +7,8 @@ import { IconCalendar, IconClose, IconCompare, IconMap, IconOrder } from "@/comp
 
 interface Props {
   current: "map" | "compare" | "order";
+  /** 地図の行き先。選んでいる畑があれば `/#A-07` で引き継ぐ（11-06 地図の精査 #4）。既定は `/` */
+  mapHref?: string;
   /** 見比べるの行き先。無ければ押せない */
   compareHref: string | null;
   /** 刈る順番の行き先 */
@@ -15,7 +17,7 @@ interface Props {
   demoDate?: { label: string; onClear: () => void } | null;
 }
 
-export function AppNav({ current, compareHref, orderHref, demoDate = null }: Props) {
+export function AppNav({ current, mapHref = "/", compareHref, orderHref, demoDate = null }: Props) {
   const cls = (key: Props["current"]) => (current === key ? "app-nav-item app-nav-current" : "app-nav-item");
   return (
     <>
@@ -29,7 +31,7 @@ export function AppNav({ current, compareHref, orderHref, demoDate = null }: Pro
         </div>
       )}
       <nav className="app-nav" aria-label="画面の切り替え">
-        <Link href="/" className={cls("map")} aria-current={current === "map" ? "page" : undefined}>
+        <Link href={mapHref} className={cls("map")} aria-current={current === "map" ? "page" : undefined}>
           <IconMap />
           地図
         </Link>

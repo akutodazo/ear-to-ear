@@ -32,6 +32,8 @@ interface Props {
   fitItems: MapParcel[];
   fitKey: string;
   onSelect: (fieldId: string | null) => void;
+  /** 札に名前を出さない（刈る順番の地図。順位の数字と「中の2」の数字を読み違えない。11-06 地図の精査 #3） */
+  hideNames?: boolean;
 }
 
 /** この倍率より縮小しているときは札を番号（と目安）だけにする。1 地区に合わせた倍率（約 15.75）では名前まで出し、全地区（約 15）では番号だけ */
@@ -84,7 +86,8 @@ function labelHtml(item: MapParcel): string {
   const dot = appearance.unconfirmed ? '<span class="map-label-dot" title="未確定の写真あり"></span>' : "";
   const name = nameParts.length > 0 ? `<span class="map-label-name">${escapeHtml(nameParts.join(" "))}</span>` : "";
   const rank = item.rank ? `<span class="rank${item.rank.confirmed ? " rank-confirmed" : ""} map-rank">${item.rank.n}</span>` : "";
-  return `${rank}${benchmark}<span class="map-label-id">${escapeHtml(id)}${dot}</span>${name}`;
+  // 中身を 1 つの箱に入れ、その箱を畑の中心に寄せる（Leaflet は外側の要素の transform で位置を決めるので、外側には寄せを書けない）
+  return `<span class="map-label-body" aria-hidden="true">${rank}${benchmark}<span class="map-label-id">${escapeHtml(id)}${dot}</span>${name}</span>`;
 }
 
 /** 読み上げ。「可 7/21」は「7/21 に収穫可能と判断」と言葉で言う */
@@ -148,13 +151,19 @@ function draw(L: Leaflet, layers: LayerGroup, items: MapParcel[], onSelect: (fie
       });
     }
     const [lat, lng] = polygonCentroid(item.parcel.polygon);
-    L.marker([lat, lng], {
-      interactive: false,
+    // 札を押してもその畑を選ぶ（札の下が隣の畑や地図だと、押した畑が選ばれず選択が外れていた。11-06 地図の精査 #1）。
+    // 読み上げとキーボードは区画のほうで受けるので、札は keyboard: false
+    const label = L.marker([lat, lng], {
+      interactive: true,
       keyboard: false,
       // 選んだ畑の札は隣の札より手前に
       zIndexOffset: appearance.selected ? 1000 : 0,
       icon: L.divIcon({ className: `map-label${appearance.selected ? " map-label-selected" : ""}`, html: labelHtml(item), iconSize: undefined }),
     }).addTo(layers);
+    label.on("click", (e) => {
+      L.DomEvent.stopPropagation(e);
+      onSelect(item.field.id);
+    });
   }
 }
 
@@ -203,7 +212,7 @@ function fitIfNeeded(map: LeafletMap, items: MapParcel[], key: string, fitted: {
   return true;
 }
 
-export function FieldMap({ parcels, fitItems, fitKey, onSelect, keepVisiblePadding = KEEP_VISIBLE_PADDING }: Props) {
+export function FieldMap({ parcels, fitItems, fitKey, onSelect, keepVisiblePadding = KEEP_VISIBLE_PADDING, hideNames = false }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const leafletRef = useRef<Leaflet | null>(null);
@@ -269,5 +278,5 @@ export function FieldMap({ parcels, fitItems, fitKey, onSelect, keepVisiblePaddi
     keepSelectedVisible(L, map, parcels, shownRef, keepVisiblePadding);
   }, [ready, parcels, fitItems, fitKey, keepVisiblePadding]);
 
-  return <div ref={containerRef} className="field-map" role="application" aria-label="圃場の航空写真の地図" />;
+  return <div ref={containerRef} className={hideNames ? "field-map map-hide-names" : "field-map"} role="application" aria-label="圃場の航空写真の地図" />;
 }
