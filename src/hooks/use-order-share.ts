@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { drawOrderImage, type OrderImageInput } from "@/lib/order-image";
 import { loginOutcomeLabel } from "@/services/login-label";
 import type { OrderShareMeta } from "@/services/order-share-meta";
-import { createShareOutcomeLabel, shareData } from "@/services/order-share-view";
+import { createShareOutcomeLabel, shareData, shareImageBytes } from "@/services/order-share-view";
 import { createOrderShareRepository } from "@/repositories/create-order-share-repository";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
 import type { IOrderShareRepository } from "@/repositories/interfaces/i-order-share-repository";
@@ -82,7 +82,14 @@ export function useOrderShare(
     if (file === null || meta === null || link.kind !== "none") return;
     setMessage(null);
     setLinked({ key, state: { kind: "uploading" } });
-    const outcome = await shareRepo.create(file, meta);
+    // iPhone の Safari が付ける APP2 などを消してから送る
+    const bytes = shareImageBytes(new Uint8Array(await file.arrayBuffer()));
+    if (bytes === null) {
+      setLinked({ key, state: { kind: "none" } });
+      setMessage("地図の絵を読めませんでした");
+      return;
+    }
+    const outcome = await shareRepo.create(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: "image/jpeg" }), meta);
     if (outcome.kind === "created") {
       setLinked({ key, state: { kind: "ready", url: outcome.share.url, expiresAt: outcome.share.expiresAt } });
       return;
