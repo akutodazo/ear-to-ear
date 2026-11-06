@@ -57,7 +57,8 @@ describe("splitIntoPhrases（折り返してよい塊に分ける）", () => {
 
   it("圃場番号（英数字とハイフン）は途中で分けない", () => {
     expect(splitIntoPhrases("A-03 に決めました")).toEqual(["A-03 に", "決めました"]);
-    expect(splitIntoPhrases("A-11 と A-12")).toEqual(["A-11 と", "A-12"]);
+    // 空白は前の塊に付く（行末の空白は見えない）
+    expect(splitIntoPhrases("A-11 と A-12")).toEqual(["A-11 と ", "A-12"]);
   });
 
   it("開き括弧は後ろの塊に付け、閉じ括弧は前の塊に付ける", () => {
@@ -67,7 +68,7 @@ describe("splitIntoPhrases（折り返してよい塊に分ける）", () => {
       "（形が",
       "違います）",
     ]);
-    expect(splitIntoPhrases("「収穫可能」と判断")).toEqual(["「収穫可能」と", "判断"]);
+    expect(splitIntoPhrases("「目安」と判断")).toEqual(["「目安」と", "判断"]);
   });
 
   const SAMPLES = [
@@ -90,5 +91,27 @@ describe("splitIntoPhrases（折り返してよい塊に分ける）", () => {
     const phrases = splitIntoPhrases(text);
     expect(phrases.slice(1).every((p) => !/^[、。，．）」』】〕)\]]/.test(p))).toBe(true);
     expect(phrases.slice(0, -1).every((p) => !/[（「『【〔(\[]$/.test(p))).toBe(true);
+  });
+
+  // 11-06 の攻撃役 2 回目: 例文を並べるだけでは答えの表で通るので、入力を組み合わせて作る
+  const counts = Array.from({ length: 30 }, (_, i) => i + 1);
+  it.each(counts.flatMap((n) => ["枚", "冊", "本", "人"].map((c) => [`${n}${c}`] as const)))(
+    "数と数えるものは離さない: %s送りました",
+    (head) => {
+      expect(splitIntoPhrases(`${head}送りました`)).toEqual([head, "送りました"]);
+    },
+  );
+
+  const ids = ["A", "B", "C"].flatMap((a) => counts.slice(0, 12).map((i) => `${a}-${String(i).padStart(2, "0")}`));
+  it.each(ids)("圃場番号は分けない: %s に決めました", (id) => {
+    expect(splitIntoPhrases(`${id} に決めました`)).toEqual([`${id} に`, "決めました"]);
+  });
+
+  it.each(["目安", "写真", "判断", "番号"])("括弧の中の語は括弧と同じ塊: 「%s」と書きました", (word) => {
+    expect(splitIntoPhrases(`「${word}」と書きました`)).toEqual([`「${word}」と`, "書きました"]);
+  });
+
+  it.each(SAMPLES.filter((t) => t.length >= 8 && !/^[\u3041-\u309F]+$/.test(t)))("性質: 平仮名だけでない十分長い文は 2 つ以上に分ける（%s）", (text) => {
+    expect(splitIntoPhrases(text).length).toBeGreaterThan(1);
   });
 });
