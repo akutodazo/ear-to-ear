@@ -117,17 +117,21 @@ describe("waitUntil（#139）", () => {
 describe("LINE の口 getContent・reply（#172）", () => {
   function streamOf(chunks: Uint8Array[], pulled: { n: number }): ReadableStream<Uint8Array> {
     let i = 0;
-    return new ReadableStream<Uint8Array>({
-      pull(controller) {
-        if (i >= chunks.length) {
-          controller.close();
-          return;
-        }
-        pulled.n += chunks[i].byteLength;
-        controller.enqueue(chunks[i]);
-        i++;
+    return new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          if (i >= chunks.length) {
+            controller.close();
+            return;
+          }
+          pulled.n += chunks[i].byteLength;
+          controller.enqueue(chunks[i]);
+          i++;
+        },
       },
-    });
+      // 読まれるまで引かない（作った時点で 1 塊を先に引かない）
+      { highWaterMark: 0 },
+    );
   }
 
   it("getContent は api-data の content を GET する（トークンは見出しだけ、10 秒の打ち切り）", async () => {

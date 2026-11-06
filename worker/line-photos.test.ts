@@ -91,7 +91,8 @@ describe("receiveLinePhoto 受け取れる（#172）", () => {
     expect(await s.run()).toBe("saved");
 
     expect(s.contentCalls).toStrictEqual([{ messageId: "100001", maxBytes: MAX_UPLOAD_BYTES }]);
-    expect(photoRows(s.testDb)).toStrictEqual([
+    // node:sqlite の行は prototype が null なので toEqual で比べる
+    expect(photoRows(s.testDb)).toEqual([
       {
         id: PHOTO_ID,
         field_id: null,

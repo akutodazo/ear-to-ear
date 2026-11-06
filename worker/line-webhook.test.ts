@@ -370,7 +370,7 @@ describe("POST /api/line/webhook 画像のメッセージ（#172）", () => {
     expect(s.contentCalls).toStrictEqual(["300001", "300002"]);
     expect(photoCount(s.testDb)).toBe(2);
     const states = s.testDb.raw.prepare("SELECT DISTINCT state, uploader_device FROM uploaded_photos").all();
-    expect(states).toStrictEqual([{ state: "unconfirmed", uploader_device: "line" }]);
+    expect(states).toEqual([{ state: "unconfirmed", uploader_device: "line" }]);
     expect(s.replies.sort()).toStrictEqual(["reply-300001", "reply-300002"]);
   });
 
