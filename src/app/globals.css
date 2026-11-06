@@ -251,6 +251,15 @@ a:focus-visible {
   width: 100%;
 }
 
+/* ボタンの文言を 2 行に分ける（「1. 送る準備」と「（共有の URL を作る）」） */
+.button-lines {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-block: var(--space-8, 8px);
+  line-height: 1.3;
+}
+
 /* 送るボタンは画面の下に固定（写真が多くても遠くならない） */
 .action-bar {
   position: sticky;
