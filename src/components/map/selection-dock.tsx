@@ -80,10 +80,11 @@ export function SelectionDock({ field, appearance, statusLine, latest, compareLa
             {appearance.fill !== "none" && <i className={`mark mark-${appearance.fill}`} aria-hidden="true" />}
             {statusText(appearance, statusLine)}
             {appearance.unconfirmed && (
-              <span className="dock-unconfirmed">
+              // 委員長が番号を確定する新着へ（未確定だけを見る形で開く。精査 5 回目 #1）
+              <Link className="dock-unconfirmed" href="/recent#unconfirmed">
                 <i className="map-label-dot" aria-hidden="true" />
-                未確定の写真あり
-              </span>
+                未確定の写真あり ›
+              </Link>
             )}
           </div>
           <div className="dock-photo-line">

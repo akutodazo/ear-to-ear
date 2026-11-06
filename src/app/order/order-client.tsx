@@ -30,6 +30,7 @@ import { OrderActions } from "@/components/order/order-actions";
 import { NextToShoot } from "@/components/order/next-to-shoot";
 import { LineShare } from "@/components/order/line-share";
 import { AppNav } from "@/components/app-nav";
+import { PassphraseForm } from "@/components/upload/passphrase-form";
 import { useDemoToday } from "@/hooks/use-last-season-memo";
 import { IconMap } from "@/components/icons";
 
@@ -175,6 +176,8 @@ export function OrderClient() {
               dirty={order.dirty}
               differsFromConfirmed={order.differsFromConfirmed}
               canConfirm={order.canConfirm}
+              needsChair={order.needsChair}
+              onOpenLogin={order.openLogin}
               busy={order.busy}
               message={order.message}
               hasRanked={order.order.ranked.length > 0}
@@ -183,6 +186,15 @@ export function OrderClient() {
               onRevert={order.revert}
               onReset={order.resetToRecords}
             />
+            {order.loginOpen && order.needsChair && (
+              <PassphraseForm
+                lead="確定するには、委員長（管理者）の合言葉が要ります。入った後に「この順で確定」を押してください。"
+                submitLabel="委員長として入る"
+                message={order.loginMessage}
+                busy={order.loggingIn}
+                onSubmit={order.login}
+              />
+            )}
             {shareImage && (
               <LineShare
                 state={share.state}
@@ -212,7 +224,7 @@ export function OrderClient() {
               onMoveTo={order.moveTo}
               onToggle={order.toggle}
             />
-            <NextToShoot ids={shoot} rows={rows} fieldsById={fieldsById} onSelect={select} />
+            <NextToShoot ids={shoot} rows={rows} fieldsById={fieldsById} onSelect={select} selectedId={selectedId} />
             <p className="order-local-note">いまの保存先はこの端末だけです（委員で共有する保存先は準備中）</p>
           </>
         )}

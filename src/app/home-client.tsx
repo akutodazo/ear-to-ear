@@ -99,7 +99,7 @@ export function HomeClient() {
             ))}
           </select>
         </label>
-        <Link className="button button-small" href="/upload">
+        <Link className="button button-small" href={selectedId ? `/upload#${selectedId}` : "/upload"}>
           <IconCamera />
           写真を送る
         </Link>
