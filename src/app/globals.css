@@ -486,18 +486,17 @@ a:focus-visible {
   background: rgba(255, 254, 249, 0.8);
 }
 
-/* 札: 箱に入れず、影つきの白い文字だけ（航空写真を覆わない。11-05）。Leaflet の .leaflet-marker-icon より強くする */
+/* 札: 箱に入れず、影つきの白い文字だけ（航空写真を覆わない。11-05）。Leaflet の .leaflet-marker-icon より強くする。
+   外側の要素の transform は Leaflet が位置に使う（ここに寄せを書くと上書きされ、札の左上が畑の中心に来ていた。11-06 地図の精査 #1）。
+   寄せは中の .map-label-body に書く。外側は 0 の大きさにして、押せるのは文字の所だけにする */
 .field-map .map-label {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0;
-  width: max-content !important;
-  height: auto !important;
+  width: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
   border: 0;
   background: none;
-  transform: translate(-50%, -50%);
   pointer-events: none;
+  overflow: visible;
   color: #ffffff;
   text-align: center;
   line-height: 1.2;
@@ -507,6 +506,19 @@ a:focus-visible {
     0 0 2px rgba(0, 0, 0, 0.95),
     0 0 5px rgba(0, 0, 0, 0.7),
     0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.field-map .map-label-body {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: max-content;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  cursor: pointer;
 }
 
 .map-label-id {
@@ -551,6 +563,11 @@ a:focus-visible {
   outline: none;
   stroke: var(--accent);
   stroke-width: 5;
+}
+
+/* 刈る順番の地図は名前を出さない（順位の数字と「中の2」の数字を読み違えない。11-06 地図の精査 #3） */
+.map-hide-names .map-label .map-label-name {
+  display: none;
 }
 
 /* 縮小しているときは名前を隠し、番号（と目安）だけに。選んでいる畑は全部出す */

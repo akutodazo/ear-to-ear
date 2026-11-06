@@ -35,7 +35,8 @@ export function OrderActions({ saved, dirty, differsFromConfirmed, canConfirm, n
       ? { tone: "warn", text: `${monthDayJst(saved.confirmedAt ?? saved.savedAt)} に確定した順と違います` }
       : { tone: "ok", text: `${monthDayJst(saved.confirmedAt ?? saved.savedAt)} に確定した順` }
     : dirty
-      ? { tone: "draft", text: "下書き（保存していません）" }
+      ? // 並べ途中は変えるたびに端末に残す（画面を移っても消えない。11-06 地図の精査 #2）。「保存」はまだ
+        { tone: "draft", text: "並べ途中（この端末に残しています。保存はまだ）" }
       : saved
         ? { tone: "draft", text: `下書き（${monthDayJst(saved.savedAt)} に保存）` }
         : { tone: "draft", text: "記録から並べた下書き" };

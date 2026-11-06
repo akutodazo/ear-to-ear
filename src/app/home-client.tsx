@@ -14,6 +14,7 @@ import { FieldMap, type MapParcel } from "@/components/map/field-map";
 import { SelectionDock } from "@/components/map/selection-dock";
 import { useDemoToday, useLastSeasonMemo } from "@/hooks/use-last-season-memo";
 import { useElementHeight } from "@/hooks/use-element-height";
+import { useLastDistrict } from "@/hooks/use-last-district";
 import { MapLegend } from "@/components/map/map-legend";
 import { AppNav } from "@/components/app-nav";
 import { IconCamera } from "@/components/icons";
@@ -37,18 +38,24 @@ export function HomeClient() {
   const districts = useMemo(() => [...new Set(map.pins.map((p) => p.field.district))], [map.pins]);
   // 見ている地区。圃場を押すとその地区に変わり、閉じても戻らない（精査 #1）。既定は最初の地区（開いたときに選んでいればその地区）
   const [districtChoice, setDistrictChoice] = useState<string | null>(() => selected?.district ?? null);
-  const district = selected?.district ?? districtChoice ?? districts[0] ?? "";
+  // 選んでいない畑の画面を開いたときは、最後に見た地区から（刈る順番と同じ値。11-06 地図の精査 #4）
+  const lastDistrict = useLastDistrict(districts);
+  const district = selected?.district ?? districtChoice ?? lastDistrict.last ?? districts[0] ?? "";
   // 地図を合わせ直すのは選択欄を変えたときだけ。圃場を押しても地図は動かさない（押した畑が指の下から動かない。精査 #1）
   // 最初の描画ではハッシュがまだ読めない（事前描画の値は null）ので、初期値に selected を入れず、描画のたびに決める。
   // key は選択欄を変えるまで "initial" のままなので、畑を押して地区が変わっても合わせ直さない（精査 2 回目の #1）
   const [fit, setFit] = useState<{ district: string | null; seq: number }>({ district: null, seq: 0 });
-  const fitDistrict = fit.district ?? selected?.district ?? districts[0] ?? "";
+  const fitDistrict = fit.district ?? selected?.district ?? lastDistrict.last ?? districts[0] ?? "";
   const fitKey = fit.district === null ? "initial" : `${fit.district}#${fit.seq}`;
 
+  // 選択を外したときも、映っている地区（外す前に選んでいた畑の地区）のままにする（#A-07 で開いて外すと北地区に戻っていた。11-06 地図の精査 #4）
   const choose = (id: string | null) => {
+    const field = id === null ? selected : map.pins.find((p) => p.field.id === id)?.field;
+    if (field) {
+      setDistrictChoice(field.district);
+      lastDistrict.remember(field.district);
+    }
     select(id);
-    const field = id === null ? undefined : map.pins.find((p) => p.field.id === id)?.field;
-    if (field) setDistrictChoice(field.district);
   };
 
   const items = useMemo<MapParcel[]>(() => {
@@ -89,6 +96,7 @@ export function HomeClient() {
             onChange={(e) => {
               select(null);
               setDistrictChoice(e.target.value);
+              lastDistrict.remember(e.target.value);
               setFit((prev) => ({ district: e.target.value, seq: prev.seq + 1 }));
             }}
           >

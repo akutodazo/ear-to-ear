@@ -17,6 +17,7 @@ import { useFieldMap } from "@/hooks/use-field-map";
 import { useFieldSelection } from "@/hooks/use-field-selection";
 import { useDistrictPhotos } from "@/hooks/use-district-photos";
 import { useHarvestOrder } from "@/hooks/use-harvest-order";
+import { useLastDistrict } from "@/hooks/use-last-district";
 import { benchmarkFor, mapLabelLines, parcelAppearance } from "@/services/parcel-geometry";
 import { draftOrder, nextToShoot, orderRows } from "@/services/harvest-order";
 import { orderImageTitle, orderMessageText } from "@/services/order-message";
@@ -48,9 +49,20 @@ export function OrderClient() {
   // デモで今日を差し替えているときの表示（精査 4 回目 #5）
   const demoDate = useDemoToday();
   const map = useFieldMap();
-  const { selectedId, selected, select } = useFieldSelection();
+  const { selectedId, selected, select: selectField } = useFieldSelection();
   const [districtChoice, setDistrictChoice] = useState<string | null>(null);
-  const district = districtChoice ?? selected?.district ?? districts[0];
+  // 畑を選ばずに開いたときは、最後に見た地区から（11-06 地図の精査 #2）
+  const lastDistrict = useLastDistrict(districts);
+  const district = districtChoice ?? selected?.district ?? lastDistrict.last ?? districts[0];
+  // 選択を外しても、見ている地区のままにする（外すと最初の地区に戻っていた）
+  const select = (id: string | null) => {
+    const field = id === null ? selected : fields.find((f) => f.id === id);
+    if (field) {
+      setDistrictChoice(field.district);
+      lastDistrict.remember(field.district);
+    }
+    selectField(id);
+  };
   const districtFields = useMemo(() => fields.filter((f) => f.district === district), [district]);
   const districtIds = useMemo(() => districtFields.map((f) => f.id), [districtFields]);
   const fieldsById = useMemo(() => Object.fromEntries(districtFields.map((f) => [f.id, f])) as Record<string, Field>, [districtFields]);
@@ -149,8 +161,9 @@ export function OrderClient() {
             className="input"
             value={district}
             onChange={(e) => {
-              select(null);
+              selectField(null);
               setDistrictChoice(e.target.value);
+              lastDistrict.remember(e.target.value);
             }}
           >
             {districts.map((d) => (
@@ -162,7 +175,7 @@ export function OrderClient() {
         </label>
       </header>
       <div className="order-map">
-        <FieldMap parcels={items} fitItems={items} fitKey={`order:${district}`} onSelect={select} keepVisiblePadding={MAP_PADDING} />
+        <FieldMap parcels={items} fitItems={items} fitKey={`order:${district}`} onSelect={select} keepVisiblePadding={MAP_PADDING} hideNames />
         <span className="map-fictional-note">区画の形・番号・判断・順番は架空のもの</span>
       </div>
       <main className="order-body">
@@ -232,7 +245,7 @@ export function OrderClient() {
           </>
         )}
       </main>
-      <AppNav current="order" compareHref={`/fields/${selectedId ?? benchmarkId ?? districtIds[0]}`} orderHref="/order" demoDate={demoDate} />
+      <AppNav current="order" mapHref={selectedId ? `/#${selectedId}` : "/"} compareHref={`/fields/${selectedId ?? benchmarkId ?? districtIds[0]}`} orderHref="/order" demoDate={demoDate} />
     </div>
   );
 }

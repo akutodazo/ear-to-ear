@@ -11,7 +11,7 @@ import { applySaved, moveTo as moveToIn, moveWithin, rankOrUnrank, sameOrder, ty
 import { createHarvestOrderRepository } from "@/repositories/create-harvest-order-repository";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
 import { loginOutcomeLabel } from "@/services/login-label";
-import type { IHarvestOrderRepository, SavedOrder } from "@/repositories/interfaces/i-harvest-order-repository";
+import type { IHarvestOrderRepository, OrderWork, SavedOrder } from "@/repositories/interfaces/i-harvest-order-repository";
 import type { IPhotoRepository } from "@/repositories/interfaces/i-photo-repository";
 
 interface Keyed<T> {
@@ -31,6 +31,8 @@ export function useHarvestOrder(
   const key = `${season}/${district}`;
   const [saved, setSaved] = useState<Keyed<SavedOrder | null> | null>(null);
   const [edited, setEdited] = useState<Keyed<OrderDraft> | null>(null);
+  /** 端末に残っていた並べ途中（画面を移っても消さない。11-06 地図の精査 #2） */
+  const [work, setWork] = useState<Keyed<OrderWork | null> | null>(null);
   const [role, setRole] = useState<Role | null>(null);
   /** 役割を読み終えたか（読む前に「委員長として入る」を出さない） */
   const [roleChecked, setRoleChecked] = useState(false);
@@ -44,8 +46,10 @@ export function useHarvestOrder(
   useEffect(() => {
     // 地区が変わったら読み直す。閉じた後に届いた結果は捨てる
     let active = true;
-    orderRepo.load(district, season).then((outcome) => {
-      if (active) setSaved({ key, value: outcome.kind === "ok" ? outcome.order : null });
+    Promise.all([orderRepo.load(district, season), orderRepo.loadWork(district, season)]).then(([outcome, restored]) => {
+      if (!active) return;
+      setSaved({ key, value: outcome.kind === "ok" ? outcome.order : null });
+      setWork({ key, value: restored });
     });
     return () => {
       active = false;
@@ -65,20 +69,37 @@ export function useHarvestOrder(
   }, [photoRepo]);
 
   const savedOrder = saved !== null && saved.key === key ? saved.value : null;
-  const loadedSaved = saved !== null && saved.key === key;
+  const loadedSaved = saved !== null && saved.key === key && work !== null && work.key === key;
   // 保存した順を今の記録に合わせたもの（保存が無ければ記録からの下書き）
   const fromSaved = useMemo(() => (base === null ? null : savedOrder === null ? base : applySaved(base, savedOrder)), [base, savedOrder]);
-  const current = edited !== null && edited.key === key ? edited.value : fromSaved;
+  const restored = work !== null && work.key === key ? work.value : null;
+  // 並べ途中が残っていれば、今の記録に合わせて重ねる（収穫済になった畑などは記録のほうに従う）
+  const current = edited !== null && edited.key === key ? edited.value : restored !== null && base !== null ? applySaved(base, restored) : fromSaved;
   const dirty = current !== null && fromSaved !== null && !sameOrder(current, savedOrder === null ? (base ?? current) : fromSaved);
   const differsFromConfirmed = savedOrder?.state === "confirmed" && current !== null && fromSaved !== null && !sameOrder(current, fromSaved);
+
+  /** 並べ途中を画面と端末の両方に残す（変えるたびに。押し忘れで消えない） */
+  const keep = useCallback(
+    (next: OrderDraft) => {
+      setEdited({ key, value: next });
+      void orderRepo.saveWork(district, season, { ranked: next.ranked, unranked: next.unranked });
+    },
+    [orderRepo, district, season, key],
+  );
+  /** 並べ途中を捨てる（保存した・保存した順に戻した） */
+  const forget = useCallback(() => {
+    setEdited(null);
+    setWork({ key, value: null });
+    void orderRepo.saveWork(district, season, null);
+  }, [orderRepo, district, season, key]);
 
   const update = useCallback(
     (fn: (d: OrderDraft) => OrderDraft) => {
       if (current === null) return;
-      setEdited({ key, value: fn(current) });
+      keep(fn(current));
       setMessage(null);
     },
-    [current, key],
+    [current, keep],
   );
 
   const move = useCallback((index: number, delta: number) => update((d) => ({ ...d, ranked: moveWithin(d.ranked, index, delta) })), [update]);
@@ -88,15 +109,15 @@ export function useHarvestOrder(
   /** 記録からの下書きに戻す（人が並べた順は消える。押す側で 2 段にする） */
   const resetToRecords = useCallback(() => {
     if (base === null) return;
-    setEdited({ key, value: base });
+    keep(base);
     setMessage(null);
-  }, [base, key]);
+  }, [base, keep]);
 
   /** 保存した順（確定した順）に戻す */
   const revert = useCallback(() => {
-    setEdited(null);
+    forget();
     setMessage(null);
-  }, []);
+  }, [forget]);
 
   const persist = useCallback(
     async (state: "draft" | "confirmed") => {
@@ -106,7 +127,7 @@ export function useHarvestOrder(
         const outcome = await orderRepo.save({ district, season, ranked: current.ranked, unranked: current.unranked, state });
         if (outcome.kind === "ok") {
           setSaved({ key, value: outcome.order });
-          setEdited(null);
+          forget();
           setMessage({ text: state === "confirmed" ? "確定しました" : "保存しました", ok: true });
         } else {
           setMessage({ text: "保存できませんでした。並べた順はこのまま残しています", ok: false });
@@ -115,7 +136,7 @@ export function useHarvestOrder(
         setBusy(false);
       }
     },
-    [current, busy, orderRepo, district, season, key],
+    [current, busy, orderRepo, district, season, key, forget],
   );
 
   const login = useCallback(

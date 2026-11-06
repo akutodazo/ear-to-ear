@@ -13,6 +13,9 @@ const unavailable: StorageLike = {
   setItem: () => {
     throw new Error("storage unavailable");
   },
+  removeItem: () => {
+    throw new Error("storage unavailable");
+  },
 };
 
 export function createHarvestOrderRepository(): IHarvestOrderRepository {

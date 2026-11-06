@@ -20,9 +20,19 @@ export interface SavedOrder {
 export type LoadOrderOutcome = { kind: "ok"; order: SavedOrder | null } | { kind: "error" };
 export type SaveOrderOutcome = { kind: "ok"; order: SavedOrder } | { kind: "error" };
 
+/** 並べ途中（保存していない変更）。保存した順とは別に持つ */
+export interface OrderWork {
+  ranked: string[];
+  unranked: string[];
+}
+
 export interface IHarvestOrderRepository {
   /** その地区・年の保存した順。無ければ order は null */
   load(district: string, season: string): Promise<LoadOrderOutcome>;
   /** 下書きとして保存するか、確定する（確定は委員長だけ。守るのは将来のサーバー） */
   save(order: { district: string; season: string; ranked: string[]; unranked: string[]; state: "draft" | "confirmed" }): Promise<SaveOrderOutcome>;
+  /** 並べ途中。無い・読めないときは null（11-06 地図の精査 #2: 画面を移ると消えていた） */
+  loadWork(district: string, season: string): Promise<OrderWork | null>;
+  /** 並べ途中を残す。null で消す。書けなくても例外にしない */
+  saveWork(district: string, season: string, work: OrderWork | null): Promise<void>;
 }

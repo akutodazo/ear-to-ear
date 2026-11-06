@@ -36,6 +36,7 @@ import { StatusHistory } from "@/components/compare/status-history";
 import { HandoverMemo } from "@/components/field/handover-memo";
 import { PassphraseForm } from "@/components/upload/passphrase-form";
 import { AppNav } from "@/components/app-nav";
+import { sameDayEmptyNote } from "@/services/compare-note";
 import { IconMap, IconPen, IconPhoto } from "@/components/icons";
 
 const fields: Field[] = fieldsData;
@@ -95,7 +96,7 @@ export function FieldClient({ field }: { field: Field }) {
       ? "写真を読み込めませんでした"
       : top === null
         ? mode === "same-day"
-          ? `${date ? monthDay(date) : "この日"} に撮った別の畑の写真はありません`
+          ? sameDayEmptyNote({ dateLabel: date ? monthDay(date) : null, selfId: field.id, benchmarkId, benchmarkHasPhotos: benchmarkId !== null && daysOf(days, benchmarkId).length > 0 })
           : "前の日の写真はありません"
         : null;
   // 相手は上の写真の帯から選ぶ。並べるのはその日に撮った別の畑だけ（薄い札を並べない。精査 3 回目 #5）
@@ -284,7 +285,7 @@ export function FieldClient({ field }: { field: Field }) {
           onCancel={stopWriting}
         />
       )}
-      <AppNav current="compare" compareHref={`/fields/${field.id}`} orderHref={`/order#${field.id}`} demoDate={demoDate} />
+      <AppNav current="compare" mapHref={`/#${field.id}`} compareHref={`/fields/${field.id}`} orderHref={`/order#${field.id}`} demoDate={demoDate} />
     </div>
   );
 }
