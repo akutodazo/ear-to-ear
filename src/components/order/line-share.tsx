@@ -53,7 +53,14 @@ export function LineShare(props: Props) {
           disabled={state.kind !== "ready" || link.kind === "uploading"}
           aria-busy={link.kind === "uploading"}
         >
-          {link.kind === "uploading" ? "共有の URL を作っています…" : "1. 送る準備（共有の URL を作る）"}
+          {link.kind === "uploading" ? (
+            "共有の URL を作っています…"
+          ) : (
+            <span className="button-lines">
+              <span>1. 送る準備</span>
+              <span>（共有の URL を作る）</span>
+            </span>
+          )}
         </button>
       ) : canShare ? (
         <>
