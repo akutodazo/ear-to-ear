@@ -24,7 +24,7 @@
 | — | 来年の引き継ぎ（画面の再設計の 5 段目） | L6 のメモを翌年の同じ頃に地図の脇に出す | 時間があれば（11/7 夕方以降は手を付けない） |
 | 5 | L5（実験） | 位置の無い写真について、人が選んだ候補2〜3圃場の写真と見比べて理由付きで並べ替える。確定は人。精度は主張しない | 時間があれば |
 | 6 | L4 | Android の共有メニューから送る（Web Share Target） | 時間があれば |
-| 7 | L9 | LINE から写真を受け取る | 後回し |
+| 7 | **L9** | LINE から写真を受け取る。**11-06 に本人が前倒しを決めた（#172）**。登録したグループに送られた画像だけを、サーバーが LINE から取りに行き、APP1〜15 を読まずに消してから「未確定」（候補なし・撮影日なし）で新着に入れる。長辺 1600px・3MB を超えるもの、JPEG でないものは入れず、Web の「写真を送る」を案内する返事をする。受け取ったら 1 回だけ返事（reply、月の上限に数えない）。1 日 30 枚まで | 11/6 |
 
 やめた段: L2（水分の手入力）・L3（水分の紙の読み取り）— K16。「もう一つの新しいこと」は入れない（11-03 本人決定）。
 
@@ -130,7 +130,7 @@ CREATE TABLE order_shares (id TEXT PRIMARY KEY, season, district, ranked /* JSON
 | `GET /api/fields/summary` | なし | — | 200 `{ fields: FieldSummary[] }`（全圃場を一覧の順）。各圃場の有効な最新の判断（取り消していないもので `at` が新しいもの、同じなら id の大きい方）と、未確定の写真の候補（最大3）か委員が選んだ番号に含まれるか（11-04 本人承認、#90） | — | L1 |
 | `POST /api/fields/:id/handover` | admin | — | 200 `HandoverNote`（作り直して保存。同じ圃場・シーズンは上書き） | 401／403／404（一覧に無い圃場）／422 `no_records`（記録 0 件、Claude を呼ばない）／429（その日の上限、Retry-After は日本時間 0 時まで）／502 `{error, reason}`（http・refusal・truncated・shape、保存しない）／503 `claude_disabled`（`CLAUDE_ENABLED=false` かキーなし）（11-04 先輩決定、T31、#111） | L6 |
 | `GET /api/fields/:id/handover` | なし | — | 200 `HandoverNote`（今のシーズン＝日本時間の年のメモ） | 404（メモが無い・一覧に無い圃場）（11-04 先輩決定、T29、#106） | L6 |
-| `POST /api/line/webhook` | LINE の署名 | LINE のイベント | 200（`join` だけ処理してグループ ID を保存） | 401（署名）・413（64KB 超）・503 `line_disabled`（LINE の秘密が無い・`LINE_ENABLED` が false） | L8 |
+| `POST /api/line/webhook` | LINE の署名 | LINE のイベント | 200（`join` のグループ ID を保存。登録したグループの画像のメッセージは、応答の後に `waitUntil` で LINE から取って `uploaded_photos` に「未確定」で入れ、reply で 1 回返す。L9、#172） | 401（署名）・413（64KB 超）・503 `line_disabled`（LINE の秘密が無い・`LINE_ENABLED` が false） | L8 |
 | `POST /api/shares` | member | multipart `image`（JPEG 1.5MB 以下・長辺 2000px 以下・APP1〜15 無し）＋ `meta` `{season, district, confirmedAt, ranked[], benchmarkId}` | 201 `{id, url, imageUrl, expiresAt}`（期限は 60 日後。R2 `shares/<id>.jpg`・D1 `order_shares`） | 401／413／415／422 `reason`／429（端末ごとに 1 日 30 回） | LINE に 1 枚（#159） |
 | `GET /api/shares/:id` | なし（LINE のサーバーが Cookie 無しで読む） | — | 200 `text/html`。OGP（og:title・og:description・og:image は要求の origin の絶対 URL）・`noindex`・`public, max-age=300` | 404（無い・期限切れ） | LINE に 1 枚（#160） |
 | `GET /api/share-files/:id` | なし | — | 200 `image/jpeg`（`public, max-age=86400`） | 404（無い・期限切れ。R2 は読まない） | LINE に 1 枚（#160） |
