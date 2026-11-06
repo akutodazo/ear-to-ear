@@ -27,7 +27,7 @@ export function HandoverMemo({
   onCreate: () => void;
 }) {
   return (
-    <section className="season memo" aria-label="今年の引き継ぎメモ">
+    <section id="handover-memo" className="season memo" aria-label="今年の引き継ぎメモ">
       <h2 className="season-title">今年の引き継ぎメモ</h2>
       {loading && sentences.length === 0 && <p className="note">読み込んでいます</p>}
       {message && <p className="note">{message}</p>}

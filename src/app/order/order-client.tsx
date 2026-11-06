@@ -185,6 +185,26 @@ export function OrderClient() {
               onConfirm={order.confirm}
               onRevert={order.revert}
               onReset={order.resetToRecords}
+              share={
+                // 確定した順のすぐ下に LINE に送る 2 段を出す（11-06 本人の指示: 共有が分かりにくい）
+                shareImage && (
+                  <LineShare
+                    state={share.state}
+                    link={share.link}
+                    text={shareText}
+                    fileName={shareFile}
+                    canShare={share.canShare}
+                    message={share.message}
+                    needsPassphrase={share.needsPassphrase}
+                    loginMessage={share.loginMessage}
+                    loggingIn={share.loggingIn}
+                    onPrepare={share.prepare}
+                    onSend={share.send}
+                    onCopy={share.copyUrl}
+                    onLogin={share.login}
+                  />
+                )
+              }
             />
             {order.loginOpen && order.needsChair && (
               <PassphraseForm
@@ -193,23 +213,6 @@ export function OrderClient() {
                 message={order.loginMessage}
                 busy={order.loggingIn}
                 onSubmit={order.login}
-              />
-            )}
-            {shareImage && (
-              <LineShare
-                state={share.state}
-                link={share.link}
-                text={shareText}
-                fileName={shareFile}
-                canShare={share.canShare}
-                message={share.message}
-                needsPassphrase={share.needsPassphrase}
-                loginMessage={share.loginMessage}
-                loggingIn={share.loggingIn}
-                onPrepare={share.prepare}
-                onSend={share.send}
-                onCopy={share.copyUrl}
-                onLogin={share.login}
               />
             )}
             <OrderList
