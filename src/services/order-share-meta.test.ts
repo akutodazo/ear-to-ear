@@ -56,8 +56,7 @@ describe("parseOrderShareMeta 弾くもの（理由のコード）", () => {
 
   it("知らない項目・足りない項目", () => {
     expect(reasonOf({ ...META, lat: 43.2 })).toBe("unknown_key");
-    const { benchmarkId: _omit, ...rest } = META;
-    expect(reasonOf(rest)).toBe("unknown_key");
+    expect(reasonOf({ season: META.season, district: META.district, confirmedAt: META.confirmedAt, ranked: META.ranked })).toBe("unknown_key");
   });
 
   it("season は 4 桁の年だけ", () => {
