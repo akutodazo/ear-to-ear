@@ -1396,9 +1396,11 @@ a:focus-visible {
   box-shadow: 0 6px 12px rgba(21, 41, 29, 0.22);
 }
 
+/* 判断を書いている間は、比較を小さくして入力欄を広く取る（Issue #182。24dvh では画面の 1/3 近くを占めた）。
+   文字を打つ間は、iOS の Safari がページを送って比較が画面の外に出るので、それ以上は縮めない */
 .stage-compact .split {
-  height: 24dvh;
-  min-height: 150px;
+  height: 16dvh;
+  min-height: 112px;
 }
 
 /* 同じ日の別の畑: 上下 2 つの窓に、それぞれの写真の真ん中を出す */
