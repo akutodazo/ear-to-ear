@@ -3,14 +3,19 @@
  * 判定は Service（line-signature・line-webhook）、外の世界は deps の line・db だけ。
  * 順: LINE の口が無い 503 → 宣言の長さが上限超 413 → 生の本文を読む（超えたら 413）→ 署名が違う 401（D1 に触らない）
  *   → join（group）のグループ ID の最後の 1 つを settings に上書きで保存
- *   → 登録したグループの画像のメッセージを、応答の後（waitUntil）で 1 枚ずつ受け取る（L9、#172）→ 200
+ *   → 登録したグループの画像のメッセージを、応答の後（1 つの waitUntil）で 1 枚ずつ順に、10 枚まで受け取る（L9、#172）→ 200
  * グループ ID・本文はログに出さない。
  */
 import { verifyLineSignature } from "@/services/line-signature";
-import { groupImageMessages } from "@/services/line-image-event";
+import {
+  groupImageMessages,
+  LINE_PHOTOS_PER_WEBHOOK,
+  linePhotoOverflowReply,
+  type LineImageMessage,
+} from "@/services/line-image-event";
 import { joinedGroupIds } from "@/services/line-webhook";
 import { declaredTooLarge, readBodyLimited } from "./body";
-import type { Handler } from "./deps";
+import type { Deps, Handler } from "./deps";
 import { errorResponse, json } from "./http";
 import { receiveLinePhoto } from "./line-photos";
 
@@ -46,11 +51,25 @@ export const postLineWebhook: Handler = async (request, { deps, url }) => {
   const images = groupImageMessages(text);
   if (images.length > 0) {
     const saved = await deps.db.prepare(GROUP_SQL).first<{ value: string }>();
-    if (saved !== null) {
-      for (const image of images) {
-        if (image.groupId === saved.value) deps.waitUntil(receiveLinePhoto(deps, image, url.origin));
-      }
-    }
+    const mine = saved === null ? [] : images.filter((image) => image.groupId === saved.value);
+    if (mine.length > 0) deps.waitUntil(receiveInOrder(deps, mine, url.origin));
   }
   return json(200, { ok: true });
 };
+
+/**
+ * 1 回の webhook の画像を 1 枚ずつ順に受け取る（同時に走らせない）。上限を超えた分は取りに行かず、
+ * 超えた最初の 1 枚の replyToken で 1 通だけ返す。例外は外に出さない
+ */
+async function receiveInOrder(deps: Deps, images: LineImageMessage[], origin: string): Promise<void> {
+  for (const image of images.slice(0, LINE_PHOTOS_PER_WEBHOOK)) {
+    await receiveLinePhoto(deps, image, origin);
+  }
+  const skipped = images.slice(LINE_PHOTOS_PER_WEBHOOK);
+  if (skipped.length === 0 || deps.line === null) return;
+  try {
+    await deps.line.reply(skipped[0].replyToken, linePhotoOverflowReply(origin, skipped.length));
+  } catch {
+    // 返事の失敗は無視する
+  }
+}

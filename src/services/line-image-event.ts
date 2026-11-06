@@ -7,6 +7,12 @@
 /** LINE から受け取る写真の 1 日（日本時間）の枚数の上限。取りに行く前に数える（共有の config.ts は変えずにここに置く） */
 export const LINE_PHOTO_DAILY_LIMIT = 30;
 
+/**
+ * 1 回の webhook で受け取る枚数の上限。1 つの waitUntil の中で 1 枚ずつ順に処理し、
+ * 1 回の呼び出しの D1 のクエリ数・外向きの fetch の数に収める（1 枚で D1 3 本・fetch 2 本、レビューの指摘）
+ */
+export const LINE_PHOTOS_PER_WEBHOOK = 10;
+
 /** まとめて送られた画像（imageSet）の何枚目か */
 export interface LineImageSet {
   index: number;
@@ -112,18 +118,33 @@ export function groupImageMessages(text: string): LineImageMessage[] {
 
 /**
  * 返事の文。受け取れたとき（saved・duplicate）は、まとめて送られた画像の最後の 1 枚にだけ返す（途中は null）。
- * 受け取れなかったときは 1 枚ごとに返す。写真の中身・番号・個人 ID は入れない
+ * 受け取れなかったときは 1 枚ごとに返し、まとめて送られた画像なら新着の URL も添える
+ * （ほかの枚は別に処理していて結果が見えないため、レビューの指摘）。写真の中身・番号・個人 ID は入れない
  */
 export function linePhotoReply(outcome: LinePhotoOutcome, origin: string, set: LineImageSet | null): string | null {
   const recent = `${origin}/recent`;
+  const failure = failureReply(outcome, origin);
+  if (failure !== null) {
+    return set === null ? failure : `${failure}\nほかの写真は受け取れているかもしれません。新着で確かめてください。\n${recent}`;
+  }
+  if (set !== null && set.index !== set.total) return null;
+  return outcome === "saved"
+    ? `写真を受け取りました（未確定）。圃場の番号は管理者が付けます。\n${recent}`
+    : `この写真はもう届いています。\n${recent}`;
+}
+
+/** 1 回の webhook の上限を超えて受け取らなかった枚数への返事（1 通だけ） */
+export function linePhotoOverflowReply(origin: string, skipped: number): string {
+  return `一度に受け取れる写真は ${LINE_PHOTOS_PER_WEBHOOK} 枚までです。残りの ${skipped} 枚は受け取っていません。サイトの「写真を送る」から送ってください。\n${origin}/upload`;
+}
+
+/** 受け取れなかったときの文。受け取れたとき（saved・duplicate）は null */
+function failureReply(outcome: LinePhotoOutcome, origin: string): string | null {
   const upload = `${origin}/upload`;
   switch (outcome) {
     case "saved":
     case "duplicate":
-      if (set !== null && set.index !== set.total) return null;
-      return outcome === "saved"
-        ? `写真を受け取りました（未確定）。圃場の番号は管理者が付けます。\n${recent}`
-        : `この写真はもう届いています。\n${recent}`;
+      return null;
     case "too_large":
     case "bad_dimensions":
       return `写真が大きすぎて受け取れませんでした。サイトの「写真を送る」から送ってください。\n${upload}`;

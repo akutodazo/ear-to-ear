@@ -2,14 +2,14 @@
  * L9 LINE から写真を受け取る（docs/spec.md §3・§6、docs/decisions.md 11-06、#172）。
  * webhook が応答を返した後に deps.waitUntil で 1 枚ずつ呼ぶ。例外は外に出さず、結果のコードを返す。
  * 順: 1 日の枚数を数える（満杯なら取りに行かない）→ LINE から取る（3MB で打ち切り）→ 取ったままのバイト列のハッシュ（K7）
- *   → APP1〜15 を読まずに消す（K6。撮影位置・撮影日を解かない）→ Web の送る流れと同じ検査（upload-form）
+ *   → 画像の復元に要るセグメントだけを残す（K6。APP・COM などを読まずに捨てる、line-jpeg）→ Web の送る流れと同じ検査（upload-form）
  *   → 二重を見る → R2 に置く → D1 に「未確定」（候補なし・撮影日なし・端末は line）で入れる → reply で 1 回返す。
  * 再試行しない。ログに message ID・グループ ID・replyToken を出さない。
  */
 import { MAX_UPLOAD_BYTES, THUMBNAIL_LONG_EDGE_PX } from "@/config";
 import { inspectJpeg } from "@/services/jpeg-segments";
 import { linePhotoReply, LINE_PHOTO_DAILY_LIMIT, type LineImageMessage, type LinePhotoOutcome } from "@/services/line-image-event";
-import { stripAppSegments } from "@/services/prepared-photo";
+import { keepImageSegmentsOnly } from "@/services/line-jpeg";
 import { checkUploadImage, PHOTO_COLUMNS, photoRow, photoRowValues, r2KeyFor } from "@/services/upload-form";
 import { claudeDayEndsAt, linePhotoCounterKey } from "@/services/usage-limit";
 import type { Deps } from "./deps";
@@ -59,8 +59,9 @@ async function store(deps: Deps, message: LineImageMessage, line: NonNullable<De
 
   // 二重の判定は取ってきたままのバイト列（K7 の「元ファイルのハッシュ」に当たるもの）
   const contentHash = await deps.sha256Hex(content.bytes);
-  // APP1〜15 は中身を読まずに消す。最初のスキャンの後ろに隠したものは消えず、次の検査で metadata になる
-  const stripped = stripAppSegments(content.bytes);
+  // 画像の復元に要るセグメントだけを残す（APP0〜15・COM など、撮影位置・撮影日が入りうるものは中身を読まずに捨てる）。
+  // 端末で作られたバイト列がそのまま届くので、Web の流れ（APP1〜15 を消す）より狭く残す（レビューの指摘）
+  const stripped = keepImageSegmentsOnly(content.bytes);
   if (stripped === null) return "not_jpeg";
   const image = checkUploadImage(stripped, inspectJpeg, MAX_UPLOAD_BYTES, THUMBNAIL_LONG_EDGE_PX);
   if (!image.ok) return image.reason;
