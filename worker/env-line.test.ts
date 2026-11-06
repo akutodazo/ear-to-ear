@@ -1,5 +1,5 @@
 // L8 の LINE の口と waitUntil（#139、人が書く配線）
-import { createHmac } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createDeps, type Env } from "./env";
 
@@ -210,5 +210,24 @@ describe("LINE の口 getContent・reply（#172）", () => {
       throw new Error("down");
     });
     expect(await createDeps(fakeEnv(both)).line?.reply("reply-token-1", "x")).toBe(0);
+  });
+});
+
+// #172（レビューの指摘）: 本番の sha256Hex は Web の content_hash（src/lib/sha256）と同じ形（小文字の 16 進 64 文字）
+describe("sha256Hex（#172）", () => {
+  it("'abc' の既知の値", async () => {
+    expect(await createDeps(fakeEnv()).sha256Hex(new TextEncoder().encode("abc"))).toBe(
+      "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    );
+  });
+
+  it("node:crypto の値と同じ（先頭が 0 の桁も 2 文字で埋め、小文字）", async () => {
+    const deps = createDeps(fakeEnv());
+    for (let seed = 0; seed < 40; seed++) {
+      const bytes = Uint8Array.from({ length: seed * 7 }, (_, i) => (i * 31 + seed) & 0xff);
+      const got = await deps.sha256Hex(bytes);
+      expect(got).toMatch(/^[0-9a-f]{64}$/);
+      expect(got).toBe(createHash("sha256").update(bytes).digest("hex"));
+    }
   });
 });

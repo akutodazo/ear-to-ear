@@ -300,6 +300,9 @@ describe("POST /api/line/webhook 画像のメッセージ（#172）", () => {
     testDb: TestDb;
     contentCalls: string[];
     replies: string[];
+    texts: string[];
+    /** getContent が同時に走った最大の本数 */
+    maxActive: () => number;
     /** waitUntil に渡された約束を全部待つ */
     settle: () => Promise<void>;
     pending: () => number;
@@ -310,20 +313,28 @@ describe("POST /api/line/webhook 画像のメッセージ（#172）", () => {
     const bucket = createTestBucket();
     const contentCalls: string[] = [];
     const replies: string[] = [];
+    const texts: string[] = [];
     const waits: Promise<unknown>[] = [];
-    const ids = ["00000000-0000-4000-8000-0000000000a1", "00000000-0000-4000-8000-0000000000a2"];
+    let active = 0;
+    let maxActive = 0;
+    let nextId = 0;
     let jpegSeed = 0;
     const line: LinePort = {
       sign: async (body) => new Uint8Array(createHmac("sha256", CHANNEL_KEY).update(body).digest()),
       push: async () => 200,
       getContent: async (messageId) => {
         contentCalls.push(messageId);
+        active++;
+        maxActive = Math.max(maxActive, active);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        active--;
         jpegSeed++;
         // 毎回違うバイト列（二重にならない）
         return { ok: true, bytes: tinyJpeg({ width: 1200, height: 900, scanBytes: 2 + jpegSeed, apps: [1] }) };
       },
-      reply: async (replyToken) => {
+      reply: async (replyToken, text) => {
         replies.push(replyToken);
+        texts.push(text);
         return 200;
       },
     };
@@ -331,7 +342,7 @@ describe("POST /api/line/webhook 画像のメッセージ（#172）", () => {
       db: testDb.db,
       photos: bucket.photos,
       line,
-      newId: () => ids.shift() ?? "00000000-0000-4000-8000-0000000000ff",
+      newId: () => `00000000-0000-4000-8000-${String(++nextId).padStart(12, "0")}`,
       waitUntil: (promise) => {
         waits.push(promise);
       },
@@ -341,6 +352,8 @@ describe("POST /api/line/webhook 画像のメッセージ（#172）", () => {
       testDb,
       contentCalls,
       replies,
+      texts,
+      maxActive: () => maxActive,
       settle: async () => {
         await Promise.all(waits);
       },
@@ -365,13 +378,34 @@ describe("POST /api/line/webhook 画像のメッセージ（#172）", () => {
     );
     expect(response.status).toBe(200);
     expect(await response.json()).toStrictEqual({ ok: true });
-    expect(s.pending()).toBe(2);
+    // 1 回の webhook の画像は 1 つの waitUntil の中で 1 枚ずつ順に（レビューの指摘）
+    expect(s.pending()).toBe(1);
     await s.settle();
+    expect(s.maxActive()).toBe(1);
     expect(s.contentCalls).toStrictEqual(["300001", "300002"]);
     expect(photoCount(s.testDb)).toBe(2);
     const states = s.testDb.raw.prepare("SELECT DISTINCT state, uploader_device FROM uploaded_photos").all();
     expect(states).toEqual([{ state: "unconfirmed", uploader_device: "line" }]);
-    expect(s.replies.sort()).toStrictEqual(["reply-300001", "reply-300002"]);
+    expect(s.replies).toStrictEqual(["reply-300001", "reply-300002"]);
+    // 返事の URL は webhook を受けた origin の絶対 URL
+    expect(s.texts[0]).toContain("https://example.test/recent");
+  });
+
+  it("1 回の webhook で受け取るのは 10 枚まで。超えた分は取りに行かず、返事を 1 通だけ返す（レビューの指摘）", async () => {
+    const s = imageSetup();
+    saveGroup(s.testDb, GROUP_A);
+    const events = Array.from({ length: 13 }, (_, i) => imageEvent(GROUP_A, String(400001 + i)));
+    const response = await handleRequest(signedRequest(eventsBody(events)), s.deps);
+    expect(response.status).toBe(200);
+    await s.settle();
+    expect(s.contentCalls).toStrictEqual(Array.from({ length: 10 }, (_, i) => String(400001 + i)));
+    expect(s.maxActive()).toBe(1);
+    expect(photoCount(s.testDb)).toBe(10);
+    // 10 枚の返事と、超えた分の返事 1 通（超えた最初の 1 枚の replyToken）
+    expect(s.replies).toHaveLength(11);
+    expect(s.replies.at(-1)).toBe("reply-400011");
+    expect(s.texts.at(-1)).toContain("3 枚");
+    expect(s.texts.at(-1)).toContain("https://example.test/upload");
   });
 
   it("グループが登録されていなければ画像を取りに行かない", async () => {

@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import { MAX_UPLOAD_BYTES } from "@/config";
 import { inspectJpeg } from "@/services/jpeg-segments";
 import { LINE_PHOTO_DAILY_LIMIT, type LineImageMessage } from "@/services/line-image-event";
+import { keepImageSegmentsOnly } from "@/services/line-jpeg";
+import { jpegOf, segment, sof } from "@/services/test-jpeg";
 import { linePhotoCounterKey } from "@/services/usage-limit";
 import type { BucketPort, LineContent, LinePort } from "./deps";
 import { receiveLinePhoto } from "./line-photos";
@@ -105,7 +107,7 @@ describe("receiveLinePhoto 受け取れる（#172）", () => {
         r2_key: `uploads/${PHOTO_ID}.jpg`,
         width: 1200,
         height: 900,
-        bytes: original.byteLength,
+        bytes: (keepImageSegmentsOnly(original) as Uint8Array).byteLength,
         uploader_device: "line",
         uploaded_at: new Date(NOW_MS).toISOString(),
         updated_at: new Date(NOW_MS).toISOString(),
@@ -113,7 +115,8 @@ describe("receiveLinePhoto 受け取れる（#172）", () => {
     ]);
     const stored = s.bucket.objects.get(`uploads/${PHOTO_ID}.jpg`);
     expect(stored?.contentType).toBe("image/jpeg");
-    expect(stored?.bytes).toStrictEqual(original);
+    // 画像の復元に要るセグメントだけを残したもの（APP0 の JFIF も消える）
+    expect(stored?.bytes).toStrictEqual(keepImageSegmentsOnly(original));
   });
 
   it("APP1〜15（撮影位置・撮影日が入りうる）を消してから置く。ハッシュは取ってきたままのバイト列", async () => {
@@ -248,12 +251,33 @@ describe("receiveLinePhoto 受け取れない（#172）", () => {
     }
   });
 
-  it("最初のスキャンの後ろに APP1〜15 を隠した JPEG は消しきれないので保存せず metadata", async () => {
+  it("最初のスキャンの後ろに隠した APP1 も消してから置く（#172、レビューの指摘）", async () => {
     const hidden = tinyJpeg({ width: 1200, height: 900, tail: [0xff, 0xe1, 0x00, 0x04, 0x45, 0x78, 0xff, 0xd9] });
     const s = setup(ok(hidden));
-    expect(await s.run()).toBe("metadata");
-    expect(photoRows(s.testDb)).toHaveLength(0);
-    expect(s.bucket.calls).toHaveLength(0);
+    expect(await s.run()).toBe("saved");
+    const stored = s.bucket.objects.get(`uploads/${PHOTO_ID}.jpg`)?.bytes as Uint8Array;
+    expect(Array.from(stored.subarray(-2))).toStrictEqual([0xff, 0xd9]);
+    expect(Buffer.from(stored).includes(Buffer.from([0xff, 0xe1]))).toBe(false);
+  });
+
+  it("APP0 に詰めた Exif と COM の文（緯度・経度）も消してから置く（#172、レビューの指摘）", async () => {
+    const exifInApp0 = segment(0xe0, [0x4a, 0x46, 0x49, 0x46, 0x00, 0x45, 0x78, 0x69, 0x66, 0x00, 0x47, 0x50, 0x53]);
+    const comment = segment(0xfe, Array.from(new TextEncoder().encode("lat=43.0,lon=141.0")));
+    const input = jpegOf(
+      exifInApp0,
+      comment,
+      sof(0xc0, 1200, 900),
+      segment(0xda, [1, 1, 0x00, 0x00, 0x3f, 0x00]),
+      [0x12, 0x34],
+      [0xff, 0xd9],
+    );
+    const s = setup(ok(input));
+    expect(await s.run()).toBe("saved");
+    const stored = Buffer.from(s.bucket.objects.get(`uploads/${PHOTO_ID}.jpg`)?.bytes as Uint8Array);
+    expect(stored.includes(Buffer.from("Exif"))).toBe(false);
+    expect(stored.includes(Buffer.from("lat="))).toBe(false);
+    expect(stored.includes(Buffer.from([0xff, 0xe0]))).toBe(false);
+    expect(stored.includes(Buffer.from([0xff, 0xfe]))).toBe(false);
   });
 
   it("LINE からの取得に失敗したら保存せず fetch_failed（例外を出さない）", async () => {
@@ -281,6 +305,26 @@ describe("receiveLinePhoto 受け取れない（#172）", () => {
     expect(await s.run()).toBe("error");
     expect(photoRows(s.testDb)).toHaveLength(0);
     expect(s.replies[0].text).toContain("受け取れませんでした");
+  });
+
+  it("D1 に入れるときに例外が出たら、置いた画像を消して error（#172、レビューの指摘）", async () => {
+    const deleted: string[] = [];
+    const s = setup(ok(tinyJpeg({ width: 1200, height: 900 })), {
+      photos: {
+        delete: async (key) => {
+          deleted.push(key);
+        },
+      },
+    });
+    // INSERT のときだけ例外を投げる D1
+    const realPrepare = s.testDb.db.prepare.bind(s.testDb.db);
+    s.testDb.db.prepare = (sql) => {
+      if (sql.startsWith("INSERT INTO uploaded_photos")) throw new Error("d1 down");
+      return realPrepare(sql);
+    };
+    expect(await s.run()).toBe("error");
+    expect(deleted).toStrictEqual([`uploads/${PHOTO_ID}.jpg`]);
+    expect(photoRows(s.testDb)).toHaveLength(0);
   });
 
   it("返事に失敗しても結果は変わらない（例外を出さない）", async () => {

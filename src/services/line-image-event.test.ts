@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   groupImageMessages,
   LINE_PHOTO_DAILY_LIMIT,
+  LINE_PHOTOS_PER_WEBHOOK,
+  linePhotoOverflowReply,
   linePhotoReply,
   type LineImageMessage,
   type LinePhotoOutcome,
@@ -190,6 +192,37 @@ describe("linePhotoReply（#172）", () => {
     for (const outcome of outcomes) {
       expect((linePhotoReply(outcome, ORIGIN, null) ?? "").length).toBeLessThan(300);
     }
+  });
+});
+
+describe("まとめて送られた画像の最後の 1 枚が受け取れなかったとき（#172、レビューの指摘）", () => {
+  it("失敗の返事に、ほかの写真は受け取れているかもしれないことと新着の URL を足す", () => {
+    const failures: LinePhotoOutcome[] = ["too_large", "bad_dimensions", "not_jpeg", "metadata", "fetch_failed", "error", "limit"];
+    for (const outcome of failures) {
+      const text = linePhotoReply(outcome, ORIGIN, { index: 2, total: 2 }) ?? "";
+      expect(text).toContain("ほかの写真");
+      expect(text).toContain(`${ORIGIN}/recent`);
+      expect(text).toContain(`${ORIGIN}/upload`);
+    }
+  });
+
+  it("1 枚だけ送られたときの失敗の返事には足さない", () => {
+    const text = linePhotoReply("fetch_failed", ORIGIN, null) ?? "";
+    expect(text).not.toContain("ほかの写真");
+    expect(text).not.toContain(`${ORIGIN}/recent`);
+  });
+});
+
+describe("1 回の webhook で受け取る枚数（#172、レビューの指摘）", () => {
+  it("1 回の webhook で受け取るのは 10 枚まで", () => {
+    expect(LINE_PHOTOS_PER_WEBHOOK).toBe(10);
+  });
+
+  it("超えた分の返事は、受け取らなかった枚数・上限の枚数・Web の「写真を送る」の URL", () => {
+    const text = linePhotoOverflowReply(ORIGIN, 3);
+    expect(text).toContain("3 枚");
+    expect(text).toContain(`${LINE_PHOTOS_PER_WEBHOOK} 枚`);
+    expect(text).toContain(`${ORIGIN}/upload`);
   });
 });
 
