@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { CreateOrderShareOutcome } from "@/repositories/interfaces/i-order-share-repository";
-import { createShareOutcomeLabel, lineShareHref, shareData } from "./order-share-view";
+import { inspectJpeg } from "./jpeg-segments";
+import { createShareOutcomeLabel, lineShareHref, shareData, shareImageBytes } from "./order-share-view";
+import { tinyJpeg } from "./test-jpeg";
 
 describe("shareData（端末の共有に渡すもの）", () => {
   it("text と url を分けて渡す。text に URL を入れない（LINE で二重にしない）", () => {
@@ -33,5 +35,22 @@ describe("createShareOutcomeLabel（送る準備の失敗の言葉）", () => {
   ];
   it.each(cases)("%o → %s", (outcome, label) => {
     expect(createShareOutcomeLabel(outcome)).toBe(label);
+  });
+});
+
+describe("shareImageBytes（送る前に APP1〜15 を消す。iPhone の Safari は APP2 を付ける）", () => {
+  it("APP2 付きの絵から APP2 を消し、APP0 は残す", () => {
+    const out = shareImageBytes(tinyJpeg({ apps: [2] }));
+    expect(out).not.toBeNull();
+    expect(inspectJpeg(out as Uint8Array).appSegments).toEqual([]);
+  });
+
+  it("消すものが無ければ同じバイト列", () => {
+    const input = tinyJpeg();
+    expect(shareImageBytes(input)).toEqual(input);
+  });
+
+  it("JPEG でなければ null", () => {
+    expect(shareImageBytes(new TextEncoder().encode("not a jpeg"))).toBeNull();
   });
 });
