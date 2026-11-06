@@ -20,7 +20,7 @@ import { benchmarkFor, monthDayJst } from "@/services/parcel-geometry";
 import { isoToJstDate, lastSeasonFor, lastSeasonLines, type SeasonDates, type SeasonRecord } from "@/services/last-season";
 import { daysOf, indexByDay, resolveSameDay, resolveSameField } from "@/services/photo-compare";
 import { monthDay } from "@/services/last-season";
-import { statusLabel } from "@/services/status-view";
+import { canSubmitStatus, refRequiredNote, statusLabel } from "@/services/status-view";
 import { handoverCreatedLabel } from "@/services/handover-labels";
 import { memoOfferLabel } from "@/services/memo-offer";
 import { CompareControls, type CompareMode } from "@/components/compare/compare-controls";
@@ -153,6 +153,8 @@ export function FieldClient({ field }: { field: Field }) {
   };
 
   const refSet = useMemo(() => new Set(status.draft.refPhotoIds), [status.draft.refPhotoIds]);
+  // 写真があるのに根拠が 0 枚なら記録できない（Issue #182）。写真が無い畑は根拠なしで残せる
+  const submitCondition = { status: status.draft.status, refCount: status.draft.refPhotoIds.length, selectablePhotoCount: photos.confirmedPhotoIds.size };
 
   return (
     <div className="compare">
@@ -278,7 +280,8 @@ export function FieldClient({ field }: { field: Field }) {
       {open && (
         <StatusActions
           refCount={status.draft.refPhotoIds.length}
-          canSubmit={status.draft.status !== null}
+          canSubmit={canSubmitStatus(submitCondition)}
+          hint={refRequiredNote(submitCondition)}
           submitting={status.submitting}
           message={status.formMessage}
           onSubmit={status.submit}
