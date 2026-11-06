@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import fieldsData from "@/data/fields.json";
 import type { Field } from "@/types";
 import { candidateFieldIds, distanceMeters } from "@/services/candidates";
+import { fieldIdFromHash } from "@/services/field-hash";
 import { sendSummaryLabel, sendingProgressLabel, uploadOutcomeLabel } from "@/services/photo-labels";
 import { buildUploadMeta } from "@/services/upload-request";
 import { loginOutcomeLabel } from "@/services/login-label";
@@ -23,6 +24,7 @@ import {
 } from "@/lib/upload-steps";
 
 const fields: Field[] = fieldsData;
+const fieldIds = fields.map((f) => f.id);
 
 /** unusable は画像として開けない写真（送る数に入れない）。duplicate は同じ写真がもう送られていた（送り済みと同じ扱い） */
 export type ItemStatus = "reading" | "ready" | "sending" | "sent" | "duplicate" | "failed" | "unusable";
@@ -98,7 +100,8 @@ export function useUpload(repository?: IPhotoRepository) {
           previewUrl,
           info: null,
           candidates: [],
-          chosenFieldId: null,
+          // 地図・刈る順番で選んでいた畑（/upload#A-01）を、委員が選んだ番号にしておく。確定は管理者のまま（精査 5 回目 #5）
+          chosenFieldId: fieldIdFromHash(window.location.hash, fieldIds),
           status: "reading",
           message: null,
         };

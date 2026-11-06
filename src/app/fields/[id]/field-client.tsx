@@ -128,6 +128,10 @@ export function FieldClient({ field }: { field: Field }) {
   // 記録できたら入力を閉じる（成功の文は上の判断の行の下に出す）
   const recorded = status.formMessage?.ok === true;
   const open = writing && !recorded;
+  // 判断の入力を開いたら、入力の下の端（理由の「その他」など）まで見える所へ送る（精査 5 回目 #3）
+  useEffect(() => {
+    if (open) document.querySelector(".status-panel")?.scrollIntoView({ block: "nearest" });
+  }, [open]);
   const startWriting = () => {
     status.resetDraft();
     setWriting(true);

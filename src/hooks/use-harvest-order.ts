@@ -10,6 +10,7 @@ import type { Role } from "@/types";
 import { applySaved, moveTo as moveToIn, moveWithin, rankOrUnrank, sameOrder, type OrderDraft } from "@/services/harvest-order";
 import { createHarvestOrderRepository } from "@/repositories/create-harvest-order-repository";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
+import { loginOutcomeLabel } from "@/services/login-label";
 import type { IHarvestOrderRepository, SavedOrder } from "@/repositories/interfaces/i-harvest-order-repository";
 import type { IPhotoRepository } from "@/repositories/interfaces/i-photo-repository";
 
@@ -31,6 +32,12 @@ export function useHarvestOrder(
   const [saved, setSaved] = useState<Keyed<SavedOrder | null> | null>(null);
   const [edited, setEdited] = useState<Keyed<OrderDraft> | null>(null);
   const [role, setRole] = useState<Role | null>(null);
+  /** 役割を読み終えたか（読む前に「委員長として入る」を出さない） */
+  const [roleChecked, setRoleChecked] = useState(false);
+  // 委員長として入る（確定は委員長だけ。入る所が新着にしか無かった。精査 5 回目 #1・#2）
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [loggingIn, setLoggingIn] = useState(false);
+  const [loginMessage, setLoginMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
 
@@ -48,7 +55,9 @@ export function useHarvestOrder(
   useEffect(() => {
     let active = true;
     photoRepo.getRole().then((outcome) => {
-      if (active && outcome.kind === "ok") setRole(outcome.role);
+      if (!active) return;
+      if (outcome.kind === "ok") setRole(outcome.role);
+      setRoleChecked(true);
     });
     return () => {
       active = false;
@@ -109,8 +118,41 @@ export function useHarvestOrder(
     [current, busy, orderRepo, district, season, key],
   );
 
+  const login = useCallback(
+    async (passphrase: string) => {
+      if (loggingIn) return;
+      setLoggingIn(true);
+      try {
+        const outcome = await photoRepo.login(passphrase);
+        if (outcome !== "ok") {
+          setLoginMessage(loginOutcomeLabel(outcome));
+          return;
+        }
+        const next = await photoRepo.getRole();
+        const nextRole = next.kind === "ok" ? next.role : null;
+        setRole(nextRole);
+        if (nextRole === "admin") {
+          setLoginOpen(false);
+          setLoginMessage(null);
+        } else {
+          setLoginMessage("委員長（管理者）の合言葉ではありません");
+        }
+      } finally {
+        setLoggingIn(false);
+      }
+    },
+    [loggingIn, photoRepo],
+  );
+
   return {
     order: current,
+    /** 役割を読み終え、委員長でないとき。確定の代わりに「委員長として入る」を出す */
+    needsChair: roleChecked && role !== "admin",
+    loginOpen,
+    openLogin: () => setLoginOpen(true),
+    login,
+    loggingIn,
+    loginMessage,
     saved: savedOrder,
     loading: base === null || !loadedSaved,
     dirty,

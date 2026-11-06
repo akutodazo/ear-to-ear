@@ -470,7 +470,9 @@ a:focus-visible {
   font-size: 14px;
 }
 
-.leaflet-touch .leaflet-bar a {
+/* 指で触る端末かどうかによらず 44px（精査 5 回目 #3。Leaflet の既定は 30px。leaflet.css が後から読まれても勝つよう、容れ物の class を重ねる） */
+.field-map.leaflet-container .leaflet-bar a,
+.field-map.leaflet-container.leaflet-touch .leaflet-bar a {
   width: 44px;
   height: 44px;
   line-height: 44px;
@@ -1010,7 +1012,8 @@ a:focus-visible {
 }
 
 .reason {
-  min-height: 40px;
+  /* 手袋でも押せる高さ（精査 5 回目 #3。40px から） */
+  min-height: 48px;
   padding: 0 12px;
   border: 1.5px solid var(--border-strong);
   border-radius: 20px;
@@ -1843,7 +1846,8 @@ a:focus-visible {
   flex: none;
   display: grid;
   grid-template-columns: 44px 44px;
-  grid-auto-rows: 36px;
+  /* 手袋でも押せる高さ（精査 5 回目 #3。36px から） */
+  grid-auto-rows: 44px;
   align-content: center;
   padding: 2px 4px 2px 0;
 }
@@ -2136,7 +2140,8 @@ ol.order-group .order-row-dragging {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-height: 32px;
+  /* 精査 5 回目 #3（32px から） */
+  min-height: 44px;
   font-size: 0.9rem;
   font-weight: 700;
   color: var(--brand);
@@ -2178,11 +2183,30 @@ ol.order-group .order-row-dragging {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  /* 精査 5 回目 #3（32px から） */
+  width: 44px;
+  height: 44px;
   margin-left: 2px;
   border: 0;
   background: none;
   color: var(--text-2);
   cursor: pointer;
+}
+
+/* 地図の板の「未確定の写真あり ›」は新着へのリンク（精査 5 回目 #1）。押せる高さ 44px */
+a.dock-unconfirmed {
+  min-height: 44px;
+  color: var(--brand);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* 刈る順番: 委員長でない端末の「確定は委員長の端末で行います」（精査 5 回目 #2） */
+.order-chair {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0;
 }
