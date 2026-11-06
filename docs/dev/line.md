@@ -56,3 +56,14 @@ LINE Developers の Messaging API 設定で:
 - 委員の合言葉があれば、残す・取り消すの繰り返しで月の枠を使い切れる（費用は出ない）
 - `wrangler dev` で試すと、本文の URL が localhost になる（要求の origin から作るため）
 - 公式アカウントがグループから外されても `settings` は消えない（送ると LINE がエラーを返すだけ）
+
+## 6. LINE に 1 枚（URL の共有でサムネイル、#159〜#163）
+L8 の通知（Bot）とは別の道。トークンは使わない。
+1. `/order` で確定した順の「1. 送る準備」→ 絵と番号の並びを `POST /api/shares` に送り、共有の URL（`/api/shares/<id>`）を受け取る（合言葉が要る）
+2. 「2. LINE で送る」→ 端末の共有で文と URL を渡し、LINE を選ぶ
+3. LINE のサーバーが URL を Cookie 無しで取りに来て、og:image（`/api/share-files/<id>`）をサムネイルにする
+
+確かめ方（dev）:
+- `curl -s https://harvest-share-dev.ryokou1119.workers.dev/api/shares/<id> | grep og:` で og:image が https の絶対 URL か
+- LINE はプレビューを URL ごとに覚える。直した後は**新しい共有（新しい id）**で確かめる
+- 60 日で 404。R2 の物は人が R2 のライフサイクル規則（接頭辞 `shares/`）を入れるまで残る
