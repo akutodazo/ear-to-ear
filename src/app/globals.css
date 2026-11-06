@@ -57,8 +57,8 @@ body {
   padding: 0;
   color: var(--text-1);
   background: var(--background-2);
-  /* 日本語のフォントを system-ui より先に置く。iOS のシミュレータ（iOS 27 ベータ）では
-     system-ui・-apple-system が日本語を出せず、文字が「?」の枠になるため（#133） */
+  /* 日本語のフォントを system-ui より先に置く。iOS のシミュレータ（iOS 26.3.1）の Safari では
+     system-ui・-apple-system が日本語を出せず、文字が「?」の枠になるため（#133。実機は未確認） */
   font-family: "Segoe UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Noto Sans JP", system-ui, sans-serif;
   font-size: 18px;
   line-height: 1.6;
