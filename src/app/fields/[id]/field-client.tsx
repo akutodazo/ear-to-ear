@@ -22,6 +22,7 @@ import { daysOf, indexByDay, resolveSameDay, resolveSameField } from "@/services
 import { monthDay } from "@/services/last-season";
 import { statusLabel } from "@/services/status-view";
 import { handoverCreatedLabel } from "@/services/handover-labels";
+import { memoOfferLabel } from "@/services/memo-offer";
 import { CompareControls, type CompareMode } from "@/components/compare/compare-controls";
 import { SplitViewer, type PartnerPicker, type SlotPhoto } from "@/components/compare/split-viewer";
 import { FieldSwitcher } from "@/components/compare/field-switcher";
@@ -132,8 +133,17 @@ export function FieldClient({ field }: { field: Field }) {
   useEffect(() => {
     if (open) document.querySelector(".status-panel")?.scrollIntoView({ block: "nearest" });
   }, [open]);
+  // 記録した直後に、引き継ぎメモを作る誘いを出す（11-06 本人の指示）。押したら下のメモの段へ送って作る
+  const [memoAsked, setMemoAsked] = useState(false);
+  const memoOffer = memoOfferLabel({ recorded, asked: memoAsked, hasMemo: handover.sentences.length > 0 });
+  const createMemoFromRecord = () => {
+    setMemoAsked(true);
+    document.getElementById("handover-memo")?.scrollIntoView({ block: "start", behavior: "smooth" });
+    handover.create();
+  };
   const startWriting = () => {
     status.resetDraft();
+    setMemoAsked(false);
     setWriting(true);
   };
   const stopWriting = () => {
@@ -203,6 +213,12 @@ export function FieldClient({ field }: { field: Field }) {
             )}
           </p>
           {recorded && status.formMessage && <p className="note note-ok">{status.formMessage.text}</p>}
+          {memoOffer && (
+            <button type="button" className="button button-primary button-block memo-offer" onClick={createMemoFromRecord} disabled={handover.creating}>
+              <IconPen />
+              {memoOffer}
+            </button>
+          )}
           {open && (
             <StatusPanel
               draft={status.draft}

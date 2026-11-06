@@ -4,7 +4,7 @@
  * 刈る順番の状態と操作（11-05、3 段目）。下書きか確定か・確定した順と違うか、を印と短い文で。
  * 「保存」は誰でも、「確定する」は委員長だけ（委員には最初から出さない）。確定・記録に戻すは 2 段。props だけで受け取る
  */
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { SavedOrder } from "@/repositories/interfaces/i-harvest-order-repository";
 import { monthDayJst } from "@/services/parcel-geometry";
 
@@ -23,9 +23,11 @@ interface Props {
   onConfirm: () => void;
   onRevert: () => void;
   onReset: () => void;
+  /** 確定した順のすぐ下に出すもの（LINE に送る。11-06 本人の指示: 共有が分かりにくいので確定の横へ） */
+  share?: ReactNode;
 }
 
-export function OrderActions({ saved, dirty, differsFromConfirmed, canConfirm, needsChair = false, onOpenLogin, busy, message, hasRanked, onSave, onConfirm, onRevert, onReset }: Props) {
+export function OrderActions({ saved, dirty, differsFromConfirmed, canConfirm, needsChair = false, onOpenLogin, busy, message, hasRanked, onSave, onConfirm, onRevert, onReset, share }: Props) {
   const [asking, setAsking] = useState<"confirm" | "reset" | null>(null);
   const confirmed = saved?.state === "confirmed";
   const state = confirmed
@@ -44,6 +46,9 @@ export function OrderActions({ saved, dirty, differsFromConfirmed, canConfirm, n
         <span className={confirmed && !differsFromConfirmed ? "rank rank-confirmed rank-small" : "rank rank-small"} aria-hidden="true" />
         {state.text}
       </p>
+      {/* 結果の文は印のすぐ下（LINE の欄の下に押し出さない） */}
+      {message && <p className={message.ok ? "note note-ok" : "note order-error"}>{message.text}</p>}
+      {share}
       {asking === null ? (
         <div className="order-buttons">
           {(dirty || !saved) && (
@@ -92,7 +97,6 @@ export function OrderActions({ saved, dirty, differsFromConfirmed, canConfirm, n
           </button>
         </div>
       )}
-      {message && <p className={message.ok ? "note note-ok" : "note order-error"}>{message.text}</p>}
     </section>
   );
 }
