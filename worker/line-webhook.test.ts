@@ -3,10 +3,12 @@ import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { handleRequest } from "./app";
 import type { DbPort, Deps, LinePort } from "./deps";
-import { LINE_WEBHOOK_MAX_BYTES } from "./line-webhook";
+import { LINE_PHOTO_DAILY_LIMIT } from "@/services/line-image-event";
+import { linePhotoCounterKey } from "@/services/usage-limit";
+import { LINE_PHOTOS_DEADLINE_MS, LINE_WEBHOOK_MAX_BYTES } from "./line-webhook";
 import { createTestDb, type TestDb } from "./test-db";
 import { createTestBucket } from "./test-bucket";
-import { fakeDeps, repeatChunks, streamRequest, tinyJpeg } from "./test-helpers";
+import { fakeDeps, NOW_MS, repeatChunks, streamRequest, tinyJpeg } from "./test-helpers";
 
 /** テスト用のチャネルの鍵（架空） */
 const CHANNEL_KEY = Buffer.alloc(32, 0x02);
@@ -306,6 +308,8 @@ describe("POST /api/line/webhook 画像のメッセージ（#172）", () => {
     /** waitUntil に渡された約束を全部待つ */
     settle: () => Promise<void>;
     pending: () => number;
+    /** getContent を 1 回呼ぶたびに時計を進める幅（ミリ秒） */
+    setStepMs: (ms: number) => void;
   }
 
   function imageSetup(): ImageSetup {
@@ -319,6 +323,8 @@ describe("POST /api/line/webhook 画像のメッセージ（#172）", () => {
     let maxActive = 0;
     let nextId = 0;
     let jpegSeed = 0;
+    let clockMs = NOW_MS;
+    let stepMs = 0;
     const line: LinePort = {
       sign: async (body) => new Uint8Array(createHmac("sha256", CHANNEL_KEY).update(body).digest()),
       push: async () => 200,
@@ -328,6 +334,7 @@ describe("POST /api/line/webhook 画像のメッセージ（#172）", () => {
         maxActive = Math.max(maxActive, active);
         await new Promise((resolve) => setTimeout(resolve, 0));
         active--;
+        clockMs += stepMs;
         jpegSeed++;
         // 毎回違うバイト列（二重にならない）
         return { ok: true, bytes: tinyJpeg({ width: 1200, height: 900, scanBytes: 2 + jpegSeed, apps: [1] }) };
@@ -343,6 +350,7 @@ describe("POST /api/line/webhook 画像のメッセージ（#172）", () => {
       photos: bucket.photos,
       line,
       newId: () => `00000000-0000-4000-8000-${String(++nextId).padStart(12, "0")}`,
+      nowMs: () => clockMs,
       waitUntil: (promise) => {
         waits.push(promise);
       },
@@ -358,6 +366,9 @@ describe("POST /api/line/webhook 画像のメッセージ（#172）", () => {
         await Promise.all(waits);
       },
       pending: () => waits.length,
+      setStepMs: (ms) => {
+        stepMs = ms;
+      },
     };
   }
 
@@ -472,5 +483,41 @@ describe("POST /api/line/webhook 画像のメッセージ（#172）", () => {
     const { deps, dbCalls } = setup();
     await handleRequest(signedRequest(eventsBody([])), deps);
     expect(dbCalls()).toBe(0);
+  });
+
+  it("1 回の webhook の処理は 20 秒で締め切る。過ぎたら次の写真を始めず、残りの枚数を 1 通で知らせる（PR #188 のレビュー 2）", async () => {
+    const s = imageSetup();
+    saveGroup(s.testDb, GROUP_A);
+    // 1 枚の取得に 8 秒かかる: 0 秒・8 秒・16 秒に始めた 3 枚は受け取り、24 秒の 4 枚目からは始めない
+    s.setStepMs(8_000);
+    const events = Array.from({ length: 5 }, (_, i) => imageEvent(GROUP_A, String(500001 + i)));
+    const response = await handleRequest(signedRequest(eventsBody(events)), s.deps);
+    expect(response.status).toBe(200);
+    await s.settle();
+    expect(LINE_PHOTOS_DEADLINE_MS).toBe(20_000);
+    expect(s.contentCalls).toStrictEqual(["500001", "500002", "500003"]);
+    expect(photoCount(s.testDb)).toBe(3);
+    expect(s.replies).toStrictEqual(["reply-500001", "reply-500002", "reply-500003", "reply-500004"]);
+    expect(s.texts.at(-1)).toContain("2 枚");
+    expect(s.texts.at(-1)).toContain("https://example.test/upload");
+  });
+
+  it("1 日の上限に当たったら、その回の残りの写真は取りに行かず、返事は上限の 1 通だけ（PR #188 のレビュー 5）", async () => {
+    const s = imageSetup();
+    saveGroup(s.testDb, GROUP_A);
+    s.testDb.raw
+      .prepare("INSERT INTO usage_counters (key, count, expires_at) VALUES (?, ?, ?)")
+      .run(linePhotoCounterKey(NOW_MS), LINE_PHOTO_DAILY_LIMIT, "2099-01-01T00:00:00.000Z");
+    const events = Array.from({ length: 4 }, (_, i) => imageEvent(GROUP_A, String(600001 + i)));
+    await handleRequest(signedRequest(eventsBody(events)), s.deps);
+    await s.settle();
+    expect(s.contentCalls).toStrictEqual([]);
+    expect(s.replies).toStrictEqual(["reply-600001"]);
+    expect(s.texts[0]).toContain(`${LINE_PHOTO_DAILY_LIMIT} 枚`);
+    // 残りの 3 枚は数えない
+    const counted = s.testDb.raw
+      .prepare("SELECT count FROM usage_counters WHERE key = ?")
+      .get(linePhotoCounterKey(NOW_MS)) as { count: number };
+    expect(counted.count).toBe(LINE_PHOTO_DAILY_LIMIT);
   });
 });

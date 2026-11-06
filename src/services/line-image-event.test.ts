@@ -6,6 +6,7 @@ import {
   LINE_PHOTOS_PER_WEBHOOK,
   linePhotoOverflowReply,
   linePhotoReply,
+  linePhotoTimeoutReply,
   type LineImageMessage,
   type LinePhotoOutcome,
 } from "./line-image-event";
@@ -229,5 +230,15 @@ describe("1 回の webhook で受け取る枚数（#172、レビューの指摘�
 describe("LINE_PHOTO_DAILY_LIMIT（#172）", () => {
   it("1 日 30 枚（docs/decisions.md 11-06）", () => {
     expect(LINE_PHOTO_DAILY_LIMIT).toBe(30);
+  });
+});
+
+describe("linePhotoTimeoutReply（PR #188 のレビュー 2）", () => {
+  it("時間内に受け取れなかった枚数と Web の「写真を送る」の URL", () => {
+    const text = linePhotoTimeoutReply(ORIGIN, 2);
+    expect(text).toContain("2 枚");
+    expect(text).toContain("受け取っていません");
+    expect(text).toContain(`${ORIGIN}/upload`);
+    expect(text.length).toBeLessThan(300);
   });
 });
