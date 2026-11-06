@@ -138,6 +138,12 @@ export function linePhotoOverflowReply(origin: string, skipped: number): string 
   return `一度に受け取れる写真は ${LINE_PHOTOS_PER_WEBHOOK} 枚までです。残りの ${skipped} 枚は受け取っていません。サイトの「写真を送る」から送ってください。\n${origin}/upload`;
 }
 
+/** 1 回の webhook の締め切りまでに始められず、受け取らなかった枚数への返事（1 通だけ、PR #188 のレビュー 2） */
+export function linePhotoTimeoutReply(origin: string, skipped: number): string {
+  return `時間内に受け取れなかったので、残りの ${skipped} 枚は受け取っていません。サイトの「写真を送る」から送ってください。
+${origin}/upload`;
+}
+
 /** 受け取れなかったときの文。受け取れたとき（saved・duplicate）は null */
 function failureReply(outcome: LinePhotoOutcome, origin: string): string | null {
   const upload = `${origin}/upload`;
