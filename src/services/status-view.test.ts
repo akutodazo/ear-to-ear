@@ -349,6 +349,10 @@ describe("canSubmitStatus（記録するを押せるか）", () => {
     expect(canSubmitStatus({ status: "ready", refCount: 0, selectablePhotoCount: 0 })).toBe(true);
   });
 
+  it("選べる写真が 0 枚と出ていても、根拠を選んでいれば押せる（写真の一覧を読み直す前など）", () => {
+    expect(canSubmitStatus({ status: "done", refCount: 1, selectablePhotoCount: 0 })).toBe(true);
+  });
+
   it("写真が無い畑でも、判断を選んでいなければ押せない", () => {
     expect(canSubmitStatus({ status: null, refCount: 0, selectablePhotoCount: 0 })).toBe(false);
   });
@@ -357,6 +361,9 @@ describe("canSubmitStatus（記録するを押せるか）", () => {
 describe("refRequiredNote（押せない理由）", () => {
   it("判断を選んだのに根拠が無く、選べる写真があるときだけ、理由を出す", () => {
     expect(refRequiredNote({ status: "ready", refCount: 0, selectablePhotoCount: 3 })).toBe(
+      "根拠の写真を 1 枚以上、下の写真から選んでください",
+    );
+    expect(refRequiredNote({ status: "done", refCount: 0, selectablePhotoCount: 1 })).toBe(
       "根拠の写真を 1 枚以上、下の写真から選んでください",
     );
   });
