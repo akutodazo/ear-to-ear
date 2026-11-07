@@ -2277,6 +2277,47 @@ a.dock-unconfirmed {
   color: var(--text-on-brand);
 }
 
+/* 札の人のアイコンと権限の飾り（#218）。委員長＝濃い緑の地に金の王冠と金の輪、委員＝淡い緑の地にくわ、一般＝飾りなし */
+.account-chip {
+  gap: 6px;
+  transition: transform var(--duration-fast) var(--ease-out), background-color var(--duration-base) var(--ease-out);
+}
+
+.account-chip:active {
+  transform: scale(0.96);
+}
+
+.account-chip .account-avatar {
+  flex: none;
+  width: 22px;
+  height: 22px;
+}
+
+.account-chip-member {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.account-chip-chair {
+  box-shadow: 0 0 0 2px var(--wheat);
+  animation: rank-pop var(--duration-base) var(--ease-pop);
+}
+
+.account-chip-loading {
+  opacity: 0.6;
+}
+
+.account-avatar-crown-shape {
+  fill: var(--wheat);
+  stroke: var(--wheat);
+  stroke-width: 1.5;
+}
+
+.account-avatar-blade-shape {
+  fill: currentColor;
+  stroke-width: 1.5;
+}
 .account-chip:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
