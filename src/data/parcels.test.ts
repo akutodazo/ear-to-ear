@@ -5,7 +5,8 @@ import { containsPoint, polygonBounds, polygonsOverlap } from "@/services/parcel
 import fieldsData from "./fields.json";
 import parcelsData from "./parcels.json";
 
-// 架空の 12 区画（11-04 夜の本人決定）。圃場の一覧と 1 対 1 で、中心を含み、互いに重ならず、範囲（P15）の中
+// 12 区画。形は架空の範囲の中に限り、空中写真（地理院タイル）の畑の境目からなぞった（11-07 本人決定、#199。番号・名前・判断は架空）。
+// 圃場の一覧と 1 対 1 で、中心を含み、互いに重ならず、範囲（P15）の中
 const fields: Field[] = fieldsData;
 // JSON の型は number[][] なので、[lat, lng] の組に読み替える（中身は下のテストで確かめる）
 const parcels: Parcel[] = parcelsData.map((p) => ({ fieldId: p.fieldId, polygon: p.polygon.map(([lat, lng]) => [lat, lng] as [number, number]) }));
@@ -25,7 +26,7 @@ function areaHa(polygon: readonly (readonly [number, number])[]): number {
   return Math.abs(sum) / 2 / 10_000;
 }
 
-describe("架空の区画（src/data/parcels.json）", () => {
+describe("区画（src/data/parcels.json）", () => {
   it("圃場の一覧と同じ数・同じ順で、番号が 1 対 1", () => {
     expect(parcels.map((p) => p.fieldId)).toEqual(fields.map((f) => f.id));
   });
@@ -71,23 +72,20 @@ describe("架空の区画（src/data/parcels.json）", () => {
     expect(kinds.size).toBeGreaterThanOrEqual(4);
   });
 
-  it("帯の形（長い辺が短い辺の 2.5 倍以上。空知の殖民区画のような細長い畑）", () => {
+  it("畑の形（隣り合う 2 辺の比は 1〜4。空中写真の畑の境目に沿った四角）", () => {
+    const side = (a: readonly [number, number], c: readonly [number, number]) => Math.hypot((a[0] - c[0]) * M_PER_DEG_LAT, (a[1] - c[1]) * M_PER_DEG_LNG);
     for (const p of parcels) {
-      const b = polygonBounds(p.polygon);
-      // 傾いた帯なので bounds では測れない。隣り合う 2 辺の長さ（m）で見る
       const [p0, p1, p2] = p.polygon;
-      const side = (a: readonly [number, number], c: readonly [number, number]) =>
-        Math.hypot((a[0] - c[0]) * M_PER_DEG_LAT, (a[1] - c[1]) * M_PER_DEG_LNG);
-      const s1 = side(p0, p1);
-      const s2 = side(p1, p2);
-      expect(Math.max(s1, s2) / Math.min(s1, s2), `${p.fieldId} ${JSON.stringify(b)}`).toBeGreaterThanOrEqual(2.5);
+      const ratio = Math.max(side(p0, p1), side(p1, p2)) / Math.min(side(p0, p1), side(p1, p2));
+      expect(ratio, `${p.fieldId} ${JSON.stringify(polygonBounds(p.polygon))}`).toBeGreaterThanOrEqual(1);
+      expect(ratio, p.fieldId).toBeLessThanOrEqual(4);
     }
   });
 
-  it("面積は 3〜8 ha（小麦の畑らしい大きさ。実在の畑の境界はなぞらない）", () => {
+  it("面積は 0.5〜8 ha（空中写真に写る畑の大きさ）", () => {
     for (const p of parcels) {
       const ha = areaHa(p.polygon);
-      expect(ha, p.fieldId).toBeGreaterThanOrEqual(3);
+      expect(ha, p.fieldId).toBeGreaterThanOrEqual(0.5);
       expect(ha, p.fieldId).toBeLessThanOrEqual(8);
     }
   });
