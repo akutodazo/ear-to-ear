@@ -1,18 +1,17 @@
 /**
- * 下の帯（地図／詳細／比較／順番、#194）の行き先と、アカウント札の言葉。純粋関数。
- * 4 つは同じ畑を引き継ぐ（西田 PM 11-07「4 つ。それぞれがメインになるように」）
+ * 下の帯（地図／比較／順番、#194・#216）の行き先と、アカウント札の言葉。純粋関数。
+ * 3 つは同じ畑を引き継ぐ。詳細は帯から外し、地図の板・順番のカード・比較から入る（みっきぃ 11-07、#216）
  */
 import type { Role } from "@/types";
 
 export interface AppNavHrefs {
   map: string;
-  detail: string;
   compare: string;
   order: string;
 }
 
 /**
- * fieldId は詳細・比較に使う畑（選んでいなければ目安の畑など、呼ぶ側が決める）。
+ * fieldId は比較に使う畑（選んでいなければ目安の畑など、呼ぶ側が決める）。
  * selectedId は今選んでいる畑（地図と順番はこれがあるときだけ #番号 を付ける）
  */
 export function appNavHrefs(fieldId: string, selectedId: string | null): AppNavHrefs {
@@ -20,10 +19,19 @@ export function appNavHrefs(fieldId: string, selectedId: string | null): AppNavH
   const hash = selectedId === null ? "" : `#${encodeURIComponent(selectedId)}`;
   return {
     map: `/${hash}`,
-    detail: `/fields/${id}`,
     compare: `/fields/${id}#compare`,
     order: `/order${hash}`,
   };
+}
+
+/** 畑の詳細の行き先（地図の板・順番のカード・比較の「詳細」、#216） */
+export function fieldDetailHref(fieldId: string): string {
+  return `/fields/${encodeURIComponent(fieldId)}`;
+}
+
+/** 詳細・比較の画面で、帯のどれを選んで見せるか。詳細は帯に無いので null */
+export function navCurrent(view: "detail" | "compare"): "compare" | null {
+  return view === "compare" ? "compare" : null;
 }
 
 export interface AccountView {
