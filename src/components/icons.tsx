@@ -145,3 +145,13 @@ export function IconShare(props: Props) {
     </Svg>
   );
 }
+
+/** 詳細（写真 1 枚と下の 2 行。畑の詳細、#194） */
+export function IconDetail(props: Props) {
+  return (
+    <Svg {...props}>
+      <rect x="4" y="3" width="16" height="11" rx="2" />
+      <path d="M4 18h16M4 21h10" />
+    </Svg>
+  );
+}
