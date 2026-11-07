@@ -2,6 +2,7 @@
  * POST /api/fields/:id/handover（引き継ぎメモを作り直して保存する、L6、docs/spec.md §6、T31 #111）。admin だけ。
  * 判定は Service（handover-document・handover-request・handover-note・usage-limit）、外の世界は deps の db・claude・nowMs だけ。
  * 順: 一覧に無い圃場 404 → Claude が止まっている 503 → 記録を読む → 0 件 422 → 回数 429 → Claude → 502 → 保存して 200
+ * 502 は理由と Claude の状態コードを返し、ログにも同じ 2 つだけを 1 行で残す（#192）
  */
 import { CLAUDE_DAILY_LIMIT, CLAUDE_MODEL } from "@/config";
 import { buildHandoverRecords } from "@/services/handover-document";
@@ -71,7 +72,12 @@ export const postFieldHandover: Handler = async (_request, { params, deps }) => 
 
   const reply = await callClaude(claude, buildHandoverRequest(fieldId, season, records));
   const read = readHandoverReply(reply.status, reply.body, records.length);
-  if (!read.ok) return errorResponse(502, "bad_gateway", { reason: read.reason });
+  if (!read.ok) {
+    // 返事の本文・例外の文は出さない（理由と状態コードだけ）
+    const upstreamStatus = reply.status;
+    console.error(`handover bad_gateway reason=${read.reason} upstreamStatus=${upstreamStatus}`);
+    return json(502, { error: "bad_gateway", reason: read.reason, upstreamStatus });
+  }
 
   const createdAt = new Date(nowMs).toISOString();
   await deps.db
