@@ -96,6 +96,16 @@ export function IconCheck(props: Props) {
   );
 }
 
+/** 読み直す（回る矢印、#215） */
+export function IconRefresh(props: Props) {
+  return (
+    <Svg {...props}>
+      <path d="M20 12a8 8 0 11-2.34-5.66" />
+      <path d="M20 4v4.5h-4.5" />
+    </Svg>
+  );
+}
+
 /** 判断を残す（鉛筆） */
 export function IconPen(props: Props) {
   return (

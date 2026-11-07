@@ -384,6 +384,60 @@ a:focus-visible {
   display: inline-block;
 }
 
+/* 新着の「更新」（#215）。押すと矢印が回り、読み終わると時刻が 1 回弾む。動きを減らす設定では回さず、矢印を薄くするだけ */
+.refresh-button {
+  gap: var(--space-8);
+  /* 「更新」と「更新中…」で幅が変わって隣の時刻が跳ねないよう、広い方に合わせる */
+  min-width: 9.5em;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.refresh-button:active {
+  transform: scale(0.96);
+}
+
+.refresh-button:disabled {
+  opacity: 1;
+}
+
+.refresh-icon {
+  width: 20px;
+  height: 20px;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.refresh-busy .refresh-icon {
+  animation: refresh-spin 700ms linear infinite;
+}
+
+@keyframes refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.refresh-time {
+  display: inline-block;
+  animation: refresh-time-in 320ms var(--ease-pop) both;
+}
+
+@keyframes refresh-time-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.92);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .refresh-busy .refresh-icon {
+    animation: none;
+    opacity: 0.45;
+  }
+
+  .refresh-time {
+    animation: none;
+  }
+}
 /* 圃場ページ: 撮影日の見出しと、写真の並び（スマホの幅で 3 枚） */
 .day-heading {
   margin: 0;
