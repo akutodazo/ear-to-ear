@@ -155,3 +155,13 @@ export function IconDetail(props: Props) {
     </Svg>
   );
 }
+
+/** つながり（URL の行、#219） */
+export function IconLink(props: Props) {
+  return (
+    <Svg {...props}>
+      <path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1" />
+      <path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1" />
+    </Svg>
+  );
+}

@@ -32,6 +32,8 @@ import { useDemoToday, useLastSeasonMemo } from "@/hooks/use-last-season-memo";
 import { useHashIs } from "@/hooks/use-hash-is";
 import { StatusPanel } from "@/components/compare/status-panel";
 import { StatusActions } from "@/components/compare/status-actions";
+import { RecordConfirmSheet } from "@/components/compare/record-confirm-sheet";
+import { recordConfirmView } from "@/services/record-confirm-view";
 import { StatusHistory } from "@/components/compare/status-history";
 import { HandoverMemo } from "@/components/field/handover-memo";
 import { FieldHero } from "@/components/field/field-hero";
@@ -193,6 +195,9 @@ export function FieldClient({ field }: { field: Field }) {
   const refSet = useMemo(() => new Set(status.draft.refPhotoIds), [status.draft.refPhotoIds]);
   const submitCondition = { status: status.draft.status, refCount: status.draft.refPhotoIds.length, selectablePhotoCount: photos.confirmedPhotoIds.size };
   const hrefs = appNavHrefs(field.id, field.id);
+  // 「記録する」を押した後の確かめるシート（LINE に届く内容、#219）
+  const confirmView =
+    status.confirmingAt === null ? null : recordConfirmView({ fieldId: field.id, draft: status.draft, nowMs: status.confirmingAt });
 
   return (
     <div className={view === "compare" ? "compare compare-full" : "compare detail"}>
@@ -272,7 +277,7 @@ export function FieldClient({ field }: { field: Field }) {
               onChooseStatus={status.chooseStatus}
               onToggleReason={status.toggleReason}
               onNote={status.setNote}
-              onSubmit={status.submit}
+              onSubmit={status.requestSubmit}
               needsPassphrase={status.needsPassphrase}
               loginMessage={status.loginMessage}
               loggingIn={status.loggingIn}
@@ -331,6 +336,15 @@ export function FieldClient({ field }: { field: Field }) {
           <p className="detail-fictional">番号・判断・昨年の記録・メモは架空のもの</p>
         </div>
       )}
+      {confirmView && (
+        <RecordConfirmSheet
+          view={confirmView}
+          fieldLabel={`${field.id} ${field.name}`}
+          submitting={status.submitting}
+          onConfirm={status.submit}
+          onCancel={status.cancelConfirm}
+        />
+      )}
       {open && view === "detail" ? (
         <StatusActions
           refCount={status.draft.refPhotoIds.length}
@@ -338,7 +352,7 @@ export function FieldClient({ field }: { field: Field }) {
           hint={refRequiredNote(submitCondition)}
           submitting={status.submitting}
           message={status.formMessage}
-          onSubmit={status.submit}
+          onSubmit={status.requestSubmit}
           onCancel={stopWriting}
         />
       ) : (
