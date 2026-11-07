@@ -1,5 +1,6 @@
 // #141（L8、K15、docs/spec.md §9 の 14）: 判断を残した・取り消したときに LINE に 1 通。
 // 送信が失敗しても応答は変わらない。月の送信数は LINE_STOP_AT で止める（1 文で数える）
+// URL は判断ごとの OGP ページ（サムネイル付き、#220）。取り消しは ?revoked=1 で別の URL
 import { describe, expect, it } from "vitest";
 import { LINE_STOP_AT } from "@/config";
 import { lineNoticeText } from "@/services/line-notice";
@@ -102,7 +103,7 @@ function setup(overrides: Partial<Deps> = {}): { deps: Deps; testDb: TestDb } {
 }
 
 const recordedText = (event: StatusEvent = EVENT) =>
-  lineNoticeText(event, "recorded", `${ORIGIN}/fields/${event.fieldId}`);
+  lineNoticeText(event, "recorded", `${ORIGIN}/api/judgments/${event.id}`);
 
 describe("notifyLine（判断の後の LINE の 1 通、#141）", () => {
   it("グループ ID があれば、そのグループに本文を 1 通送り、月の回数を 1 にする", async () => {
@@ -123,7 +124,7 @@ describe("notifyLine（判断の後の LINE の 1 通、#141）", () => {
     const revoked = { ...EVENT, revokedAt: NOW_ISO };
     await notifyLine(deps, revoked, "revoked", ORIGIN);
     expect(pushed).toStrictEqual([
-      { groupId: GROUP, text: lineNoticeText(revoked, "revoked", `${ORIGIN}/fields/A-03`) },
+      { groupId: GROUP, text: lineNoticeText(revoked, "revoked", `${ORIGIN}/api/judgments/7?revoked=1`) },
     ]);
   });
 
@@ -305,7 +306,7 @@ describe("DELETE /api/status-events/:id の後に LINE に 1 通（#141）", () 
     expect(wait.promises).toHaveLength(1);
     await wait.settle();
     expect(pushed).toStrictEqual([
-      { groupId: GROUP, text: lineNoticeText(body, "revoked", `${ORIGIN}/fields/A-03`) },
+      { groupId: GROUP, text: lineNoticeText(body, "revoked", `${ORIGIN}/api/judgments/${body.id}?revoked=1`) },
     ]);
     expect(pushed[0].text).not.toContain(NOTE);
   });
