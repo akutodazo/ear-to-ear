@@ -20,6 +20,8 @@ import { MapLegend } from "@/components/map/map-legend";
 import { AppNav } from "@/components/app-nav";
 import { AccountChip } from "@/components/account-chip";
 import { useRole } from "@/hooks/use-role";
+import { useLegendOpen } from "@/hooks/use-legend-open";
+import { uploadHref } from "@/services/map-view";
 import { appNavHrefs } from "@/services/app-nav-view";
 import { IconCamera } from "@/components/icons";
 
@@ -33,6 +35,7 @@ export function HomeClient() {
   // デモで今日を差し替えているときの表示（精査 4 回目 #5）
   const demoDate = useDemoToday();
   const account = useRole();
+  const [legendOpen, setLegendOpen] = useLegendOpen();
   const map = useFieldMap();
   const { selectedId, selected, select } = useFieldSelection();
   const latest = useLatestPhoto(selectedId);
@@ -116,10 +119,7 @@ export function HomeClient() {
             ))}
           </select>
         </label>
-        <Link className="button button-small" href={selectedId ? `/upload#${selectedId}` : "/upload"}>
-          <IconCamera />
-          写真を送る
-        </Link>
+
         <AccountChip role={account.role} busy={account.busy} message={account.message} onSignIn={account.signIn} />
       </header>
       {map.message && (
@@ -149,7 +149,13 @@ export function HomeClient() {
             onClose={() => choose(null)}
           />
         ) : (
-          <MapLegend />
+          <>
+            <MapLegend open={legendOpen} onOpen={setLegendOpen} />
+            <Link className="map-fab" href={uploadHref(selectedId)} aria-label="写真を送る">
+              <IconCamera />
+              送る
+            </Link>
+          </>
         )}
       </div>
       <AppNav current="map" hrefs={navHrefs} demoDate={demoDate} />

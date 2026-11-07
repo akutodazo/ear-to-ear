@@ -3353,3 +3353,114 @@ a.dock-unconfirmed {
   max-height: 85dvh;
   overflow-y: auto;
 }
+
+/* ===== 地図の整理（#200）: 凡例は開閉、写真を送るは地図の丸いボタン ===== */
+.legend-toggle {
+  position: absolute;
+  left: var(--space-12);
+  bottom: var(--space-12);
+  z-index: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 22px;
+  background: rgba(255, 254, 249, 0.92);
+  color: var(--text-1);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(21, 41, 29, 0.18);
+  cursor: pointer;
+}
+
+.legend-open {
+  left: var(--space-12);
+  bottom: var(--space-12);
+  max-width: calc(100% - 24px - 96px);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-8);
+  padding: 8px 4px 8px 12px;
+  border-radius: var(--radius-16);
+  font-size: var(--font-size-xs);
+  box-shadow: 0 2px 8px rgba(21, 41, 29, 0.18);
+}
+
+.legend-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0;
+  padding: 4px 0 0;
+  list-style: none;
+}
+
+.legend-list li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.legend-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.legend-close .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.map-fab {
+  position: absolute;
+  right: var(--space-12);
+  bottom: var(--space-12);
+  z-index: 500;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--brand);
+  color: var(--text-on-brand);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 6px 16px rgba(21, 41, 29, 0.32);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.map-fab:active {
+  transform: scale(0.96);
+}
+
+.map-fab:focus-visible,
+.legend-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* 地図の上の帯: 地区を左に寄せる（名前と写真を送るを消したので） */
+.home .topbar-district {
+  justify-content: flex-start;
+}
+
+.legend-open {
+  flex-wrap: nowrap;
+}
+
