@@ -357,7 +357,9 @@ a:focus-visible {
   color: var(--text-2);
 }
 
+/* 押している間は ✓ を付けて枠を太く・濃くする（色だけに頼らない。#190） */
 .button-toggle-on {
+  border-width: 3px;
   border-color: var(--brand);
   background: var(--brand-soft);
   color: var(--brand);
@@ -448,7 +450,9 @@ a:focus-visible {
   font-weight: 700;
 }
 
+/* .button-small の flex-start は縦に並べる所のため。上の帯では上下の真ん中に（#190） */
 .topbar .button-small {
+  align-self: center;
   min-height: 44px;
   padding: 0 var(--space-8);
   border-color: var(--brand);

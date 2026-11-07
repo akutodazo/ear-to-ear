@@ -7,7 +7,8 @@
 import { CLAUDE_TIMEOUT_MS } from "@/config";
 import fields from "@/data/fields.json";
 import type { Role } from "@/types";
-import type { BucketPort, ClaudePort, DbPort, Deps, LinePort } from "./deps";
+import { declaredTooLarge, readBodyLimited } from "./body";
+import type { BucketPort, ClaudePort, DbPort, Deps, LineContent, LinePort } from "./deps";
 
 export interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> };
@@ -66,7 +67,12 @@ function createClaude(env: Env): ClaudePort | null {
 }
 
 const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
+const LINE_REPLY_URL = "https://api.line.me/v2/bot/message/reply";
+/** 画像の取得は api-data の側（L9、#172） */
+const LINE_CONTENT_URL = "https://api-data.line.me/v2/bot/message";
 const LINE_TIMEOUT_MS = 10_000;
+/** URL のパスに入れる message ID は数字だけ（line-image-event と同じ形） */
+const LINE_MESSAGE_ID = /^\d{1,32}$/;
 
 /**
  * LINE の口（L8、#139）。SDK は使わず fetch で呼ぶ（Claude と同じ形、11-05 先輩決定）。
@@ -97,6 +103,41 @@ function createLine(env: Env): LinePort | null {
         return response.status;
       } catch {
         return 0;
+      }
+    },
+    reply: async (replyToken, text) => {
+      try {
+        const response = await fetch(LINE_REPLY_URL, {
+          method: "POST",
+          headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+          body: JSON.stringify({ replyToken, messages: [{ type: "text", text }] }),
+          signal: AbortSignal.timeout(LINE_TIMEOUT_MS),
+        });
+        return response.status;
+      } catch {
+        return 0;
+      }
+    },
+    getContent: async (messageId, maxBytes): Promise<LineContent> => {
+      if (!LINE_MESSAGE_ID.test(messageId)) return { ok: false, reason: "failed" };
+      try {
+        const response = await fetch(`${LINE_CONTENT_URL}/${messageId}/content`, {
+          method: "GET",
+          headers: { authorization: `Bearer ${token}` },
+          signal: AbortSignal.timeout(LINE_TIMEOUT_MS),
+        });
+        if (response.status !== 200) {
+          await response.body?.cancel();
+          return { ok: false, reason: "failed" };
+        }
+        if (declaredTooLarge(response.headers.get("content-length"), maxBytes)) {
+          await response.body?.cancel();
+          return { ok: false, reason: "too_large" };
+        }
+        const bytes = await readBodyLimited(response, maxBytes);
+        return bytes === null ? { ok: false, reason: "too_large" } : { ok: true, bytes };
+      } catch {
+        return { ok: false, reason: "failed" };
       }
     },
   };
@@ -171,6 +212,10 @@ export function createDeps(env: Env, context?: WaitContext): Deps {
     },
     nowMs: () => Date.now(),
     newId: () => crypto.randomUUID(),
+    sha256Hex: async (bytes) => {
+      const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(bytes)));
+      return Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
+    },
     knownFieldIds,
     claude: createClaude(env),
     line: createLine(env),

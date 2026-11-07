@@ -45,6 +45,12 @@ function fakeLine(reply: () => Promise<number> = async () => 200): { line: LineP
       pushed.push({ groupId, text });
       return reply();
     },
+    getContent: async () => {
+      throw new Error("getContent は使わない");
+    },
+    reply: async () => {
+      throw new Error("reply は使わない（通知は push）");
+    },
   };
   return { line, pushed };
 }

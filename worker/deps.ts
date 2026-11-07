@@ -41,11 +41,19 @@ export type ClaudePort = (requestBody: unknown) => Promise<ClaudeReply>;
  * LINE の Messaging API の口（L8、#139）。トークン・シークレット・10 秒の打ち切りは env.ts が持つ。再試行しない。
  * sign: チャネルシークレットを鍵にした本文（生のバイト列）の HMAC-SHA256。webhook の署名の検証に使う
  * push: グループに文字のメッセージを 1 通送り、状態コードを返す。通信の失敗・時間切れは 0
+ * getContent: 送られた画像のバイト列を取る（L9、#172）。maxBytes を超えたら読むのをやめて too_large。
+ *   200 以外・通信の失敗・時間切れ・数字でない message ID は failed。例外を出さない
+ * reply: replyToken に文字のメッセージを 1 通返し、状態コードを返す（L9。月の上限に数えない）。通信の失敗は 0
  */
 export interface LinePort {
   sign: (body: Uint8Array) => Promise<Uint8Array>;
   push: (groupId: string, text: string) => Promise<number>;
+  getContent: (messageId: string, maxBytes: number) => Promise<LineContent>;
+  reply: (replyToken: string, text: string) => Promise<number>;
 }
+
+/** LINE から取った画像（L9、#172） */
+export type LineContent = { ok: true; bytes: Uint8Array } | { ok: false; reason: "too_large" | "failed" };
 
 export interface Deps {
   /** D1（バインディング名 DB） */
@@ -68,6 +76,8 @@ export interface Deps {
   nowMs: () => number;
   /** UUID v4 */
   newId: () => string;
+  /** バイト列の SHA-256 を小文字の 16 進 64 文字で（LINE から取った写真の二重の判定、K7・#172） */
+  sha256Hex: (bytes: Uint8Array) => Promise<string>;
   /** 架空の圃場の番号の一覧（src/data/fields.json）。meta の候補・選んだ番号を確かめる */
   knownFieldIds: ReadonlySet<string>;
   /** Claude を呼ぶ口（L6、T31）。CLAUDE_ENABLED が "false"、または CLAUDE_API_KEY が無いなら null（呼ばない） */

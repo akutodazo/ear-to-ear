@@ -87,6 +87,15 @@ export function IconClose(props: Props) {
   );
 }
 
+/** 押している（切り替えが on。#190） */
+export function IconCheck(props: Props) {
+  return (
+    <Svg {...props}>
+      <path d="M5 12.5l4.5 4.5L19 7" />
+    </Svg>
+  );
+}
+
 /** 判断を残す（鉛筆） */
 export function IconPen(props: Props) {
   return (
