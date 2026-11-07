@@ -8,6 +8,7 @@ import { errorResponse, json } from "./http";
 import { postFieldStatus } from "./field-status";
 import { getFieldsSummary } from "./fields";
 import { getFieldHandover } from "./handover";
+import { getJudgmentPage } from "./judgment-page";
 import { postFieldHandover } from "./handover-post";
 import { postLineWebhook } from "./line-webhook";
 import { getPhotoFile } from "./photo-files";
@@ -58,4 +59,6 @@ export const routes: readonly Route[] = [
   // LINE のサーバーが Cookie 無しで読む（#160）
   { method: "GET", pattern: "/api/shares/:id", auth: "none", handler: getSharePage },
   { method: "GET", pattern: "/api/share-files/:id", auth: "none", handler: getShareFile },
+  // 判断ごとの OGP ページ。LINE の判断の通知のサムネイル（#220）
+  { method: "GET", pattern: "/api/judgments/:id", auth: "none", handler: getJudgmentPage },
 ];
