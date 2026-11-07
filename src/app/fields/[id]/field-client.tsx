@@ -46,6 +46,7 @@ import { useRole } from "@/hooks/use-role";
 import { appNavHrefs, navCurrent } from "@/services/app-nav-view";
 import { sameDayEmptyNote } from "@/services/compare-note";
 import { IconDetail, IconPen, IconPhoto } from "@/components/icons";
+import { PhrasedText } from "@/components/upload/phrased-text";
 
 const fields: Field[] = fieldsData;
 const benchmarks: Benchmark[] = benchmarksData;
@@ -275,7 +276,9 @@ export function FieldClient({ field }: { field: Field }) {
           {memoOffer && (
             <button type="button" className="button button-small memo-offer" onClick={createMemoFromRecord} disabled={handover.creating}>
               <IconPen />
-              {memoOffer}
+              <span>
+                <PhrasedText keepParens text={memoOffer} />
+              </span>
             </button>
           )}
           {open && (
