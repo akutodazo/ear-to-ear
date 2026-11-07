@@ -5,7 +5,6 @@
  * 記録からの下書き（harvest-order）→ 人が並べ替え → 保存・確定（useHarvestOrder）。地図の丸は並べ替えた瞬間に付け替わる。
  * 一覧の行を押すと地図で示し、地図の畑を押すと一覧の行を示す（useFieldSelection の #A-03 を共有。AGENTS.md §4）
  */
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import fieldsData from "@/data/fields.json";
 import parcelsData from "@/data/parcels.json";
@@ -31,9 +30,11 @@ import { OrderActions } from "@/components/order/order-actions";
 import { NextToShoot } from "@/components/order/next-to-shoot";
 import { LineShare } from "@/components/order/line-share";
 import { AppNav } from "@/components/app-nav";
+import { AccountChip } from "@/components/account-chip";
+import { useRole } from "@/hooks/use-role";
+import { appNavHrefs } from "@/services/app-nav-view";
 import { PassphraseForm } from "@/components/upload/passphrase-form";
 import { useDemoToday } from "@/hooks/use-last-season-memo";
-import { IconMap } from "@/components/icons";
 
 const fields: Field[] = fieldsData;
 const parcels: Parcel[] = parcelsData.map((p) => ({ fieldId: p.fieldId, polygon: p.polygon.map(([lat, lng]) => [lat, lng] as [number, number]) }));
@@ -48,6 +49,7 @@ const MAP_PADDING = { top: 40, bottom: 16 };
 export function OrderClient() {
   // デモで今日を差し替えているときの表示（精査 4 回目 #5）
   const demoDate = useDemoToday();
+  const account = useRole();
   const map = useFieldMap();
   const { selectedId, selected, select: selectField } = useFieldSelection();
   const [districtChoice, setDistrictChoice] = useState<string | null>(null);
@@ -151,10 +153,6 @@ export function OrderClient() {
   return (
     <div className="order">
       <header className="topbar">
-        <Link href={selectedId ? `/#${selectedId}` : "/"} className="topbar-back">
-          <IconMap />
-          地図
-        </Link>
         <label className="topbar-district">
           <span className="sr-only">地区</span>
           <select
@@ -173,10 +171,10 @@ export function OrderClient() {
             ))}
           </select>
         </label>
+        <AccountChip role={account.role} busy={account.busy} message={account.message} onSignIn={account.signIn} />
       </header>
       <div className="order-map">
         <FieldMap parcels={items} fitItems={items} fitKey={`order:${district}`} onSelect={select} keepVisiblePadding={MAP_PADDING} hideNames />
-        <span className="map-fictional-note">区画の形・番号・判断・順番は架空のもの</span>
       </div>
       <main className="order-body">
         {map.message && <p className="note">判断を読み込めませんでした。地図の「もう一度読み込む」から読み直してください</p>}
@@ -190,7 +188,6 @@ export function OrderClient() {
               differsFromConfirmed={order.differsFromConfirmed}
               canConfirm={order.canConfirm}
               needsChair={order.needsChair}
-              onOpenLogin={order.openLogin}
               busy={order.busy}
               message={order.message}
               hasRanked={order.order.ranked.length > 0}
@@ -245,7 +242,7 @@ export function OrderClient() {
           </>
         )}
       </main>
-      <AppNav current="order" mapHref={selectedId ? `/#${selectedId}` : "/"} compareHref={`/fields/${selectedId ?? benchmarkId ?? districtIds[0]}`} orderHref="/order" demoDate={demoDate} />
+      <AppNav current="order" hrefs={appNavHrefs(selectedId ?? benchmarkId ?? districtIds[0] ?? "A-01", selectedId)} demoDate={demoDate} />
     </div>
   );
 }

@@ -17,6 +17,9 @@ import { useElementHeight } from "@/hooks/use-element-height";
 import { useLastDistrict } from "@/hooks/use-last-district";
 import { MapLegend } from "@/components/map/map-legend";
 import { AppNav } from "@/components/app-nav";
+import { AccountChip } from "@/components/account-chip";
+import { useRole } from "@/hooks/use-role";
+import { appNavHrefs } from "@/services/app-nav-view";
 import { IconCamera } from "@/components/icons";
 
 // JSON の型は number[][] なので、[lat, lng] の組に読み替える（中身は src/data/parcels.test.ts が確かめる）
@@ -28,6 +31,7 @@ const SEASON = "2026";
 export function HomeClient() {
   // デモで今日を差し替えているときの表示（精査 4 回目 #5）
   const demoDate = useDemoToday();
+  const account = useRole();
   const map = useFieldMap();
   const { selectedId, selected, select } = useFieldSelection();
   const latest = useLatestPhoto(selectedId);
@@ -79,7 +83,7 @@ export function HomeClient() {
   const selectedItem = items.find((i) => i.field.id === selectedId) ?? null;
   // 見比べるの行き先: 選んだ畑。選んでいなければ、見ている地区の目安の畑（無ければ最初の畑）
   const districtBenchmark = benchmarkFor(benchmarks, SEASON, district);
-  const compareHref = selected ? `/fields/${selected.id}` : `/fields/${districtBenchmark ?? items.find((i) => i.field.district === district)?.field.id ?? "A-01"}`;
+  const navHrefs = appNavHrefs(selected?.id ?? districtBenchmark ?? items.find((i) => i.field.district === district)?.field.id ?? "A-01", selectedId);
   // 板のボタン: 目安の畑と見比べられるのは、地区に目安があって、それが自分でないとき
   const compareLabel = selectedItem && districtBenchmark !== null && !selectedItem.appearance.benchmark ? "目安の畑と見比べる" : "この畑の写真を見る";
   const fitItems = useMemo(() => items.filter((i) => i.field.district === fitDistrict), [items, fitDistrict]);
@@ -87,7 +91,6 @@ export function HomeClient() {
   return (
     <div className="home">
       <header className="topbar">
-        <span className="topbar-brand">ear-to-ear</span>
         <label className="topbar-district">
           <span className="sr-only">地区</span>
           <select
@@ -111,6 +114,7 @@ export function HomeClient() {
           <IconCamera />
           写真を送る
         </Link>
+        <AccountChip role={account.role} busy={account.busy} message={account.message} onSignIn={account.signIn} />
       </header>
       {map.message && (
         <div className="map-note" role="status">
@@ -141,9 +145,8 @@ export function HomeClient() {
         ) : (
           <MapLegend />
         )}
-        <span className="map-fictional-note">区画の形・番号・判断は架空のもの</span>
       </div>
-      <AppNav current="map" compareHref={compareHref} orderHref={selected ? `/order#${selected.id}` : "/order"} demoDate={demoDate} />
+      <AppNav current="map" hrefs={navHrefs} demoDate={demoDate} />
     </div>
   );
 }

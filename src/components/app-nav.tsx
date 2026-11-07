@@ -1,24 +1,29 @@
 /**
- * 下の帯（地図／見比べる／刈る順番）。11-04 夜の本人決定で、画面はこの 3 つで切り替える。アイコン＋短い文字で、説明の文は付けない（11-05）。
+ * 下の帯（地図／詳細／比較／順番、#194。西田 PM 11-07「4 つ。それぞれがメインになるように」）。
+ * 4 つは同じ畑を引き継ぐ（行き先は services/app-nav-view）。アイコン＋短い文字で、説明の文は付けない（11-05）。
  * デモで今日を差し替えているときは、帯の上に「7/20 として表示中（デモ）×」を出す（精査 4 回目 #5）
  */
 import Link from "next/link";
-import { IconCalendar, IconClose, IconCompare, IconMap, IconOrder } from "@/components/icons";
+import type { AppNavHrefs } from "@/services/app-nav-view";
+import { IconCalendar, IconClose, IconCompare, IconDetail, IconMap, IconOrder } from "@/components/icons";
+
+export type AppNavKey = keyof AppNavHrefs;
 
 interface Props {
-  current: "map" | "compare" | "order";
-  /** 地図の行き先。選んでいる畑があれば `/#A-07` で引き継ぐ（11-06 地図の精査 #4）。既定は `/` */
-  mapHref?: string;
-  /** 見比べるの行き先。無ければ押せない */
-  compareHref: string | null;
-  /** 刈る順番の行き先 */
-  orderHref: string;
+  current: AppNavKey;
+  hrefs: AppNavHrefs;
   /** デモで今日を差し替えているとき。言葉と外す操作 */
   demoDate?: { label: string; onClear: () => void } | null;
 }
 
-export function AppNav({ current, mapHref = "/", compareHref, orderHref, demoDate = null }: Props) {
-  const cls = (key: Props["current"]) => (current === key ? "app-nav-item app-nav-current" : "app-nav-item");
+const ITEMS: { key: AppNavKey; label: string; Icon: typeof IconMap }[] = [
+  { key: "map", label: "地図", Icon: IconMap },
+  { key: "detail", label: "詳細", Icon: IconDetail },
+  { key: "compare", label: "比較", Icon: IconCompare },
+  { key: "order", label: "順番", Icon: IconOrder },
+];
+
+export function AppNav({ current, hrefs, demoDate = null }: Props) {
   return (
     <>
       {demoDate && (
@@ -31,25 +36,17 @@ export function AppNav({ current, mapHref = "/", compareHref, orderHref, demoDat
         </div>
       )}
       <nav className="app-nav" aria-label="画面の切り替え">
-        <Link href={mapHref} className={cls("map")} aria-current={current === "map" ? "page" : undefined}>
-          <IconMap />
-          地図
-        </Link>
-        {compareHref ? (
-          <Link href={compareHref} className={cls("compare")} aria-current={current === "compare" ? "page" : undefined}>
-            <IconCompare />
-            見比べる
+        {ITEMS.map(({ key, label, Icon }) => (
+          <Link
+            key={key}
+            href={hrefs[key]}
+            className={current === key ? "app-nav-item app-nav-current" : "app-nav-item"}
+            aria-current={current === key ? "page" : undefined}
+          >
+            <Icon />
+            {label}
           </Link>
-        ) : (
-          <span className="app-nav-item app-nav-disabled" aria-disabled="true">
-            <IconCompare />
-            見比べる
-          </span>
-        )}
-        <Link href={orderHref} className={cls("order")} aria-current={current === "order" ? "page" : undefined}>
-          <IconOrder />
-          刈る順番
-        </Link>
+        ))}
       </nav>
     </>
   );

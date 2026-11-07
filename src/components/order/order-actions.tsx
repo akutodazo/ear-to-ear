@@ -27,7 +27,7 @@ interface Props {
   share?: ReactNode;
 }
 
-export function OrderActions({ saved, dirty, differsFromConfirmed, canConfirm, needsChair = false, onOpenLogin, busy, message, hasRanked, onSave, onConfirm, onRevert, onReset, share }: Props) {
+export function OrderActions({ saved, dirty, differsFromConfirmed, canConfirm, needsChair = false, busy, message, hasRanked, onSave, onConfirm, onRevert, onReset, share }: Props) {
   const [asking, setAsking] = useState<"confirm" | "reset" | null>(null);
   const confirmed = saved?.state === "confirmed";
   const state = confirmed
@@ -67,14 +67,7 @@ export function OrderActions({ saved, dirty, differsFromConfirmed, canConfirm, n
               {confirmed ? "確定し直す" : "この順で確定"}
             </button>
           )}
-          {needsChair && hasRanked && onOpenLogin && (
-            <p className="order-chair note">
-              確定は委員長の端末で行います
-              <button type="button" className="button button-small" onClick={onOpenLogin}>
-                委員長として入る
-              </button>
-            </p>
-          )}
+          {needsChair && hasRanked && <p className="order-chair note">確定は委員長だけ。右上の札から入れます</p>}
           <button type="button" className="order-reset" onClick={() => setAsking("reset")} disabled={busy}>
             記録から並べ直す
           </button>

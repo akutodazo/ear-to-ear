@@ -36,6 +36,9 @@ import { StatusHistory } from "@/components/compare/status-history";
 import { HandoverMemo } from "@/components/field/handover-memo";
 import { PassphraseForm } from "@/components/upload/passphrase-form";
 import { AppNav } from "@/components/app-nav";
+import { AccountChip } from "@/components/account-chip";
+import { useRole } from "@/hooks/use-role";
+import { appNavHrefs } from "@/services/app-nav-view";
 import { sameDayEmptyNote } from "@/services/compare-note";
 import { IconMap, IconPen, IconPhoto } from "@/components/icons";
 
@@ -48,6 +51,9 @@ const SEASON = "2026";
 export function FieldClient({ field }: { field: Field }) {
   // デモで今日を差し替えているときの表示（精査 4 回目 #5）
   const demoDate = useDemoToday();
+  const account = useRole();
+  // 下の帯の「比較」から来たとき（#194。詳細と比較の中身の切り替えは #195）
+  const compareView = useHashIs("compare");
   const districtFields = useMemo(() => fields.filter((f) => f.district === field.district), [field.district]);
   const districtIds = useMemo(() => districtFields.map((f) => f.id), [districtFields]);
   const fieldsById = useMemo(() => Object.fromEntries(districtFields.map((f) => [f.id, f])) as Record<string, Field>, [districtFields]);
@@ -164,6 +170,7 @@ export function FieldClient({ field }: { field: Field }) {
           地図
         </Link>
         <FieldSwitcher fields={districtFields} currentId={field.id} benchmarkId={benchmarkId} />
+        <AccountChip role={account.role} busy={account.busy} message={account.message} onSignIn={account.signIn} />
       </header>
       <main className="compare-body">
         {showStage && (
@@ -288,7 +295,7 @@ export function FieldClient({ field }: { field: Field }) {
           onCancel={stopWriting}
         />
       )}
-      <AppNav current="compare" mapHref={`/#${field.id}`} compareHref={`/fields/${field.id}`} orderHref={`/order#${field.id}`} demoDate={demoDate} />
+      <AppNav current={compareView ? "compare" : "detail"} hrefs={appNavHrefs(field.id, field.id)} demoDate={demoDate} />
     </div>
   );
 }
