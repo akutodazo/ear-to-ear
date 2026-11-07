@@ -2,7 +2,7 @@
  * テスト用の Deps（人が書く。檻の外）。
  * HMAC は node:crypto、時計と ID は固定。db と photos は土台では呼ばないので、呼ぶと例外にする。
  */
-import { createHmac } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { issueSessionToken, type Hmac } from "@/services/session-token";
 import type { Role } from "@/types";
 import type { BucketPort, DbPort, Deps } from "./deps";
@@ -44,6 +44,7 @@ export function fakeDeps(overrides: Partial<Deps> = {}): Deps {
     matchPassphrase: async () => null,
     nowMs: () => NOW_MS,
     newId: () => "00000000-0000-4000-8000-000000000001",
+    sha256Hex: async (bytes) => createHash("sha256").update(bytes).digest("hex"),
     knownFieldIds: new Set(Array.from({ length: 12 }, (_, i) => `A-${String(i + 1).padStart(2, "0")}`)),
     claude: null,
     line: null,
