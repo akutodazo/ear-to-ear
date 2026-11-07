@@ -41,13 +41,23 @@ export interface AccountView {
   isAdmin: boolean;
   /** 委員長として入る欄を出すか */
   canSignInAsChair: boolean;
+  /** 札の見た目の段（権限が強いほど濃い、#218） */
+  tier: "loading" | "guest" | "member" | "chair";
+  /** 人のアイコンに添える飾り（委員長＝王冠、委員＝くわ、一般＝なし。みっきぃ 11-07） */
+  ornament: "crown" | "hoe" | "none";
 }
 
 /** role: 読めた役割。null は入っていない、undefined はまだ読んでいる */
 export function accountView(role: Role | null | undefined): AccountView {
-  if (role === undefined) return { chip: "…", line: "確かめています", isAdmin: false, canSignInAsChair: false };
-  if (role === "admin") return { chip: "委員長", line: "委員長として入っています", isAdmin: true, canSignInAsChair: false };
-  if (role === "member") return { chip: "委員", line: "委員として入っています", isAdmin: false, canSignInAsChair: true };
+  if (role === undefined) {
+    return { chip: "…", line: "確かめています", isAdmin: false, canSignInAsChair: false, tier: "loading", ornament: "none" };
+  }
+  if (role === "admin") {
+    return { chip: "委員長", line: "委員長として入っています", isAdmin: true, canSignInAsChair: false, tier: "chair", ornament: "crown" };
+  }
+  if (role === "member") {
+    return { chip: "委員", line: "委員として入っています", isAdmin: false, canSignInAsChair: true, tier: "member", ornament: "hoe" };
+  }
   // 入っていないときは、押すと入れることを言う
-  return { chip: "入る", line: "入っていません", isAdmin: false, canSignInAsChair: true };
+  return { chip: "入る", line: "入っていません", isAdmin: false, canSignInAsChair: true, tier: "guest", ornament: "none" };
 }
