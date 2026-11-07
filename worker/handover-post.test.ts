@@ -523,6 +523,16 @@ describe("POST /api/fields/:id/handover: 止める（T31）", () => {
       expect(error.mock.calls.flat().map(String).join(" ")).not.toContain("thrown-detail-44");
     });
 
+    it("502 も JSON で、共通ヘッダの no-store・nosniff が付く（攻撃役の指摘）", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const { deps } = setup(errorReply(529));
+      const response = await post(deps);
+      expect(response.status).toBe(502);
+      expect(response.headers.get("content-type")).toMatch(/^application\/json/);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    });
+
     it("保存できた（200）ときは console.error に何も出さない", async () => {
       const error = vi.spyOn(console, "error").mockImplementation(() => {});
       const { deps } = setup();
