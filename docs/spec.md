@@ -134,6 +134,7 @@ CREATE TABLE order_shares (id TEXT PRIMARY KEY, season, district, ranked /* JSON
 | `POST /api/shares` | member | multipart `image`（JPEG 1.5MB 以下・長辺 2000px 以下・APP1〜15 無し）＋ `meta` `{season, district, confirmedAt, ranked[], benchmarkId}` | 201 `{id, url, imageUrl, expiresAt}`（期限は 60 日後。R2 `shares/<id>.jpg`・D1 `order_shares`） | 401／413／415／422 `reason`／429（端末ごとに 1 日 30 回） | LINE に 1 枚（#159） |
 | `GET /api/shares/:id` | なし（LINE のサーバーが Cookie 無しで読む） | — | 200 `text/html`。OGP（og:title・og:description・og:image は要求の origin の絶対 URL）・`noindex`・`public, max-age=300` | 404（無い・期限切れ） | LINE に 1 枚（#160） |
 | `GET /api/share-files/:id` | なし | — | 200 `image/jpeg`（`public, max-age=86400`） | 404（無い・期限切れ。R2 は読まない） | LINE に 1 枚（#160） |
+| `GET /api/judgments/:id` | なし（LINE のサーバーが Cookie 無しで読む） | — | 200 `text/html`。判断の OGP（og:image は根拠の写真の 1 枚目の絶対 URL。無ければ出さない）・`noindex`・`public, max-age=300`。取り消し済みも 200 で取り消しとして出す | 404（無い id） | 判断の LINE 通知のサムネイル（#220） |
 | `POST /api/photos/:id/suggest` | admin | `{candidateFieldIds}`（人が選んだ2〜3圃場） | 200 `{suggestions:[{fieldId, reason}]}` | 401／422／429／502 | L5 |
 
 - meta: `{contentHash(64桁16進), takenAt|null, takenAtSource, candidateFieldIds(最大3, 存在する圃場, 重複なし), chosenFieldId?}`。**距離・座標の項目があれば 422**（K6）。chosenFieldId があっても state は unconfirmed
