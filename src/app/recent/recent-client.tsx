@@ -1,10 +1,14 @@
 "use client";
 
 /** /recent の配線: Presenter（useRecent）を呼び、部品に props で配る（AGENTS.md §4） */
+import fieldsData from "@/data/fields.json";
 import { useRecent } from "@/hooks/use-recent";
 import { RecentList } from "@/components/recent/recent-list";
 import { PassphraseForm } from "@/components/upload/passphrase-form";
 import { IconCheck } from "@/components/icons";
+
+/** 番号に添える名前（番号だけを大きく見せない。11-07 精査 6 回目 #3） */
+const NAMES: Record<string, string> = Object.fromEntries(fieldsData.map((f) => [f.id, f.name]));
 
 export function RecentClient() {
   const recent = useRecent();
@@ -47,6 +51,7 @@ export function RecentClient() {
       )}
       {recent.message && <p className="note">{recent.message}</p>}
       <RecentList
+        names={NAMES}
         photos={recent.photos}
         admin={isAdmin ? { fields: recent.fields, status: recent.assignStatus, onAssign: recent.assign } : null}
       />

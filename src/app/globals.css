@@ -3464,3 +3464,53 @@ a.dock-unconfirmed {
   flex-wrap: nowrap;
 }
 
+
+/* ===== 送る・新着（11-07 精査 6 回目 #3: 大見出しと説明文で読ませない。4 つの画面と同じ帯） ===== */
+.sub-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.sub-page > .page {
+  flex: 1;
+  width: 100%;
+  padding-top: var(--space-8);
+}
+
+.sub-page > .app-nav {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+}
+
+/* 送るボタンの帯は、下の帯の上に止める */
+.sub-page .action-bar {
+  bottom: 60px;
+}
+
+.sub-page-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 48px;
+}
+
+.sub-page-title {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.upload-promise {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+/* 番号は本文の大きさにして名前を添える（番号だけを大きく見せない） */
+.recent-field {
+  font-size: 1.05rem;
+}
+
+.recent-name {
+  font-weight: 600;
+}

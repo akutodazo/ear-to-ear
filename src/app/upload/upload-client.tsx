@@ -33,6 +33,8 @@ export function UploadClient() {
           }}
         />
       </label>
+      {/* 撮影位置の約束は、読ませる前置きにせず、ボタンの下に小さく（11-07 精査 6 回目 #3） */}
+      <p className="note upload-promise">撮影した場所は端末の外に出しません。送るのは近い畑の番号だけです</p>
 
       <ul className="cards">
         {upload.items.map((item) => (

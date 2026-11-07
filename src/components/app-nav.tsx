@@ -10,7 +10,8 @@ import { IconCalendar, IconClose, IconCompare, IconDetail, IconMap, IconOrder } 
 export type AppNavKey = keyof AppNavHrefs;
 
 interface Props {
-  current: AppNavKey;
+  /** 今の画面。送る・新着のように 4 つのどれでもない画面は null（11-07 精査 6 回目 #3） */
+  current: AppNavKey | null;
   hrefs: AppNavHrefs;
   /** デモで今日を差し替えているとき。言葉と外す操作 */
   demoDate?: { label: string; onClear: () => void } | null;
