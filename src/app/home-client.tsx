@@ -7,6 +7,7 @@ import parcelsData from "@/data/parcels.json";
 import benchmarksData from "@/data/benchmarks.json";
 import type { Benchmark, Parcel } from "@/types";
 import { useFieldMap } from "@/hooks/use-field-map";
+import { useHarvestOrder } from "@/hooks/use-harvest-order";
 import { useFieldSelection } from "@/hooks/use-field-selection";
 import { useLatestPhoto } from "@/hooks/use-latest-photo";
 import { benchmarkFor, mapLabelLines, parcelAppearance } from "@/services/parcel-geometry";
@@ -62,6 +63,10 @@ export function HomeClient() {
     select(id);
   };
 
+  // 刈る順番の丸（#197）: 見ている地区の、端末に残っている順（並べ途中・保存・確定）。下書きの材料が無いので、保存した順だけ
+  const order = useHarvestOrder(district, SEASON, null);
+  const rankOf = useMemo(() => new Map((order.saved?.ranked ?? []).map((id, i) => [id, i + 1])), [order.saved]);
+  const rankConfirmed = order.saved?.state === "confirmed";
   const items = useMemo<MapParcel[]>(() => {
     const byField = new Map(parcels.map((p) => [p.fieldId, p]));
     return map.pins.flatMap(({ field, pin }) => {
@@ -75,17 +80,18 @@ export function HomeClient() {
           parcel,
           appearance: parcelAppearance(pin, { selected: field.id === selectedId, benchmark }),
           labelLines: mapLabelLines(field, summary),
+          rank: rankOf.has(field.id) ? { n: rankOf.get(field.id) as number, confirmed: rankConfirmed } : null,
         },
       ];
     });
-  }, [map.pins, map.summaries, selectedId]);
+  }, [map.pins, map.summaries, selectedId, rankOf, rankConfirmed]);
 
   const selectedItem = items.find((i) => i.field.id === selectedId) ?? null;
   // 見比べるの行き先: 選んだ畑。選んでいなければ、見ている地区の目安の畑（無ければ最初の畑）
   const districtBenchmark = benchmarkFor(benchmarks, SEASON, district);
   const navHrefs = appNavHrefs(selected?.id ?? districtBenchmark ?? items.find((i) => i.field.district === district)?.field.id ?? "A-01", selectedId);
   // 板のボタン: 目安の畑と見比べられるのは、地区に目安があって、それが自分でないとき
-  const compareLabel = selectedItem && districtBenchmark !== null && !selectedItem.appearance.benchmark ? "目安の畑と見比べる" : "この畑の写真を見る";
+  // 板のボタンは 1 つ「詳細を見る」（#200）
   const fitItems = useMemo(() => items.filter((i) => i.field.district === fitDistrict), [items, fitDistrict]);
 
   return (
@@ -138,8 +144,8 @@ export function HomeClient() {
             appearance={selectedItem.appearance}
             statusLine={selectedItem.labelLines[1] ?? (map.message ? "判断を読み込めていません" : "判断を読み込んでいます")}
             latest={latest}
-            compareLabel={compareLabel}
-            lastSeasonMemo={lastMemo ? { season: lastMemo.season, href: `/fields/${selectedItem.field.id}#last-season` } : null}
+            compareLabel="詳細を見る"
+            lastSeasonMemo={lastMemo && account.role === "admin" ? { season: lastMemo.season, href: `/fields/${selectedItem.field.id}#last-season` } : null}
             onClose={() => choose(null)}
           />
         ) : (
