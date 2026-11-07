@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { moveOptions, orderBarAction, orderHeadline, shareButtonLabel } from "./order-view";
+import { moveOptions, orderBarAction, orderHeadline, shareButtonLabel, shouldAutoPrepare } from "./order-view";
 
 describe("orderBarAction（順番の下の固定の帯の主ボタン 1 つ、#196）", () => {
   const base = { loading: false, hasRanked: true, dirty: true, savedState: null, differsFromConfirmed: false, isAdmin: false } as const;
@@ -65,5 +65,21 @@ describe("shareButtonLabel（帯の LINE のボタンの言葉）", () => {
     expect(shareButtonLabel("ready", "uploading")).toBe("共有の URL を作っています…");
     expect(shareButtonLabel("ready", "ready")).toBe("LINE で送る");
     expect(shareButtonLabel("error", "none")).toBe("地図の絵を作れませんでした");
+  });
+});
+
+describe("shouldAutoPrepare（確定の直後に 1 回だけ共有の URL を作る、#198）", () => {
+  const base = { justConfirmed: true, imageReady: true, link: "none", attempted: false } as const;
+
+  it("確定した直後・絵ができた・URL が無い・まだ試していない、のときだけ", () => {
+    expect(shouldAutoPrepare(base)).toBe(true);
+  });
+
+  it("どれか 1 つでも欠けたら作らない（画面を開くたびに作らない。1 日 30 回の上限があるため）", () => {
+    expect(shouldAutoPrepare({ ...base, justConfirmed: false })).toBe(false);
+    expect(shouldAutoPrepare({ ...base, imageReady: false })).toBe(false);
+    expect(shouldAutoPrepare({ ...base, link: "uploading" })).toBe(false);
+    expect(shouldAutoPrepare({ ...base, link: "ready" })).toBe(false);
+    expect(shouldAutoPrepare({ ...base, attempted: true })).toBe(false);
   });
 });
