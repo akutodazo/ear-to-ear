@@ -25,3 +25,21 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 | 14〜 | T07・T13・T14・T15・T16（L6・L8） | L0 の後に決める | — |
 
 ---
+
+## T33 `handover-post` の 502 に Claude の状態コード（#174 の弱点 4、#192）
+- **状態**: 検査済み・人の確認待ち
+- **運転の記録**: 11-07、檻の中で 1 本（relay の手順を手で）。START `dc6de93` → GREEN `450bb35` → REPORT `c1d99bc`。Opus、9 手、$0.40。C1〜C5 がすべて合格（C3 48 件、C4 の Vitest 2704 件・build 成功）。変えたのは `worker/handover-post.ts` だけ
+- **Issue**: #192
+- **変えてよいファイル**: `worker/handover-post.ts`（＋ `docs/run/REPORT-T33.md`、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結）**: `worker/handover-post.test.ts`
+- **合格条件**:
+  - Claude の返事を読めない 502 は `{error:"bad_gateway", reason, upstreamStatus}`。`upstreamStatus` は Claude の口が返した状態コード（口の例外・通信の失敗は 0、refusal・truncated・shape は 200）。`reason` は今のまま
+  - 502 のときだけ `console.error` を 1 回・1 行。中身は理由と状態コードだけ。Claude の返事の本文（message・request_id・id）・例外の文・記録の文・端末の値を出さない
+  - 200・422・429・503 では `console.error` を呼ばない
+  - ほかの順（404 → 503 → 記録 → 422 → 429 → Claude → 502 → 保存）と 200 の本文は変えない
+- **書き方の注意**: `worker/http.ts` の `errorResponse` は `reason` しか持てない（変えてよいファイルの外）。502 の本文は同じファイルの `json` で作る。新しい import は足さない
+- **RED の確かめ（11-07）**: 今の実装で 18 件が失敗（残り 30 件は今の実装でも通る）。仮の実装（列車には渡さない）で 48 件とも通る
+- **攻撃役（Sonnet、檻の中、docs を入れない複製で。実装は空にせず今の main の版を渡した。足すのは差分だけなので）**: 9 手、$0.29。ズルでは通せず、通した実装は本物と同じ形（`json(502, …)` と 1 行の `console.error`）。入れた指摘: 502 の応答ヘッダ（content-type・no-store・nosniff）を見ていない → 1 件足した。入れなかった指摘: ログの書式・圃場番号を入れないこと（仕様に無い。圃場番号は秘密ではない）、`retry-after` の下限・保存の失敗・記録の並び（T33 の範囲の外、前からある振る舞い）
+- **凍結**: 11-07（48 件）
+- **参照**: `docs/spec.md` §6（`POST /api/fields/:id/handover`）、AGENTS.md §1-3（秘密をログに出さない）
+- **担当**: 先輩

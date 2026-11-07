@@ -26,6 +26,17 @@ function Svg({ className, ...rest }: Props & { children: React.ReactNode }) {
   );
 }
 
+/** 注意（三角に !。違う・できなかったを色だけでなく形でも伝える、#214） */
+export function IconAlert(props: Props) {
+  return (
+    <Svg {...props}>
+      <path d="M10.3 4.2L2.6 17.5A2 2 0 004.3 20.5h15.4a2 2 0 001.7-3L13.7 4.2a2 2 0 00-3.4 0z" />
+      <path d="M12 9.5v4" />
+      <path d="M12 17h.01" />
+    </Svg>
+  );
+}
+
 /** 地図（折った紙） */
 export function IconMap(props: Props) {
   return (
@@ -96,6 +107,16 @@ export function IconCheck(props: Props) {
   );
 }
 
+/** 読み直す（回る矢印、#215） */
+export function IconRefresh(props: Props) {
+  return (
+    <Svg {...props}>
+      <path d="M20 12a8 8 0 11-2.34-5.66" />
+      <path d="M20 4v4.5h-4.5" />
+    </Svg>
+  );
+}
+
 /** 判断を残す（鉛筆） */
 export function IconPen(props: Props) {
   return (
@@ -142,6 +163,26 @@ export function IconShare(props: Props) {
     <Svg {...props}>
       <path d="M12 3v12M7 8l5-5 5 5" />
       <path d="M5 13v6a1 1 0 001 1h12a1 1 0 001-1v-6" />
+    </Svg>
+  );
+}
+
+/** 詳細（写真 1 枚と下の 2 行。畑の詳細、#194） */
+export function IconDetail(props: Props) {
+  return (
+    <Svg {...props}>
+      <rect x="4" y="3" width="16" height="11" rx="2" />
+      <path d="M4 18h16M4 21h10" />
+    </Svg>
+  );
+}
+
+/** つながり（URL の行、#219） */
+export function IconLink(props: Props) {
+  return (
+    <Svg {...props}>
+      <path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1" />
+      <path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1" />
     </Svg>
   );
 }

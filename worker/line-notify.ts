@@ -2,9 +2,10 @@
  * 判断を残した・取り消したときに LINE のグループに 1 通送る（L8、K15、docs/spec.md §9 の 14、#141）。
  * ハンドラが応答を返す直前に deps.waitUntil に渡す。失敗しても応答は変わらないよう、例外は外に出さない。
  * 順: LINE の口が無い → グループ ID が無い → 月の回数が上限 → のどれかなら送らない。送ったら結果は見ない（再試行しない）。
- * グループ ID・本文はログに出さない。
+ * URL は判断ごとの OGP ページ（根拠の写真がサムネイルになる、#220）。グループ ID・本文はログに出さない。
  */
 import { LINE_STOP_AT } from "@/config";
+import { judgmentUrl } from "@/services/judgment-page";
 import { lineNoticeText } from "@/services/line-notice";
 import { lineCounterKey, lineMonthEndsAt } from "@/services/usage-limit";
 import type { StatusEvent } from "@/types";
@@ -39,7 +40,7 @@ export async function notifyLine(
       .first<{ count: number }>();
     if (reserved === null) return;
 
-    await line.push(group.value, lineNoticeText(event, kind, `${origin}/fields/${event.fieldId}`));
+    await line.push(group.value, lineNoticeText(event, kind, judgmentUrl(origin, event.id, kind)));
   } catch {
     // 通知の失敗は判断の記録に響かせない（K15）。中身を出さないためログにも書かない
   }

@@ -19,17 +19,17 @@ function findField(id: string): Field | undefined {
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  return { title: `${id} 見比べる — ear-to-ear` };
+  return { title: `${id} 詳細 — ear-to-ear` };
 }
 
-/** `/fields/[id]` は見比べる（11-05）。配線だけ */
+/** `/fields/[id]` は畑の詳細と比較（#compare、#195）。配線だけ。畑を切り替えたら中の状態を捨てる（key） */
 export default async function FieldPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const field = findField(id);
   if (!field) notFound();
   return (
     <main className="home-main">
-      <FieldClient field={field} />
+      <FieldClient key={field.id} field={field} />
     </main>
   );
 }

@@ -6,15 +6,17 @@ interface Props {
   fields: Field[];
   currentId: string;
   benchmarkId: string | null;
+  /** 比較のまま次の畑へ（#195）。付けると /fields/A-02#compare */
+  hash?: string;
 }
 
-export function FieldSwitcher({ fields, currentId, benchmarkId }: Props) {
+export function FieldSwitcher({ fields, currentId, benchmarkId, hash }: Props) {
   return (
     <nav className="switcher" aria-label="同じ地区の畑">
       {fields.map((f) => {
         const current = f.id === currentId;
         return (
-          <Link key={f.id} href={`/fields/${f.id}`} className={current ? "switcher-item switcher-current" : "switcher-item"} aria-current={current ? "page" : undefined}>
+          <Link key={f.id} href={`/fields/${f.id}${hash ? `#${hash}` : ""}`} className={current ? "switcher-item switcher-current" : "switcher-item"} aria-current={current ? "page" : undefined}>
             {f.id === benchmarkId && <i className="mark mark-benchmark" aria-hidden="true" />}
             {f.id}
           </Link>
