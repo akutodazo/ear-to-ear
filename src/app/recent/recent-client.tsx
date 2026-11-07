@@ -4,6 +4,7 @@
 import { useRecent } from "@/hooks/use-recent";
 import { RecentList } from "@/components/recent/recent-list";
 import { PassphraseForm } from "@/components/upload/passphrase-form";
+import { IconCheck } from "@/components/icons";
 
 export function RecentClient() {
   const recent = useRecent();
@@ -29,6 +30,7 @@ export function RecentClient() {
             aria-pressed={recent.onlyUnconfirmed}
             onClick={recent.toggleOnlyUnconfirmed}
           >
+            {recent.onlyUnconfirmed && <IconCheck />}
             未確定だけ見る
           </button>
           <span className="note">{recent.unconfirmedLabel}</span>
