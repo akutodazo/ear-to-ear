@@ -2358,3 +2358,583 @@ a.dock-unconfirmed {
   color: var(--text-3);
   font-size: 0.8rem;
 }
+/* ===== 畑の詳細と比較（#195。西田 PM 11-07「それぞれがメインになるように」） ===== */
+:root {
+  --space-12: 12px;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.85rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.2rem;
+  --font-size-xl: 1.5rem;
+  --stage: #1c2420;
+  /* 写真の上の暗がりは黒でなく文字色の緑黒（クリームと濃い緑に合わせる） */
+  --scrim: linear-gradient(to top, rgba(20, 30, 22, 0.8) 0, rgba(20, 30, 22, 0.62) 72px, rgba(20, 30, 22, 0) 112px);
+  --shadow-on-photo: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --duration-fast: 100ms;
+  --duration-base: 150ms;
+  --duration-move: 200ms;
+  --duration-enter: 250ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-pop: cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-move: 0ms;
+    --duration-enter: 0ms;
+  }
+}
+
+/* 上の帯: チップの列と札だけ（戻り道と題は置かない。地図は下の帯、名前は写真の上） */
+.compare-topbar {
+  padding-right: var(--space-16);
+}
+
+.compare-topbar .switcher {
+  flex: 1;
+  min-width: 0;
+  padding-right: 0;
+}
+
+.compare-topbar .account-chip {
+  margin-left: var(--space-8);
+}
+
+.detail-body {
+  gap: var(--space-24);
+  padding-bottom: var(--space-24);
+}
+
+/* --- 主役の写真（全幅 4:3） --- */
+.hero {
+  position: relative;
+  flex: none;
+  margin: 0 calc(-1 * var(--space-16));
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--border);
+}
+
+.hero-photo {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.hero-photo img {
+  object-fit: cover;
+  animation: hero-fade var(--duration-move) var(--ease-out);
+}
+
+@keyframes hero-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.hero-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding: 72px var(--space-16) var(--space-16);
+  background: var(--scrim);
+  color: #fff;
+  pointer-events: none;
+}
+
+.hero-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.hero-id {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.hero-benchmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--wheat);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.hero-benchmark i {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--wheat);
+  border-radius: 2px;
+}
+
+.hero-name {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  font-feature-settings: "palt";
+  text-shadow: var(--shadow-on-photo);
+}
+
+.hero-meta {
+  flex: none;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: var(--font-size-sm);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* 写真が無い・読めない: 枠は同じ 4:3、文字は地の色 */
+.hero-plain {
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.hero-plain .hero-band {
+  background: none;
+  color: var(--text-1);
+}
+
+.hero-plain .hero-id {
+  color: var(--text-2);
+}
+
+.hero-plain .hero-name {
+  text-shadow: none;
+}
+
+.hero-empty {
+  position: absolute;
+  inset: 0 0 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  color: var(--text-2);
+  font-size: var(--font-size-sm);
+}
+
+.hero-empty .icon {
+  width: 32px;
+  height: 32px;
+}
+
+.hero-empty-strong {
+  color: var(--text-1);
+  font-weight: 700;
+}
+
+/* --- 判断の段 --- */
+.decide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  scroll-margin-top: var(--space-12);
+}
+
+.decide-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  min-height: 44px;
+}
+
+.decide-text {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0;
+  color: var(--text-1);
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  line-height: 1.4;
+  font-feature-settings: "palt";
+}
+
+.decide-text-none {
+  color: var(--text-2);
+  font-weight: 400;
+}
+
+.decide-mark {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+.decide-revoke {
+  position: relative;
+  flex: none;
+  min-height: 44px;
+  padding: 0 14px;
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: 22px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: color var(--duration-base) var(--ease-out), border-color var(--duration-base) var(--ease-out);
+}
+
+.decide-revoke-armed {
+  border-color: var(--assertive);
+  color: var(--assertive);
+}
+
+/* 2 段の残り時間（5 秒で縮む線）。取り消し・確定・並べ直しで共通 */
+.countdown {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: currentColor;
+  transform-origin: left;
+  animation: countdown 5s linear forwards;
+}
+
+@keyframes countdown {
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .countdown {
+    display: none;
+  }
+}
+
+.decide-result {
+  margin: calc(-1 * var(--space-4)) 0 0;
+  color: var(--text-1);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.decide-result-ok {
+  color: var(--brand);
+}
+
+.decide-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-8);
+}
+
+.decide-button {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  column-gap: 6px;
+  min-height: 56px;
+  padding: 0 var(--space-8);
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--radius-16);
+  background: var(--surface);
+  color: var(--text-1);
+  font: inherit;
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  line-height: 1.25;
+  cursor: pointer;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    background-color var(--duration-base) var(--ease-out),
+    color var(--duration-base) var(--ease-out);
+}
+
+.decide-button:active {
+  transform: scale(0.98);
+  background: var(--background-2);
+}
+
+.decide-button .mark {
+  width: 14px;
+  height: 14px;
+}
+
+.decide-button-on,
+.decide-button-on:active {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: var(--text-on-brand);
+}
+
+.decide-button:focus-visible,
+.decide-revoke:focus-visible,
+.rank-line-action:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.phrase {
+  white-space: nowrap;
+}
+
+/* --- 順番の段 --- */
+.rank-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-height: 48px;
+  padding-top: var(--space-16);
+  border-top: 1px solid var(--border);
+}
+
+.rank-line-ring-none {
+  border: 2px dotted var(--border-strong);
+  background: transparent;
+}
+
+.rank-line-ring-confirmed {
+  border-style: solid;
+  background: var(--brand);
+  color: var(--text-on-brand);
+}
+
+.rank-line-ring {
+  animation: rank-pop var(--duration-base) var(--ease-pop);
+}
+
+@keyframes rank-pop {
+  from {
+    transform: scale(0.6);
+  }
+}
+
+.rank-line-link {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: var(--space-8);
+  min-height: 48px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.rank-line-title {
+  grid-column: 1;
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.rank-line-sub {
+  grid-column: 1;
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--font-size-sm);
+  line-height: 1.3;
+}
+
+.rank-line-chevron {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  width: 20px;
+  height: 20px;
+  color: var(--text-2);
+  transform: rotate(-90deg);
+}
+
+.rank-line-action {
+  flex: none;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1.5px solid var(--brand);
+  border-radius: 22px;
+  background: transparent;
+  color: var(--brand);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* --- 判断の履歴（畳む） --- */
+.history-fold {
+  border-top: 1px solid var(--border);
+}
+
+.history-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 48px;
+  color: var(--text-2);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.history-summary::-webkit-details-marker {
+  display: none;
+}
+
+.history-summary::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  margin-left: auto;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.history-fold[open] > .history-summary::after {
+  transform: rotate(225deg);
+}
+
+.history-count {
+  font-weight: 400;
+}
+
+.history-revoke {
+  min-height: 44px;
+}
+
+.skeleton {
+  display: inline-block;
+  border-radius: 4px;
+  background: var(--border);
+}
+
+.skeleton-line {
+  width: 180px;
+  height: 18px;
+}
+
+.detail-fictional {
+  margin: var(--space-8) 0 0;
+  color: var(--text-2);
+  font-size: var(--font-size-xs);
+}
+
+.memo-offer {
+  align-self: flex-start;
+}
+
+/* 合言葉の欄の金はやめる（金は目安だけ） */
+.panel {
+  border-left-color: var(--brand);
+  background: var(--surface);
+}
+
+/* --- 比較（#compare）: 帯の間いっぱい、本文は送らない --- */
+.compare-full .compare-stage-body {
+  overflow: hidden;
+  padding: 0;
+  gap: 0;
+}
+
+.compare-full .controls {
+  flex: none;
+  padding: var(--space-8) var(--space-16);
+  background: var(--background-2);
+}
+
+.compare-stage {
+  position: relative;
+  flex: 1;
+  min-height: 240px;
+  background: var(--stage);
+}
+
+.compare-full .split {
+  position: absolute;
+  inset: 0;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+  box-shadow: none;
+}
+
+.stage-empty-dark {
+  position: absolute;
+  inset: 0;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.stage-empty-dark .button {
+  border-color: rgba(255, 255, 255, 0.8);
+  background: transparent;
+  color: #fff;
+}
+
+.decide-button-text {
+  min-width: 0;
+  text-align: center;
+  letter-spacing: -0.01em;
+  font-feature-settings: "palt";
+}
+
+/* 詳細の写真の流れは 2 列の小さなタイル（主役の写真と同じ大きさで重ねない、#195） */
+.detail-body .stream {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-8);
+  padding-top: var(--space-16);
+  border-top: 1px solid var(--border);
+}
+
+.detail-body .stream > .note {
+  grid-column: 1 / -1;
+}
+
+.detail-body .stream-day {
+  display: contents;
+}
+
+.detail-body .stream-caption {
+  padding: 4px 6px;
+  left: 6px;
+  right: auto;
+  bottom: 6px;
+  border-radius: 4px;
+  background: rgba(20, 30, 22, 0.72);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-shadow: none;
+}
+
+.detail-body .stream-caption-title {
+  display: none;
+}
+
+.detail-body .ref-toggle {
+  width: 100%;
+  min-height: 44px;
+}
+
+.status-group-head {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}

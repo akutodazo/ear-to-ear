@@ -14,6 +14,8 @@ interface Props {
   hrefs: AppNavHrefs;
   /** デモで今日を差し替えているとき。言葉と外す操作 */
   demoDate?: { label: string; onClear: () => void } | null;
+  /** 同じ画面の中で切り替えるとき（詳細と比較）。true を返したら遷移しない */
+  onPick?: (key: AppNavKey) => boolean;
 }
 
 const ITEMS: { key: AppNavKey; label: string; Icon: typeof IconMap }[] = [
@@ -23,7 +25,7 @@ const ITEMS: { key: AppNavKey; label: string; Icon: typeof IconMap }[] = [
   { key: "order", label: "順番", Icon: IconOrder },
 ];
 
-export function AppNav({ current, hrefs, demoDate = null }: Props) {
+export function AppNav({ current, hrefs, demoDate = null, onPick }: Props) {
   return (
     <>
       {demoDate && (
@@ -42,6 +44,9 @@ export function AppNav({ current, hrefs, demoDate = null }: Props) {
             href={hrefs[key]}
             className={current === key ? "app-nav-item app-nav-current" : "app-nav-item"}
             aria-current={current === key ? "page" : undefined}
+            onClick={(e) => {
+              if (onPick?.(key)) e.preventDefault();
+            }}
           >
             <Icon />
             {label}

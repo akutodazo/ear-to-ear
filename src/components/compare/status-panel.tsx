@@ -19,6 +19,8 @@ interface Props {
   loginMessage: string | null;
   loggingIn: boolean;
   onLogin: (passphrase: string) => void;
+  /** 状態を外の 2 ボタンで選ぶとき（詳細、#195）は false。中の選択を出さない */
+  showStatusChoice?: boolean;
 }
 
 export function StatusPanel({
@@ -31,6 +33,7 @@ export function StatusPanel({
   loginMessage,
   loggingIn,
   onLogin,
+  showStatusChoice = true,
 }: Props) {
   return (
     <form
@@ -41,16 +44,19 @@ export function StatusPanel({
         onSubmit();
       }}
     >
-      <div className="status-choice" role="group" aria-label="判断">
-        <button type="button" className={draft.status === "ready" ? "choice choice-on" : "choice"} aria-pressed={draft.status === "ready"} onClick={() => onChooseStatus("ready")}>
-          <i className="mark mark-ready" aria-hidden="true" />
-          収穫可能
-        </button>
-        <button type="button" className={draft.status === "done" ? "choice choice-on" : "choice"} aria-pressed={draft.status === "done"} onClick={() => onChooseStatus("done")}>
-          <i className="mark mark-done" aria-hidden="true" />
-          収穫済
-        </button>
-      </div>
+      {showStatusChoice && (
+        <div className="status-choice" role="group" aria-label="判断">
+          <button type="button" className={draft.status === "ready" ? "choice choice-on" : "choice"} aria-pressed={draft.status === "ready"} onClick={() => onChooseStatus("ready")}>
+            <i className="mark mark-ready" aria-hidden="true" />
+            収穫可能
+          </button>
+          <button type="button" className={draft.status === "done" ? "choice choice-on" : "choice"} aria-pressed={draft.status === "done"} onClick={() => onChooseStatus("done")}>
+            <i className="mark mark-done" aria-hidden="true" />
+            収穫済
+          </button>
+        </div>
+      )}
+      {!showStatusChoice && <p className="status-group-head">理由（いくつでも。無くても残せます）</p>}
       <div className="reasons" role="group" aria-label="理由（いくつでも）">
         {STATUS_REASONS.map((r) => {
           const on = draft.reasons.includes(r.code);
