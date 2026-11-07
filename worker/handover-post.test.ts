@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { CLAUDE_DAILY_LIMIT, CLAUDE_MODEL } from "@/config";
 import { HANDOVER_SYSTEM_PROMPT } from "@/services/handover-prompt";
 import { handleRequest } from "./app";
@@ -423,29 +423,123 @@ describe("POST /api/fields/:id/handover: 止める（T31）", () => {
   });
 
   it.each([
-    ["200 以外", { status: 529, body: { type: "error" } }, "http"],
-    ["通信の失敗・時間切れ", { status: 0, body: null }, "http"],
-    ["断られた", apiReply({ stop_reason: "refusal" }), "refusal"],
-    ["途中で切れた", apiReply({ stop_reason: "max_tokens" }), "truncated"],
-    ["形が違う", { status: 200, body: { stop_reason: "end_turn", content: "x" } }, "shape"],
-  ] as [string, ClaudeReply, string][])("%s は 502 bad_gateway（理由つき）。保存しないが、回数は数える", async (_name, reply, reason) => {
+    ["200 以外", { status: 529, body: { type: "error" } }, "http", 529],
+    ["通信の失敗・時間切れ", { status: 0, body: null }, "http", 0],
+    ["断られた", apiReply({ stop_reason: "refusal" }), "refusal", 200],
+    ["途中で切れた", apiReply({ stop_reason: "max_tokens" }), "truncated", 200],
+    ["形が違う", { status: 200, body: { stop_reason: "end_turn", content: "x" } }, "shape", 200],
+  ] as [string, ClaudeReply, string, number][])("%s は 502 bad_gateway（理由と Claude の状態コードつき、#192）。保存しないが、回数は数える", async (_name, reply, reason, upstreamStatus) => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     const { deps, testDb } = setup(reply);
     const response = await post(deps);
     expect(response.status).toBe(502);
-    expect(await response.json()).toStrictEqual({ error: "bad_gateway", reason });
+    expect(await response.json()).toStrictEqual({ error: "bad_gateway", reason, upstreamStatus });
     expect(notes(testDb)).toStrictEqual([]);
     expect(counter(testDb)[0].count).toBe(1);
   });
 
-  it("Claude の口が例外を投げても 502 http（保存しない）", async () => {
+  it("Claude の口が例外を投げても 502 http・状態コード 0（保存しない、#192）", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     const { deps, testDb } = setup(async () => {
       throw new Error("network");
     });
     const response = await post(deps);
     expect(response.status).toBe(502);
-    expect(await response.json()).toStrictEqual({ error: "bad_gateway", reason: "http" });
+    expect(await response.json()).toStrictEqual({ error: "bad_gateway", reason: "http", upstreamStatus: 0 });
     expect(notes(testDb)).toStrictEqual([]);
     expect(counter(testDb)[0].count).toBe(1);
+  });
+
+  describe("502 の Claude の状態コードとログ（#174 の弱点 4、#192）", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    /** Claude のエラーの返事（API の形）。message・request_id は外に出してはいけない */
+    function errorReply(status: number): ClaudeReply {
+      return {
+        status,
+        body: {
+          type: "error",
+          error: { type: "some_error", message: "upstream-message-81 x-api-key sk-ant-fake-62" },
+          request_id: "req_upstream_93",
+        },
+      };
+    }
+
+    it.each([401, 403, 429, 500, 529])("Claude が %i を返したら、502 の upstreamStatus はその番号", async (status) => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const { deps } = setup(errorReply(status));
+      const response = await post(deps);
+      expect(response.status).toBe(502);
+      expect(await response.json()).toStrictEqual({ error: "bad_gateway", reason: "http", upstreamStatus: status });
+    });
+
+    it("502 の本文に、Claude のエラーの本文（message・種類・request_id）を出さない", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const { deps } = setup(errorReply(401));
+      const text = await (await post(deps)).text();
+      for (const leak of ["upstream-message-81", "sk-ant-fake-62", "x-api-key", "some_error", "req_upstream_93"]) {
+        expect(text).not.toContain(leak);
+      }
+    });
+
+    it.each([
+      ["http", errorReply(401), "401"],
+      ["http", { status: 0, body: null } as ClaudeReply, "0"],
+      ["refusal", apiReply({ stop_reason: "refusal" }), "200"],
+      ["truncated", apiReply({ stop_reason: "max_tokens" }), "200"],
+      ["shape", { status: 200, body: { stop_reason: "end_turn", content: "x" } } as ClaudeReply, "200"],
+    ])("502（%s）のときは console.error に 1 回・1 行だけ、理由と状態コードを残す", async (reason, reply, status) => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { deps } = setup(reply);
+      await post(deps);
+      expect(error).toHaveBeenCalledTimes(1);
+      const line = error.mock.calls[0].map(String).join(" ");
+      expect(line).not.toContain("\n");
+      expect(line).toContain(reason);
+      expect(line).toMatch(new RegExp(`(^|\\D)${status}(\\D|$)`));
+    });
+
+    it("ログに Claude の返事の中身・記録の文・圃場の外の値を出さない", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { deps } = setup(errorReply(401));
+      await post(deps);
+      await post({ ...deps, claude: async () => apiReply({ stop_reason: "refusal", id: "msg_secret_77" }) });
+      expect(error).toHaveBeenCalledTimes(2);
+      const logged = error.mock.calls.flat().map(String).join("\n");
+      for (const leak of ["upstream-message-81", "sk-ant-fake-62", "req_upstream_93", "msg_secret_77", "北側はまだ青い", "dev-actor-secret", "dev-uploader-secret"]) {
+        expect(logged).not.toContain(leak);
+      }
+    });
+
+    it("Claude の口の例外の文（message）をログに出さない", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { deps } = setup(async () => {
+        throw new Error("thrown-detail-44");
+      });
+      await post(deps);
+      expect(error).toHaveBeenCalledTimes(1);
+      expect(error.mock.calls.flat().map(String).join(" ")).not.toContain("thrown-detail-44");
+    });
+
+    it("保存できた（200）ときは console.error に何も出さない", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { deps } = setup();
+      expect((await post(deps)).status).toBe(200);
+      expect(error).not.toHaveBeenCalled();
+    });
+
+    it("Claude を呼ばない 422・429・503 のときは console.error に何も出さない", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { deps, testDb } = setup();
+      expect((await post({ ...deps, claude: null })).status).toBe(503);
+      testDb.raw
+        .prepare("INSERT INTO usage_counters (key, count, expires_at) VALUES (?, ?, ?)")
+        .run(COUNTER_KEY, CLAUDE_DAILY_LIMIT, "2026-10-26T15:00:00.000Z");
+      expect((await post(deps)).status).toBe(429);
+      expect(error).not.toHaveBeenCalled();
+    });
   });
 
   it("失敗したとき、前に保存したメモはそのまま残る", async () => {
