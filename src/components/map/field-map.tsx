@@ -77,17 +77,19 @@ function escapeHtml(text: string): string {
 /**
  * 札の中身。箱に入れず、影つきの白い文字だけ（航空写真の上で読める）。
  * 「目安」（金）／番号（と未確定の点）／名前。判断は塗りで分かるので文字にしない（日付は板で意味をつけて言う。精査 #8）。
+ * ただし色だけに頼らないよう、収穫可能・収穫済は番号の左に凡例と同じ印を付ける（濃い緑の畑では黄緑の塗りが緑に見えるため。11-07 精査 6 回目 #2）。
  * 縮小しているときは名前を隠す（CSS の .map-zoom-compact）
  */
 function labelHtml(item: MapParcel): string {
   const { appearance, labelLines } = item;
   const [id, ...nameParts] = labelLines[0].split(" ");
   const benchmark = appearance.benchmark ? '<span class="map-label-benchmark">目安</span>' : "";
+  const mark = appearance.fill === "none" ? "" : `<i class="mark mark-${appearance.fill} map-label-mark"></i>`;
   const dot = appearance.unconfirmed ? '<span class="map-label-dot" title="未確定の写真あり"></span>' : "";
   const name = nameParts.length > 0 ? `<span class="map-label-name">${escapeHtml(nameParts.join(" "))}</span>` : "";
   const rank = item.rank ? `<span class="rank${item.rank.confirmed ? " rank-confirmed" : ""} map-rank">${item.rank.n}</span>` : "";
   // 中身を 1 つの箱に入れ、その箱を畑の中心に寄せる（Leaflet は外側の要素の transform で位置を決めるので、外側には寄せを書けない）
-  return `<span class="map-label-body" aria-hidden="true">${rank}${benchmark}<span class="map-label-id">${escapeHtml(id)}${dot}</span>${name}</span>`;
+  return `<span class="map-label-body" aria-hidden="true">${rank}${benchmark}<span class="map-label-id">${mark}${escapeHtml(id)}${dot}</span>${name}</span>`;
 }
 
 /** 読み上げ。「可 7/21」は「7/21 に収穫可能と判断」と言葉で言う */

@@ -560,6 +560,15 @@ a:focus-visible {
   vertical-align: 1px;
 }
 
+/* 札の状態の印（収穫可能・収穫済）。凡例・板と同じ形。空中写真の上で埋もれないよう黒の縁を足す（11-07 精査 6 回目 #2） */
+.mark.map-label-mark {
+  width: 10px;
+  height: 10px;
+  margin-right: 4px;
+  vertical-align: 0;
+  box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.6);
+}
+
 .map-label-selected .map-label-name {
   font-size: 16px;
 }
