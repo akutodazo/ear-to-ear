@@ -71,7 +71,7 @@ export function sharePageHtml(input: SharePageInput): string {
     `<h1>${e(title)}</h1>`,
     `<img src="${imagePath}" alt="確定した刈る順番の地図 1 枚" width="${input.width}" height="${input.height}">`,
     `<pre>${e(text)}</pre>`,
-    "<p>地図: 地理院タイル（国土地理院）。区画・番号・順番は架空のもの</p>",
+    "<p>地図: 地理院タイル（国土地理院）。番号・名前・順番は架空のもの</p>",
     '<p><a href="/order">刈る順番の画面へ</a></p>',
     "</body></html>",
   ].join("\n");

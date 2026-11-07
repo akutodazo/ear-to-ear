@@ -70,6 +70,8 @@ describe("sharePageHtml の OGP", () => {
     expect(html).toContain("1. A-02 北の2\n2. A-01 北の1（目安）");
     expect(html).toContain("地理院タイル");
     expect(html).toContain("架空");
+    // 区画の形は公開の空中写真の畑からなぞった（11-07 本人決定、#199）。形を架空と言わない
+    expect(html).not.toContain("区画・");
     expect(html).toContain('href="/order"');
   });
 });

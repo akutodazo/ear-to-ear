@@ -95,7 +95,7 @@ export function OrderClient() {
     const byField = new Map(parcels.map((p) => [p.fieldId, p]));
     return {
       title: orderImageTitle(district, confirmedOrder.confirmedAt),
-      note: "区画・番号・順番は架空",
+      note: "番号・順番は架空",
       parcels: districtFields.flatMap((f) => {
         const parcel = byField.get(f.id);
         if (!parcel) return [];

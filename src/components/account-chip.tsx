@@ -73,7 +73,7 @@ export function AccountChip({ role, busy, message, onSignIn }: Props) {
             )}
             <footer className="account-sheet-foot">
               <span>ear-to-ear</span>
-              <span>区画の形・番号・判断・順番は架空のもの</span>
+              <span>番号・名前・判断・順番は架空のもの（区画の形は公開の空中写真の畑）</span>
               <span>地図: 地理院タイル</span>
             </footer>
           </section>
