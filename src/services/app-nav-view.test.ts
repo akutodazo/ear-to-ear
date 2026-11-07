@@ -1,27 +1,43 @@
 import { describe, expect, it } from "vitest";
-import { accountView, appNavHrefs } from "./app-nav-view";
+import { accountView, appNavHrefs, fieldDetailHref, navCurrent } from "./app-nav-view";
 
-describe("appNavHrefs（下の帯の 4 つ。選んだ畑を引き継ぐ、#194）", () => {
-  it("選んでいる畑があれば、4 つとも同じ畑へ", () => {
+// みっきぃ 3（#216）: 詳細は下の帯から外し、地図の板・順番のカードから入る。帯は 地図・比較・順番 の 3 つ
+describe("appNavHrefs（下の帯の 3 つ。選んだ畑を引き継ぐ、#194・#216）", () => {
+  it("選んでいる畑があれば、3 つとも同じ畑へ。詳細は無い", () => {
     expect(appNavHrefs("A-03", "A-03")).toStrictEqual({
       map: "/#A-03",
-      detail: "/fields/A-03",
       compare: "/fields/A-03#compare",
       order: "/order#A-03",
     });
   });
 
-  it("選んでいなければ、地図と順番は畑を付けず、詳細と比較は代わりの畑（目安など）へ", () => {
+  it("選んでいなければ、地図と順番は畑を付けず、比較は代わりの畑（目安など）へ", () => {
     expect(appNavHrefs("A-03", null)).toStrictEqual({
       map: "/",
-      detail: "/fields/A-03",
       compare: "/fields/A-03#compare",
       order: "/order",
     });
   });
 
   it("番号は URL に使える形にする", () => {
-    expect(appNavHrefs("A 1", "A 1").detail).toBe("/fields/A%201");
+    expect(appNavHrefs("A 1", "A 1").compare).toBe("/fields/A%201#compare");
+  });
+});
+
+describe("fieldDetailHref（地図の板・順番のカード・比較からの詳細の行き先、#216）", () => {
+  it("/fields/<番号>", () => {
+    expect(fieldDetailHref("A-03")).toBe("/fields/A-03");
+    expect(fieldDetailHref("A 1")).toBe("/fields/A%201");
+  });
+});
+
+describe("navCurrent（詳細・比較の画面で帯のどれを選んで見せるか、#216）", () => {
+  it("詳細は帯に無いので、どれも選ばない", () => {
+    expect(navCurrent("detail")).toBeNull();
+  });
+
+  it("比較は比較", () => {
+    expect(navCurrent("compare")).toBe("compare");
   });
 });
 

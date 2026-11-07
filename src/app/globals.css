@@ -2476,6 +2476,40 @@ a.dock-unconfirmed {
   padding: 0 9px;
 }
 
+/* 比較から詳細へ戻る（詳細は下の帯に無い、#216）。札と同じ高さの丸い札で、印と言葉 */
+.topbar-detail {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 44px;
+  margin-left: var(--space-8);
+  padding: 0 12px 0 10px;
+  border: 2px solid var(--brand);
+  border-radius: 22px;
+  background: var(--surface);
+  color: var(--brand);
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
+}
+
+.topbar-detail .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.topbar-detail:active {
+  transform: scale(0.96);
+  background: var(--brand-soft);
+}
+
+.topbar-detail:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
 .detail-body {
   gap: var(--space-24);
   padding-bottom: var(--space-24);

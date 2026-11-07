@@ -43,9 +43,9 @@ import { PassphraseForm } from "@/components/upload/passphrase-form";
 import { AppNav } from "@/components/app-nav";
 import { AccountChip } from "@/components/account-chip";
 import { useRole } from "@/hooks/use-role";
-import { appNavHrefs } from "@/services/app-nav-view";
+import { appNavHrefs, navCurrent } from "@/services/app-nav-view";
 import { sameDayEmptyNote } from "@/services/compare-note";
-import { IconPen, IconPhoto } from "@/components/icons";
+import { IconDetail, IconPen, IconPhoto } from "@/components/icons";
 
 const fields: Field[] = fieldsData;
 const benchmarks: Benchmark[] = benchmarksData;
@@ -203,6 +203,13 @@ export function FieldClient({ field }: { field: Field }) {
     <div className={view === "compare" ? "compare compare-full" : "compare detail"}>
       <header className="topbar compare-topbar">
         <FieldSwitcher fields={districtFields} currentId={field.id} benchmarkId={benchmarkId} hash={view === "compare" ? "compare" : undefined} />
+        {/* 詳細は下の帯に無いので、比較からはここで戻る（#216） */}
+        {view === "compare" && (
+          <button type="button" className="topbar-detail" onClick={() => setView("detail")}>
+            <IconDetail />
+            詳細
+          </button>
+        )}
         <AccountChip role={account.role} busy={account.busy} message={account.message} onSignIn={account.signIn} />
       </header>
       {view === "compare" ? (
@@ -357,12 +364,12 @@ export function FieldClient({ field }: { field: Field }) {
         />
       ) : (
         <AppNav
-          current={view}
+          current={navCurrent(view)}
           hrefs={hrefs}
           demoDate={demoDate}
           onPick={(key) => {
-            if (key !== "detail" && key !== "compare") return false;
-            setView(key);
+            if (key !== "compare") return false;
+            setView("compare");
             return true;
           }}
         />
