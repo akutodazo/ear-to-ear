@@ -26,6 +26,17 @@ function Svg({ className, ...rest }: Props & { children: React.ReactNode }) {
   );
 }
 
+/** 注意（三角に !。違う・できなかったを色だけでなく形でも伝える、#214） */
+export function IconAlert(props: Props) {
+  return (
+    <Svg {...props}>
+      <path d="M10.3 4.2L2.6 17.5A2 2 0 004.3 20.5h15.4a2 2 0 001.7-3L13.7 4.2a2 2 0 00-3.4 0z" />
+      <path d="M12 9.5v4" />
+      <path d="M12 17h.01" />
+    </Svg>
+  );
+}
+
 /** 地図（折った紙） */
 export function IconMap(props: Props) {
   return (
