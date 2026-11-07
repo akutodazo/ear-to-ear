@@ -99,7 +99,7 @@ Claude と LINE を手元で使うときの設定は [docs/dev/l6-live.md](docs/
 - 刈る順番の並べ替えは、いまは端末の中だけに保存する（共有は、確定した順の絵を LINE に送る形）
 
 ## ライセンス
-<!-- TODO: ライセンスの名前と LICENSE へのリンク -->
+[MIT License](LICENSE)
 
 ## 文書
 仕様: [docs/spec.md](docs/spec.md)／決定: [docs/decisions.md](docs/decisions.md)／公開範囲: [docs/privacy.md](docs/privacy.md)／予定表: [docs/schedule.md](docs/schedule.md)／Claude の使い方: [docs/claude-usage.md](docs/claude-usage.md)
