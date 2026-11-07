@@ -245,9 +245,10 @@ a:focus-visible {
 }
 .panel {
   padding: var(--space-16);
-  border-left: 4px solid var(--wheat);
-  border-radius: var(--radius-8);
-  background: var(--warning-soft);
+  border-radius: var(--radius-16);
+  background: var(--surface);
+  /* 横の強調帯（左の色の線）はやめ、細い縁だけ（みっきぃ 11-07、#217） */
+  box-shadow: inset 0 0 0 1px var(--border);
 }
 
 .cards {
@@ -333,10 +334,10 @@ a:focus-visible {
   text-decoration: none;
 }
 
-/* うまくいった・注意のまとめ */
+/* うまくいったまとめ: 地を淡い緑に（左の線は使わない、#217） */
 .panel-ok {
-  border-left-color: var(--success);
-  background: var(--surface);
+  background: var(--brand-soft);
+  box-shadow: none;
 }
 
 .note-alert {
@@ -374,14 +375,7 @@ a:focus-visible {
   width: 120px;
 }
 
-/* 未確定は左に麦色の線（麦の黄色は印だけに使う） */
-.card-pending {
-  border-left: 6px solid var(--wheat);
-}
-
-.card-alert {
-  border-left: 6px solid var(--assertive);
-}
+/* 未確定・注意は札（.badge の言葉と色）で伝え、左の線は付けない（#217） */
 
 .badge {
   display: inline-block;
@@ -1528,10 +1522,7 @@ a:focus-visible {
   font-weight: 700;
 }
 
-/* 下（この畑・選んだ日）の帯は左端に白い線（上と見分ける。精査 3 回目 #7） */
-.split-caption-self {
-  border-left: 4px solid #ffffff;
-}
+/* 上と下は帯の言葉（目安・前の日／この畑）で見分ける。左の白い線はやめた（#217） */
 
 .split-tag {
   padding: 0 6px;
@@ -2948,11 +2939,7 @@ a.dock-unconfirmed {
   align-self: flex-start;
 }
 
-/* 合言葉の欄の金はやめる（金は目安だけ） */
-.panel {
-  border-left-color: var(--brand);
-  background: var(--surface);
-}
+
 
 /* --- 比較（#compare）: 帯の間いっぱい、本文は送らない --- */
 .compare-full .compare-stage-body {
