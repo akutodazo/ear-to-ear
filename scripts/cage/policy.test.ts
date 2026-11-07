@@ -72,6 +72,34 @@ describe("純粋関数の検査: import", () => {
   });
 });
 
+// #184: Service の元のファイルにある型だけの import（例 status-view.ts の i-field-status-repository）で、攻撃役が書き込めなかった。
+// import type は実行時に消えるので、@/ の下からなら許す。中身だけ型の import（import { type X }）は残りうるので許さない
+describe("純粋関数の検査: 型だけの import（#184）", () => {
+  it.each([
+    'import type { PostStatusOutcome, RevokeOutcome } from "@/repositories/interfaces/i-field-status-repository";',
+    'import type { UploadOutcome } from "@/repositories/interfaces/i-photo-repository";',
+    'export type { StatusDraft } from "@/hooks/use-field-status";',
+  ])("%s は通る", (code) => {
+    expect(checkPurity(code)).toEqual([]);
+  });
+
+  it.each([
+    // 値の import は今までどおり許可リストだけ
+    'import { HttpPhotoRepository } from "@/repositories/implementations/http-photo-repository";',
+    // 中身だけ型でも、import の文は実行時に残りうる
+    'import { type PostStatusOutcome } from "@/repositories/interfaces/i-field-status-repository";',
+    // 型だけでも、@/ の外・.. ・?raw・node: は通さない
+    'import type { Stats } from "node:fs";',
+    'import type X from "leaflet";',
+    'import type { X } from "@/services/../../scripts/x";',
+    'import type { X } from "@/x?raw";',
+    'import type { X } from "@/.dev.vars";',
+    'export type { X } from "node:fs";',
+  ])("%s は通らない", (code) => {
+    expect(checkPurity(code).length).toBeGreaterThan(0);
+  });
+});
+
 describe("純粋関数の検査: 外に触る名前", () => {
   it.each([
     "process.env.X",

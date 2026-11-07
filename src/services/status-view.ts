@@ -95,6 +95,28 @@ export function toggleRefPhoto(
   return { selected: [...selected, photoId], limited: false };
 }
 
+/** 「記録する」を押せるかの入力。selectablePhotoCount は、この畑に確定済みで根拠に選べる写真の数 */
+export interface SubmitCondition {
+  status: StatusEvent["status"] | null;
+  refCount: number;
+  selectablePhotoCount: number;
+}
+
+/**
+ * 「記録する」を押せる条件（Issue #182）。判断を選んでいて、根拠の写真が 1 枚以上。
+ * 選べる写真が 1 枚も無い畑は、根拠なしで押せる（写真が無い畑にも判断を残せるように）
+ */
+export function canSubmitStatus({ status, refCount, selectablePhotoCount }: SubmitCondition): boolean {
+  if (status === null) return false;
+  return refCount > 0 || selectablePhotoCount === 0;
+}
+
+/** 判断を選んだのに、根拠が無くて押せないときの理由。押せるとき・判断を選ぶ前は null */
+export function refRequiredNote(condition: SubmitCondition): string | null {
+  if (condition.status === null || canSubmitStatus(condition)) return null;
+  return "根拠の写真を 1 枚以上、下の写真から選んでください";
+}
+
 /** 新しい順（at の降順、同じなら id の降順） */
 function newestFirst(a: StatusEvent, b: StatusEvent): number {
   if (a.at !== b.at) return a.at > b.at ? -1 : 1;

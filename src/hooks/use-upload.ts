@@ -9,9 +9,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import fieldsData from "@/data/fields.json";
 import type { Field } from "@/types";
 import { candidateFieldIds, distanceMeters } from "@/services/candidates";
+import { fieldIdFromHash } from "@/services/field-hash";
 import { sendSummaryLabel, sendingProgressLabel, uploadOutcomeLabel } from "@/services/photo-labels";
 import { buildUploadMeta } from "@/services/upload-request";
 import { loginOutcomeLabel } from "@/services/login-label";
+import { uploadActionView } from "@/services/upload-action-view";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
 import type { IPhotoRepository, LoginOutcome } from "@/repositories/interfaces/i-photo-repository";
 import {
@@ -23,6 +25,7 @@ import {
 } from "@/lib/upload-steps";
 
 const fields: Field[] = fieldsData;
+const fieldIds = fields.map((f) => f.id);
 
 /** unusable は画像として開けない写真（送る数に入れない）。duplicate は同じ写真がもう送られていた（送り済みと同じ扱い） */
 export type ItemStatus = "reading" | "ready" | "sending" | "sent" | "duplicate" | "failed" | "unusable";
@@ -66,6 +69,8 @@ export function useUpload(repository?: IPhotoRepository) {
   const [sending, setSending] = useState(false);
   const [needsPassphrase, setNeedsPassphrase] = useState(false);
   const [loginMessage, setLoginMessage] = useState<string | null>(null);
+  /** 合言葉の欄の中身（送るボタン 1 つで確かめる、#214） */
+  const [passphrase, setPassphraseValue] = useState("");
   /** 合言葉を確かめている間（Issue #69） */
   const [loggingIn, setLoggingIn] = useState(false);
   /** 送っている間の何枚目か（Issue #69） */
@@ -98,7 +103,8 @@ export function useUpload(repository?: IPhotoRepository) {
           previewUrl,
           info: null,
           candidates: [],
-          chosenFieldId: null,
+          // 地図・刈る順番で選んでいた畑（/upload#A-01）を、委員が選んだ番号にしておく。確定は管理者のまま（精査 5 回目 #5）
+          chosenFieldId: fieldIdFromHash(window.location.hash, fieldIds),
           status: "reading",
           message: null,
         };
@@ -203,11 +209,28 @@ export function useUpload(repository?: IPhotoRepository) {
       setLoginMessage(loginOutcomeLabel(outcome));
       if (outcome !== "ok") return;
       setNeedsPassphrase(false);
+      setPassphraseValue("");
       // 入れたら、押し直さなくても送り直す（委員の手間を増やさない。K1）
       await sendAll();
     },
     [repo, sendAll, loggingIn],
   );
+
+  /** 合言葉を書き直したら、前の「違います」は消す */
+  const setPassphrase = useCallback((value: string) => {
+    setPassphraseValue(value);
+    setLoginMessage(null);
+  }, []);
+
+  /** 下の「送る（n枚）」。合言葉が要るときは、確かめてから送る（「入って送る」のボタンは無い、#214） */
+  const submit = useCallback(async () => {
+    if (needsPassphrase) {
+      if (passphrase.trim() === "") return;
+      await login(passphrase);
+      return;
+    }
+    await sendAll();
+  }, [needsPassphrase, passphrase, login, sendAll]);
 
   /** 送った写真を片付けて、続けて選べるようにする */
   const clearSent = useCallback(() => {
@@ -223,6 +246,8 @@ export function useUpload(repository?: IPhotoRepository) {
   }, [items]);
 
   const sendableCount = items.filter(isSendable).length;
+  const progressLabel = progress ? sendingProgressLabel(progress.done, progress.total) : null;
+  const action = uploadActionView({ needsPassphrase, passphrase, sending, loggingIn, sendableCount, progressLabel });
   const summary = finished
     ? sendSummaryLabel({
         sent: items.filter((i) => i.status === "sent").length,
@@ -243,9 +268,11 @@ export function useUpload(repository?: IPhotoRepository) {
     sendAll,
     clearSent,
     needsPassphrase,
-    login,
+    passphrase,
+    setPassphrase,
+    submit,
+    action,
     loginMessage,
     loggingIn,
-    progressLabel: progress ? sendingProgressLabel(progress.done, progress.total) : null,
   };
 }

@@ -6,6 +6,9 @@ import ts from "typescript";
 // AGENTS.md §4 の「Service は純粋関数」を書き込みの条件にする
 // 各区切りの先頭は英数字か - だけ。.. と隠しファイルと ?raw を通さない
 const ALLOWED_IMPORT = /^(@\/types|@\/config|\.\.\/types|\.\.\/config|(@\/services|\.)(\/[\w-][\w.-]*)+)$/;
+// 型だけの import（import type / export type）は実行時に消えるので、@/ の下からなら許す（#184）。
+// 区切りは英数字・_・- だけ（. を許さないので、..・隠しファイル・拡張子・?raw は通らない）
+const TYPE_ONLY_IMPORT = /^@(\/[\w-]+)+$/;
 const BANNED_NAMES = new Set([
   "process",
   "fetch",
@@ -84,7 +87,10 @@ export function checkPurity(source) {
   const declared = declaredNames(file);
   const visit = (node) => {
     if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier) {
-      if (!ALLOWED_IMPORT.test(node.moduleSpecifier.text)) problems.push(`import ${node.moduleSpecifier.text}`);
+      const spec = node.moduleSpecifier.text;
+      // 文ごと型だけのとき（import type {..} / export type {..}）。中身だけ型（import { type X }）は文が残りうるので含めない
+      const typeOnly = ts.isImportDeclaration(node) ? node.importClause?.isTypeOnly === true : node.isTypeOnly;
+      if (!ALLOWED_IMPORT.test(spec) && !(typeOnly && TYPE_ONLY_IMPORT.test(spec))) problems.push(`import ${spec}`);
     } else if (ts.isImportEqualsDeclaration(node)) {
       problems.push("import =");
     } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {

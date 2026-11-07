@@ -4,8 +4,9 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { useUpload } from "@/hooks/use-upload";
-import { PassphraseForm } from "@/components/upload/passphrase-form";
+import { PassphraseField } from "@/components/upload/passphrase-field";
 import { PhotoCard } from "@/components/upload/photo-card";
+import { PhrasedText } from "@/components/upload/phrased-text";
 
 export function UploadClient() {
   const upload = useUpload();
@@ -32,6 +33,8 @@ export function UploadClient() {
           }}
         />
       </label>
+      {/* 撮影位置の約束は、読ませる前置きにせず、ボタンの下に小さく（11-07 精査 6 回目 #3） */}
+      <p className="note upload-promise">撮影した場所は端末の外に出しません。送るのは近い畑の番号だけです</p>
 
       <ul className="cards">
         {upload.items.map((item) => (
@@ -49,7 +52,13 @@ export function UploadClient() {
 
       {/* 合言葉とまとめは一覧の下（送るボタンのすぐ上）に出し、出たら画面の中へ動かす */}
       {upload.needsPassphrase && (
-        <PassphraseForm onSubmit={upload.login} message={upload.loginMessage} busy={upload.loggingIn} />
+        <PassphraseField
+          value={upload.passphrase}
+          onChange={upload.setPassphrase}
+          onSubmit={upload.submit}
+          message={upload.loginMessage}
+          busy={upload.loggingIn}
+        />
       )}
 
       {upload.summary && (
@@ -58,7 +67,7 @@ export function UploadClient() {
           <div className="stack-tight">
             {upload.summary.split("。").map((sentence) => (
               <p key={sentence} className="label balance">
-                {sentence}
+                <PhrasedText text={sentence} />
               </p>
             ))}
           </div>
@@ -71,16 +80,17 @@ export function UploadClient() {
         </div>
       )}
 
-      {(upload.sendableCount > 0 || upload.sending) && (
+      {/* 押すボタンはこの 1 つ。合言葉が要るときも、ここで確かめてから送る（#214） */}
+      {upload.action && (
         <div className="action-bar">
           <button
             type="button"
             className="button button-primary button-block"
-            disabled={upload.sending || upload.loggingIn}
-            aria-busy={upload.sending}
-            onClick={upload.sendAll}
+            disabled={upload.action.disabled}
+            aria-busy={upload.sending || upload.loggingIn}
+            onClick={upload.submit}
           >
-            {upload.sending ? (upload.progressLabel ?? "送っています…") : `送る（${upload.sendableCount}枚）`}
+            {upload.action.label}
           </button>
         </div>
       )}

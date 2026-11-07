@@ -112,3 +112,20 @@ export interface HandoverNote {
   model: string;
   createdAt: string;
 }
+
+/**
+ * 圃場の輪郭（L1 の地図、11-04 夜の本人決定）。架空の形で、座標はすべて FICTIONAL_AREA の中（K10）。
+ * polygon は [lat, lng] の並び（3 点以上、最後の点で閉じない）。形は架空の範囲の中に限り、空中写真の畑の境目からなぞってよい（11-07 本人決定。番号・判断は架空）
+ */
+export interface Parcel {
+  fieldId: string;
+  polygon: [number, number][];
+}
+
+/** 年・地区ごとの目安の畑（早く育つ畑。委員会が指定する。11-04 夜の本人決定）。指定の無い地区があってよい */
+export interface Benchmark {
+  /** 例 '2026' */
+  season: string;
+  district: string;
+  fieldId: string;
+}

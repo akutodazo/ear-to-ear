@@ -5,12 +5,13 @@
  */
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import fieldsData from "@/data/fields.json";
 import type { Field, Role, UploadedPhoto } from "@/types";
 import { applyAssignment, assignOutcomeLabel } from "@/services/assignment";
 import { filterRecent, unconfirmedCountLabel } from "@/services/recent-view";
 import { loginOutcomeLabel } from "@/services/login-label";
+import { unconfirmedHash } from "@/services/field-hash";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
 import type {
   IPhotoRepository,
@@ -28,6 +29,11 @@ export interface AssignStatus {
   ok: boolean;
 }
 
+function subscribeHash(onChange: () => void) {
+  window.addEventListener("hashchange", onChange);
+  return () => window.removeEventListener("hashchange", onChange);
+}
+
 export function useRecent(repository?: IPhotoRepository) {
   const [repo] = useState<IPhotoRepository>(() => repository ?? createPhotoRepository());
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
@@ -41,8 +47,10 @@ export function useRecent(repository?: IPhotoRepository) {
   /** 合言葉を確かめている間（Issue #69） */
   const [loggingIn, setLoggingIn] = useState(false);
   const [assignStatus, setAssignStatus] = useState<Record<string, AssignStatus>>({});
-  /** 「未確定だけ見る」 */
-  const [onlyUnconfirmed, setOnlyUnconfirmed] = useState(false);
+  /** 「未確定だけ見る」。押すまでは URL の #unconfirmed（地図の板の「未確定の写真あり」から来たとき）に従う（精査 5 回目 #1） */
+  const [onlyUnconfirmedPicked, setOnlyUnconfirmed] = useState<boolean | null>(null);
+  const fromLink = useSyncExternalStore(subscribeHash, () => unconfirmedHash(window.location.hash), () => false);
+  const onlyUnconfirmed = onlyUnconfirmedPicked ?? fromLink;
 
   const apply = useCallback((outcome: RecentOutcome) => {
     setLoading(false);
@@ -132,7 +140,7 @@ export function useRecent(repository?: IPhotoRepository) {
     [repo],
   );
 
-  const toggleOnlyUnconfirmed = useCallback(() => setOnlyUnconfirmed((v) => !v), []);
+  const toggleOnlyUnconfirmed = useCallback(() => setOnlyUnconfirmed(!onlyUnconfirmed), [onlyUnconfirmed]);
 
   return {
     photos: filterRecent(photos, onlyUnconfirmed),

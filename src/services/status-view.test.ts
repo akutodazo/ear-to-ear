@@ -4,12 +4,14 @@ import { STATUS_NOTE_MAX_CHARS, STATUS_REASONS, STATUS_REF_PHOTOS_MAX } from "@/
 import type { StatusInputReason } from "./status-reason";
 import type { PostStatusOutcome, RevokeOutcome } from "@/repositories/interfaces/i-field-status-repository";
 import {
+  canSubmitStatus,
   inputErrorLabel,
   jstDateTimeLabel,
   noteCountLabel,
   pinState,
   postOutcomeLabel,
   reasonsLabel,
+  refRequiredNote,
   revokeOutcomeLabel,
   statusLabel,
   toggleRefPhoto,
@@ -321,5 +323,56 @@ describe("pinState（地図のピン）", () => {
       status: "done",
       unconfirmed: true,
     });
+  });
+});
+
+/**
+ * 「記録する」を押せる条件（Issue #182）。判断を選んでいて、根拠の写真が 1 枚以上。
+ * ただしこの畑に確定済みの写真が 1 枚も無いときは選べないので、根拠なしで押せる（写真が無い畑にも判断を残せるように）
+ */
+describe("canSubmitStatus（記録するを押せるか）", () => {
+  it("判断を選んでいなければ押せない", () => {
+    expect(canSubmitStatus({ status: null, refCount: 2, selectablePhotoCount: 3 })).toBe(false);
+  });
+
+  it("写真があるのに根拠が 0 枚なら押せない", () => {
+    expect(canSubmitStatus({ status: "ready", refCount: 0, selectablePhotoCount: 3 })).toBe(false);
+    expect(canSubmitStatus({ status: "done", refCount: 0, selectablePhotoCount: 1 })).toBe(false);
+  });
+
+  it("根拠を 1 枚でも選べば押せる", () => {
+    expect(canSubmitStatus({ status: "ready", refCount: 1, selectablePhotoCount: 3 })).toBe(true);
+    expect(canSubmitStatus({ status: "done", refCount: STATUS_REF_PHOTOS_MAX, selectablePhotoCount: 9 })).toBe(true);
+  });
+
+  it("確定済みの写真が 1 枚も無い畑は、根拠なしで押せる", () => {
+    expect(canSubmitStatus({ status: "ready", refCount: 0, selectablePhotoCount: 0 })).toBe(true);
+  });
+
+  it("選べる写真が 0 枚と出ていても、根拠を選んでいれば押せる（写真の一覧を読み直す前など）", () => {
+    expect(canSubmitStatus({ status: "done", refCount: 1, selectablePhotoCount: 0 })).toBe(true);
+  });
+
+  it("写真が無い畑でも、判断を選んでいなければ押せない", () => {
+    expect(canSubmitStatus({ status: null, refCount: 0, selectablePhotoCount: 0 })).toBe(false);
+  });
+});
+
+describe("refRequiredNote（押せない理由）", () => {
+  it("判断を選んだのに根拠が無く、選べる写真があるときだけ、理由を出す", () => {
+    expect(refRequiredNote({ status: "ready", refCount: 0, selectablePhotoCount: 3 })).toBe(
+      "根拠の写真を 1 枚以上、下の写真から選んでください",
+    );
+    expect(refRequiredNote({ status: "done", refCount: 0, selectablePhotoCount: 1 })).toBe(
+      "根拠の写真を 1 枚以上、下の写真から選んでください",
+    );
+  });
+
+  it.each([
+    [{ status: null, refCount: 0, selectablePhotoCount: 3 }],
+    [{ status: "ready" as const, refCount: 1, selectablePhotoCount: 3 }],
+    [{ status: "ready" as const, refCount: 0, selectablePhotoCount: 0 }],
+  ])("それ以外は出さない（%j）", (input) => {
+    expect(refRequiredNote(input)).toBeNull();
   });
 });

@@ -8,9 +8,9 @@ export const metadata: Metadata = {
     "小麦収穫委員会の写真共有。委員が写真を送るだけで圃場番号の候補と撮影日が付いて共有され、判断とその理由を根拠付きで残す。",
 };
 
-/** ブラウザの上の帯の色をブランドの青に（globals.css の --brand と同じ） */
+/** ブラウザの上の帯の色をブランドの濃い緑に（globals.css の --brand と同じ。11-04 夜の本人決定） */
 export const viewport: Viewport = {
-  themeColor: "#1f6fb5",
+  themeColor: "#2d6441",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

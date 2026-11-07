@@ -141,29 +141,29 @@ describe("checkFieldsArea（圃場の一覧の座標が架空の範囲の中か�
   const f = (id: string, lat: unknown, lng: unknown) => ({ id, name: `圃場 ${id}`, lat, lng, district: "A" });
 
   it("すべて範囲の中なら空（端を含む）", () => {
-    const data = [f("A-01", 41.8, 144.5), f("A-02", 41.815, 144.52), f("A-03", 41.807, 144.51)];
+    const data = [f("A-01", 43.235, 141.74), f("A-02", 43.25, 141.76), f("A-03", 43.242, 141.75)];
     expect(checkFieldsArea(data, FICTIONAL_AREA)).toEqual([]);
   });
 
   it("緯度が外の圃場を、番号つきで1件返す", () => {
-    const data = [f("A-01", 41.807, 144.51), f("A-02", 42.6, 144.51)];
+    const data = [f("A-01", 43.242, 141.75), f("A-02", 44.1, 141.75)];
     const result = checkFieldsArea(data, FICTIONAL_AREA);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatch(/A-02/);
   });
 
   it("経度が外の圃場も返す", () => {
-    const data = [f("A-05", 41.807, 143.2)];
+    const data = [f("A-05", 43.242, 140.9)];
     expect(checkFieldsArea(data, FICTIONAL_AREA)).toHaveLength(1);
   });
 
   it("緯度が下限のすぐ外・経度が上限のすぐ外も返す（4つの端をすべて確かめる）", () => {
-    const data = [f("A-08", 41.799, 144.51), f("A-09", 41.807, 144.521)];
+    const data = [f("A-08", 43.234, 141.75), f("A-09", 43.242, 141.761)];
     expect(checkFieldsArea(data, FICTIONAL_AREA)).toHaveLength(2);
   });
 
   it("座標が数でなければ返す（範囲を確かめられないものは通さない）", () => {
-    const data = [f("A-06", "41.807", 144.51), f("A-07", 41.807, null)];
+    const data = [f("A-06", "43.242", 141.75), f("A-07", 43.242, null)];
     expect(checkFieldsArea(data, FICTIONAL_AREA)).toHaveLength(2);
   });
 

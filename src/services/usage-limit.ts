@@ -75,3 +75,8 @@ export function lineMonthEndsAt(nowMs: number): string {
   const nextMonthStartJst = Date.UTC(jst.getUTCFullYear(), jst.getUTCMonth() + 1, 1);
   return new Date(nextMonthStartJst - JST_OFFSET_MS).toISOString();
 }
+
+/** LINE から受け取る写真の 1 日の枚数の key。`line-photo:<日本時間の日付 YYYY-MM-DD>`（L9、#172）。期限は claudeDayEndsAt と同じ日本時間 0 時 */
+export function linePhotoCounterKey(nowMs: number): string {
+  return `line-photo:${new Date(nowMs + JST_OFFSET_MS).toISOString().slice(0, 10)}`;
+}
