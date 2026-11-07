@@ -1434,7 +1434,7 @@ a:focus-visible {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--space-8);
   min-height: 44px;
   border: 1.5px solid var(--border);
   border-radius: var(--radius-8);
@@ -1444,6 +1444,12 @@ a:focus-visible {
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
+}
+
+/* 比べ方のアイコンは 20px（矢印の細部が潰れないように、#230） */
+.mode-item .icon {
+  width: 20px;
+  height: 20px;
 }
 
 .mode-current {
@@ -2919,11 +2925,15 @@ a.dock-unconfirmed {
   }
 }
 
+/* 「›」は見出しの文字の直後に固定する（文字との間は常に 8px）。幅の余りは「›」とボタンの間の空白に逃がし、
+   丸・文字・「›」の間隔は画面の幅で変わらない（#230）。押せる範囲は従来どおり残りの幅いっぱい */
 .rank-line-link {
   flex: 1;
   min-width: 0;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, max-content) 20px;
+  justify-content: start;
+  align-content: center;
   align-items: center;
   column-gap: var(--space-8);
   min-height: 48px;
@@ -2933,13 +2943,16 @@ a.dock-unconfirmed {
 
 .rank-line-title {
   grid-column: 1;
+  grid-row: 1;
   font-size: var(--font-size-md);
   font-weight: 700;
   line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .rank-line-sub {
   grid-column: 1;
+  grid-row: 2;
   margin: 0;
   color: var(--text-2);
   font-size: var(--font-size-sm);
@@ -2948,11 +2961,16 @@ a.dock-unconfirmed {
 
 .rank-line-chevron {
   grid-column: 2;
-  grid-row: 1 / span 2;
+  grid-row: 1;
   width: 20px;
   height: 20px;
   color: var(--text-2);
   transform: rotate(-90deg);
+}
+
+/* 下書き・確定の小さな行があるときだけ 2 行。無いときは 1 行で、空の行を作らない（文字が丸より下にずれるため） */
+.rank-line-sub + .rank-line-chevron {
+  grid-row: 1 / span 2;
 }
 
 .rank-line-action {
