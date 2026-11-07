@@ -188,6 +188,61 @@ a:focus-visible {
   font-size: 1.1rem;
 }
 
+/* 写真を送るの合言葉の欄（#214）。欄だけで、押すのは下の「送る」。枠で囲まず、地の上に置く */
+.passphrase-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-16);
+  border-radius: var(--radius-16);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border);
+  animation: passphrase-field-in var(--duration-move) var(--ease-out) both;
+}
+
+@keyframes passphrase-field-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.passphrase-field-label {
+  font-weight: 700;
+}
+
+.passphrase-field-lead {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+
+.passphrase-field-input {
+  width: 100%;
+  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.passphrase-field-invalid,
+.passphrase-field-invalid:focus-visible {
+  border-color: var(--assertive);
+  box-shadow: 0 0 0 4px rgba(198, 58, 30, 0.16);
+}
+
+.passphrase-field-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--assertive);
+  font-weight: 700;
+}
+
+.passphrase-field-error .icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
 .panel {
   padding: var(--space-16);
   border-left: 4px solid var(--wheat);
