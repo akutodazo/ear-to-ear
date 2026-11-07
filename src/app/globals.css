@@ -2247,11 +2247,14 @@ a.dock-unconfirmed {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
+  /* 言葉（委員・委員長・入る）の幅に合わせる。1 文字の丸にしない（11-07 精査 6 回目 #4） */
+  min-width: 44px;
   height: 44px;
+  padding: 0 12px;
   margin-left: auto;
   border: 2px solid var(--border-strong);
-  border-radius: 50%;
+  border-radius: 22px;
+  white-space: nowrap;
   background: var(--surface);
   color: var(--text-2);
   font-size: 1rem;
@@ -2315,9 +2318,9 @@ a.dock-unconfirmed {
   gap: var(--space-16);
 }
 
+/* シートの見出しでは、隣の文（「委員として入っています」）と同じことを言うので札を出さない */
 .account-sheet-head .account-chip {
-  margin-left: 0;
-  cursor: default;
+  display: none;
 }
 
 .account-sheet-line {
@@ -2400,6 +2403,13 @@ a.dock-unconfirmed {
 
 .compare-topbar .account-chip {
   margin-left: var(--space-8);
+  /* 札が言葉（委員長など）になった分、地区の 4 つの畑と並べて 375px に収める（11-07 精査 6 回目 #4） */
+  padding: 0 10px;
+  font-size: 0.9rem;
+}
+
+.compare-topbar .switcher-item {
+  padding: 0 9px;
 }
 
 .detail-body {
