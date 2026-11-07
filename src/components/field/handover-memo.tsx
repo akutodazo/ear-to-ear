@@ -7,6 +7,7 @@
 import type { HandoverSentence } from "@/services/handover-view";
 import { NO_SOURCE_LABEL } from "@/services/handover-view";
 import { IconPen } from "@/components/icons";
+import { PhrasedText } from "@/components/upload/phrased-text";
 
 export function HandoverMemo({
   sentences,
@@ -53,12 +54,18 @@ export function HandoverMemo({
               )}
             </p>
           ))}
-          {createdLabel && <p className="memo-created">{createdLabel}（Claude が記録から作成）</p>}
+          {createdLabel && (
+            <p className="memo-created">
+              <PhrasedText keepParens text={`${createdLabel}（Claude が記録から作成）`} />
+            </p>
+          )}
         </div>
       )}
       <button type="button" className="button button-small memo-create" onClick={onCreate} disabled={creating} aria-busy={creating}>
         <IconPen />
-        {creating ? "作っています…" : sentences.length > 0 ? "メモを作り直す（管理者）" : "メモを作る（管理者）"}
+        <span>
+          <PhrasedText keepParens text={creating ? "作っています…" : sentences.length > 0 ? "メモを作り直す（管理者）" : "メモを作る（管理者）"} />
+        </span>
       </button>
       {createMessage && <p className={createMessage.ok ? "note note-ok" : "note note-alert"}>{createMessage.text}</p>}
     </section>

@@ -4,6 +4,7 @@
 import { useState } from "react";
 import type { Field, UploadedPhoto } from "@/types";
 import type { AssignStatus } from "@/hooks/use-recent";
+import { PhrasedText } from "@/components/upload/phrased-text";
 import { assignButtonLabel, assignmentOptionGroups, canAssign, initialAssignment } from "@/services/assignment";
 
 export function AssignmentForm({
@@ -28,7 +29,9 @@ export function AssignmentForm({
       }}
     >
       <label className="stack-tight">
-        番号を決める（管理者）
+        <span>
+          <PhrasedText keepParens text="番号を決める（管理者）" />
+        </span>
         <select className="input" value={selected} disabled={busy} onChange={(e) => setSelected(e.target.value)}>
           {selected === "" && <option value="">選んでください</option>}
           {assignmentOptionGroups(photo, fields).map((group) => (
