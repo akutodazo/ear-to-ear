@@ -25,17 +25,18 @@ describe("appNavHrefs（下の帯の 4 つ。選んだ畑を引き継ぐ、#194�
   });
 });
 
+// 札は 1 文字の記号にせず、言葉にする（11-07 精査 6 回目 #4。REVIEW-BRIEF §5「文字を消すだけで改善したつもりにならない」）
 describe("accountView（アカウント札とシートの言葉、#194）", () => {
   it("委員長", () => {
-    expect(accountView("admin")).toStrictEqual({ chip: "長", line: "委員長として入っています", isAdmin: true, canSignInAsChair: false });
+    expect(accountView("admin")).toStrictEqual({ chip: "委員長", line: "委員長として入っています", isAdmin: true, canSignInAsChair: false });
   });
 
   it("委員", () => {
-    expect(accountView("member")).toStrictEqual({ chip: "委", line: "委員として入っています", isAdmin: false, canSignInAsChair: true });
+    expect(accountView("member")).toStrictEqual({ chip: "委員", line: "委員として入っています", isAdmin: false, canSignInAsChair: true });
   });
 
-  it("入っていない・まだ分からない", () => {
-    expect(accountView(null)).toStrictEqual({ chip: "—", line: "入っていません", isAdmin: false, canSignInAsChair: true });
+  it("入っていない・まだ分からない（入っていないときは、押すと入れることを言う）", () => {
+    expect(accountView(null)).toStrictEqual({ chip: "入る", line: "入っていません", isAdmin: false, canSignInAsChair: true });
     expect(accountView(undefined).chip).toBe("…");
   });
 });

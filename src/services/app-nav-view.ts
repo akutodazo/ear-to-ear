@@ -27,7 +27,7 @@ export function appNavHrefs(fieldId: string, selectedId: string | null): AppNavH
 }
 
 export interface AccountView {
-  /** 上の帯の右端の丸い札の 1 文字 */
+  /** 上の帯の右端の札の言葉（1 文字の記号にしない。11-07 精査 6 回目 #4） */
   chip: string;
   line: string;
   isAdmin: boolean;
@@ -38,7 +38,8 @@ export interface AccountView {
 /** role: 読めた役割。null は入っていない、undefined はまだ読んでいる */
 export function accountView(role: Role | null | undefined): AccountView {
   if (role === undefined) return { chip: "…", line: "確かめています", isAdmin: false, canSignInAsChair: false };
-  if (role === "admin") return { chip: "長", line: "委員長として入っています", isAdmin: true, canSignInAsChair: false };
-  if (role === "member") return { chip: "委", line: "委員として入っています", isAdmin: false, canSignInAsChair: true };
-  return { chip: "—", line: "入っていません", isAdmin: false, canSignInAsChair: true };
+  if (role === "admin") return { chip: "委員長", line: "委員長として入っています", isAdmin: true, canSignInAsChair: false };
+  if (role === "member") return { chip: "委員", line: "委員として入っています", isAdmin: false, canSignInAsChair: true };
+  // 入っていないときは、押すと入れることを言う
+  return { chip: "入る", line: "入っていません", isAdmin: false, canSignInAsChair: true };
 }
