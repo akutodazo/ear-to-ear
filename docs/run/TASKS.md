@@ -25,3 +25,17 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 | 14〜 | T07・T13・T14・T15・T16（L6・L8） | L0 の後に決める | — |
 
 ---
+
+## T33 `handover-post` の 502 に Claude の状態コード（#174 の弱点 4、#192）
+- **状態**: RED済み（人）
+- **Issue**: #192
+- **変えてよいファイル**: `worker/handover-post.ts`（＋ `docs/run/REPORT-T33.md`、止まったときは `docs/run/QUESTIONS.md`）
+- **テスト（凍結）**: `worker/handover-post.test.ts`
+- **合格条件**:
+  - Claude の返事を読めない 502 は `{error:"bad_gateway", reason, upstreamStatus}`。`upstreamStatus` は Claude の口が返した状態コード（口の例外・通信の失敗は 0、refusal・truncated・shape は 200）。`reason` は今のまま
+  - 502 のときだけ `console.error` を 1 回・1 行。中身は理由と状態コードだけ。Claude の返事の本文（message・request_id・id）・例外の文・記録の文・端末の値を出さない
+  - 200・422・429・503 では `console.error` を呼ばない
+  - ほかの順（404 → 503 → 記録 → 422 → 429 → Claude → 502 → 保存）と 200 の本文は変えない
+- **書き方の注意**: `worker/http.ts` の `errorResponse` は `reason` しか持てない（変えてよいファイルの外）。502 の本文は同じファイルの `json` で作る。新しい import は足さない
+- **参照**: `docs/spec.md` §6（`POST /api/fields/:id/handover`）、AGENTS.md §1-3（秘密をログに出さない）
+- **担当**: 先輩
