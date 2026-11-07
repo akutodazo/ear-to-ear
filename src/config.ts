@@ -41,8 +41,8 @@ export const FIELD_ID_PATTERN = /^[A-Z]-\d{2}$/;
 
 /**
  * 架空の圃場を置く範囲（P15。11-04 夜の本人決定で書き換え）。端を含む。
- * 北海道の空知の公開の農地の上、約 1.7km × 1.6km。本人の実家とは無関係の場所で、区画（src/data/parcels.json）は
- * 実在の畑の境界をなぞらず、機械的に置いた架空の形。圃場の一覧（src/data/fields.json）の座標はすべてこの中に置く（K10）。
+ * 北海道の空知の公開の農地の上、約 1.7km × 1.6km。本人の実家とは無関係の場所で、区画（src/data/parcels.json）の形は
+ * この中に限り空中写真の畑の境目からなぞってよい（11-07 本人決定。番号・名前・判断は架空）。圃場の一覧（src/data/fields.json）の座標はすべてこの中に置く（K10）。
  * 地図の下地は地理院タイル（MAP_TILES）で、デモも本番も同じ仕組み。
  */
 export const FICTIONAL_AREA = { latMin: 43.235, latMax: 43.25, lngMin: 141.74, lngMax: 141.76 } as const;
