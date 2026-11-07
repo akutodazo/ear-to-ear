@@ -32,6 +32,8 @@ import { useDemoToday, useLastSeasonMemo } from "@/hooks/use-last-season-memo";
 import { useHashIs } from "@/hooks/use-hash-is";
 import { StatusPanel } from "@/components/compare/status-panel";
 import { StatusActions } from "@/components/compare/status-actions";
+import { RecordConfirmSheet } from "@/components/compare/record-confirm-sheet";
+import { recordConfirmView } from "@/services/record-confirm-view";
 import { StatusHistory } from "@/components/compare/status-history";
 import { HandoverMemo } from "@/components/field/handover-memo";
 import { FieldHero } from "@/components/field/field-hero";
@@ -41,9 +43,9 @@ import { PassphraseForm } from "@/components/upload/passphrase-form";
 import { AppNav } from "@/components/app-nav";
 import { AccountChip } from "@/components/account-chip";
 import { useRole } from "@/hooks/use-role";
-import { appNavHrefs } from "@/services/app-nav-view";
+import { appNavHrefs, navCurrent } from "@/services/app-nav-view";
 import { sameDayEmptyNote } from "@/services/compare-note";
-import { IconPen, IconPhoto } from "@/components/icons";
+import { IconDetail, IconPen, IconPhoto } from "@/components/icons";
 import { PhrasedText } from "@/components/upload/phrased-text";
 
 const fields: Field[] = fieldsData;
@@ -194,11 +196,21 @@ export function FieldClient({ field }: { field: Field }) {
   const refSet = useMemo(() => new Set(status.draft.refPhotoIds), [status.draft.refPhotoIds]);
   const submitCondition = { status: status.draft.status, refCount: status.draft.refPhotoIds.length, selectablePhotoCount: photos.confirmedPhotoIds.size };
   const hrefs = appNavHrefs(field.id, field.id);
+  // 「記録する」を押した後の確かめるシート（LINE に届く内容、#219）
+  const confirmView =
+    status.confirmingAt === null ? null : recordConfirmView({ fieldId: field.id, draft: status.draft, nowMs: status.confirmingAt });
 
   return (
     <div className={view === "compare" ? "compare compare-full" : "compare detail"}>
       <header className="topbar compare-topbar">
         <FieldSwitcher fields={districtFields} currentId={field.id} benchmarkId={benchmarkId} hash={view === "compare" ? "compare" : undefined} />
+        {/* 詳細は下の帯に無いので、比較からはここで戻る（#216） */}
+        {view === "compare" && (
+          <button type="button" className="topbar-detail" onClick={() => setView("detail")}>
+            <IconDetail />
+            詳細
+          </button>
+        )}
         <AccountChip role={account.role} busy={account.busy} message={account.message} onSignIn={account.signIn} />
       </header>
       {view === "compare" ? (
@@ -275,7 +287,7 @@ export function FieldClient({ field }: { field: Field }) {
               onChooseStatus={status.chooseStatus}
               onToggleReason={status.toggleReason}
               onNote={status.setNote}
-              onSubmit={status.submit}
+              onSubmit={status.requestSubmit}
               needsPassphrase={status.needsPassphrase}
               loginMessage={status.loginMessage}
               loggingIn={status.loggingIn}
@@ -334,6 +346,15 @@ export function FieldClient({ field }: { field: Field }) {
           <p className="detail-fictional">番号・判断・昨年の記録・メモは架空のもの</p>
         </div>
       )}
+      {confirmView && (
+        <RecordConfirmSheet
+          view={confirmView}
+          fieldLabel={`${field.id} ${field.name}`}
+          submitting={status.submitting}
+          onConfirm={status.submit}
+          onCancel={status.cancelConfirm}
+        />
+      )}
       {open && view === "detail" ? (
         <StatusActions
           refCount={status.draft.refPhotoIds.length}
@@ -341,17 +362,17 @@ export function FieldClient({ field }: { field: Field }) {
           hint={refRequiredNote(submitCondition)}
           submitting={status.submitting}
           message={status.formMessage}
-          onSubmit={status.submit}
+          onSubmit={status.requestSubmit}
           onCancel={stopWriting}
         />
       ) : (
         <AppNav
-          current={view}
+          current={navCurrent(view)}
           hrefs={hrefs}
           demoDate={demoDate}
           onPick={(key) => {
-            if (key !== "detail" && key !== "compare") return false;
-            setView(key);
+            if (key !== "compare") return false;
+            setView("compare");
             return true;
           }}
         />

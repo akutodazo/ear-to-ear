@@ -62,6 +62,8 @@ export function useFieldStatus(
   const [historyMessage, setHistoryMessage] = useState<string | null>(null);
   const [draft, setDraft] = useState<StatusDraft>(EMPTY_DRAFT);
   const [submitting, setSubmitting] = useState(false);
+  /** 「記録する」を押して確かめるシートを出している間の、押した時刻（#219）。出していなければ null */
+  const [confirmingAt, setConfirmingAt] = useState<number | null>(null);
   const [formMessage, setFormMessage] = useState<{ text: string; ok: boolean } | null>(null);
   const [revokeStatus, setRevokeStatus] = useState<Record<number, RevokeStatus>>({});
   const [needsPassphrase, setNeedsPassphrase] = useState(false);
@@ -150,6 +152,24 @@ export function useFieldStatus(
     setFormMessage(null);
   }, []);
 
+  /** 送る前に確かめる。通れば確かめるシートを出す（すぐには送らない、#219） */
+  const requestSubmit = useCallback(() => {
+    if (submitting) return;
+    const parsed = parseStatusInput(
+      { status: draft.status ?? undefined, reasons: draft.reasons, note: draft.note, refPhotoIds: draft.refPhotoIds },
+      confirmedPhotoIds,
+    );
+    if (!parsed.ok) {
+      setFormMessage({ text: inputErrorLabel(parsed.reason), ok: false });
+      return;
+    }
+    setFormMessage(null);
+    setConfirmingAt(Date.now());
+  }, [submitting, draft, confirmedPhotoIds]);
+
+  const cancelConfirm = useCallback(() => setConfirmingAt(null), []);
+
+  /** 確かめるシートの「はい」。送り終わったらシートを閉じる */
   const submit = useCallback(async () => {
     if (submitting) return;
     const parsed = parseStatusInput(
@@ -157,6 +177,7 @@ export function useFieldStatus(
       confirmedPhotoIds,
     );
     if (!parsed.ok) {
+      setConfirmingAt(null);
       setFormMessage({ text: inputErrorLabel(parsed.reason), ok: false });
       return;
     }
@@ -173,6 +194,7 @@ export function useFieldStatus(
       }
     } finally {
       setSubmitting(false);
+      setConfirmingAt(null);
     }
   }, [submitting, draft, confirmedPhotoIds, statusRepo, fieldId, recordChange]);
 
@@ -227,6 +249,9 @@ export function useFieldStatus(
     setNote,
     toggleRefPhoto,
     resetDraft,
+    requestSubmit,
+    confirmingAt,
+    cancelConfirm,
     submit,
     submitting,
     formMessage,

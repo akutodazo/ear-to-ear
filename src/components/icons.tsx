@@ -26,6 +26,17 @@ function Svg({ className, ...rest }: Props & { children: React.ReactNode }) {
   );
 }
 
+/** 注意（三角に !。違う・できなかったを色だけでなく形でも伝える、#214） */
+export function IconAlert(props: Props) {
+  return (
+    <Svg {...props}>
+      <path d="M10.3 4.2L2.6 17.5A2 2 0 004.3 20.5h15.4a2 2 0 001.7-3L13.7 4.2a2 2 0 00-3.4 0z" />
+      <path d="M12 9.5v4" />
+      <path d="M12 17h.01" />
+    </Svg>
+  );
+}
+
 /** 地図（折った紙） */
 export function IconMap(props: Props) {
   return (
@@ -152,6 +163,16 @@ export function IconDetail(props: Props) {
     <Svg {...props}>
       <rect x="4" y="3" width="16" height="11" rx="2" />
       <path d="M4 18h16M4 21h10" />
+    </Svg>
+  );
+}
+
+/** つながり（URL の行、#219） */
+export function IconLink(props: Props) {
+  return (
+    <Svg {...props}>
+      <path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1" />
+      <path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1" />
     </Svg>
   );
 }

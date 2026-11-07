@@ -188,11 +188,67 @@ a:focus-visible {
   font-size: 1.1rem;
 }
 
+/* 写真を送るの合言葉の欄（#214）。欄だけで、押すのは下の「送る」。枠で囲まず、地の上に置く */
+.passphrase-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-16);
+  border-radius: var(--radius-16);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border);
+  animation: passphrase-field-in var(--duration-move) var(--ease-out) both;
+}
+
+@keyframes passphrase-field-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.passphrase-field-label {
+  font-weight: 700;
+}
+
+.passphrase-field-lead {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+
+.passphrase-field-input {
+  width: 100%;
+  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.passphrase-field-invalid,
+.passphrase-field-invalid:focus-visible {
+  border-color: var(--assertive);
+  box-shadow: 0 0 0 4px rgba(198, 58, 30, 0.16);
+}
+
+.passphrase-field-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--assertive);
+  font-weight: 700;
+}
+
+.passphrase-field-error .icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
 .panel {
   padding: var(--space-16);
-  border-left: 4px solid var(--wheat);
-  border-radius: var(--radius-8);
-  background: var(--warning-soft);
+  border-radius: var(--radius-16);
+  background: var(--surface);
+  /* 横の強調帯（左の色の線）はやめ、細い縁だけ（みっきぃ 11-07、#217） */
+  box-shadow: inset 0 0 0 1px var(--border);
 }
 
 .cards {
@@ -278,10 +334,10 @@ a:focus-visible {
   text-decoration: none;
 }
 
-/* うまくいった・注意のまとめ */
+/* うまくいったまとめ: 地を淡い緑に（左の線は使わない、#217） */
 .panel-ok {
-  border-left-color: var(--success);
-  background: var(--surface);
+  background: var(--brand-soft);
+  box-shadow: none;
 }
 
 .note-alert {
@@ -319,14 +375,7 @@ a:focus-visible {
   width: 120px;
 }
 
-/* 未確定は左に麦色の線（麦の黄色は印だけに使う） */
-.card-pending {
-  border-left: 6px solid var(--wheat);
-}
-
-.card-alert {
-  border-left: 6px solid var(--assertive);
-}
+/* 未確定・注意は札（.badge の言葉と色）で伝え、左の線は付けない（#217） */
 
 .badge {
   display: inline-block;
@@ -1473,10 +1522,7 @@ a:focus-visible {
   font-weight: 700;
 }
 
-/* 下（この畑・選んだ日）の帯は左端に白い線（上と見分ける。精査 3 回目 #7） */
-.split-caption-self {
-  border-left: 4px solid #ffffff;
-}
+/* 上と下は帯の言葉（目安・前の日／この畑）で見分ける。左の白い線はやめた（#217） */
 
 .split-tag {
   padding: 0 6px;
@@ -2277,6 +2323,47 @@ a.dock-unconfirmed {
   color: var(--text-on-brand);
 }
 
+/* 札の人のアイコンと権限の飾り（#218）。委員長＝濃い緑の地に金の王冠と金の輪、委員＝淡い緑の地にくわ、一般＝飾りなし */
+.account-chip {
+  gap: 6px;
+  transition: transform var(--duration-fast) var(--ease-out), background-color var(--duration-base) var(--ease-out);
+}
+
+.account-chip:active {
+  transform: scale(0.96);
+}
+
+.account-chip .account-avatar {
+  flex: none;
+  width: 22px;
+  height: 22px;
+}
+
+.account-chip-member {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.account-chip-chair {
+  box-shadow: 0 0 0 2px var(--wheat);
+  animation: rank-pop var(--duration-base) var(--ease-pop);
+}
+
+.account-chip-loading {
+  opacity: 0.6;
+}
+
+.account-avatar-crown-shape {
+  fill: var(--wheat);
+  stroke: var(--wheat);
+  stroke-width: 1.5;
+}
+
+.account-avatar-blade-shape {
+  fill: currentColor;
+  stroke-width: 1.5;
+}
 .account-chip:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
@@ -2421,6 +2508,40 @@ a.dock-unconfirmed {
   padding: 0 9px;
 }
 
+/* 比較から詳細へ戻る（詳細は下の帯に無い、#216）。札と同じ高さの丸い札で、印と言葉 */
+.topbar-detail {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 44px;
+  margin-left: var(--space-8);
+  padding: 0 12px 0 10px;
+  border: 2px solid var(--brand);
+  border-radius: 22px;
+  background: var(--surface);
+  color: var(--brand);
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
+}
+
+.topbar-detail .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.topbar-detail:active {
+  transform: scale(0.96);
+  background: var(--brand-soft);
+}
+
+.topbar-detail:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
 .detail-body {
   gap: var(--space-24);
   padding-bottom: var(--space-24);
@@ -2859,11 +2980,7 @@ a.dock-unconfirmed {
   align-self: flex-start;
 }
 
-/* 合言葉の欄の金はやめる（金は目安だけ） */
-.panel {
-  border-left-color: var(--brand);
-  background: var(--surface);
-}
+
 
 /* --- 比較（#compare）: 帯の間いっぱい、本文は送らない --- */
 .compare-full .compare-stage-body {
@@ -3020,6 +3137,99 @@ a.dock-unconfirmed {
   box-shadow: var(--focus-ring);
 }
 
+/* 「記録する」の前に確かめるシート（#219）。LINE のトークの吹き出しの形で、届く内容をそのまま見せる */
+.confirm-lead {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+
+.confirm-preview {
+  margin: 0;
+  padding: var(--space-16);
+  border-radius: var(--radius-16);
+  background: var(--background-2);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.confirm-bubble {
+  position: relative;
+  max-width: 300px;
+  padding: var(--space-12) var(--space-16);
+  border-radius: 4px 18px 18px 18px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(21, 41, 29, 0.08), 0 4px 14px rgba(21, 41, 29, 0.06);
+  animation: confirm-bubble-in var(--duration-move) var(--ease-out) both;
+}
+
+@keyframes confirm-bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+
+.confirm-line {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.confirm-line-head {
+  font-weight: 700;
+  font-size: var(--font-size-md);
+}
+
+.confirm-line-url {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  color: var(--text-3);
+}
+
+.confirm-line-url .icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.confirm-thumb {
+  position: relative;
+  margin-top: var(--space-12);
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-8);
+  overflow: hidden;
+  background: var(--background-2);
+}
+
+.confirm-thumb img {
+  object-fit: cover;
+}
+
+.confirm-thumb-none {
+  margin: var(--space-8) 0 0;
+  color: var(--text-3);
+  font-size: var(--font-size-xs);
+}
+
+.confirm-caption {
+  margin-top: var(--space-8);
+  color: var(--text-3);
+  font-size: var(--font-size-xs);
+}
+
+.confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: var(--space-8);
+}
+
+.confirm-actions .button {
+  min-height: 52px;
+}
 .order-cards {
   display: flex;
   flex-direction: column;

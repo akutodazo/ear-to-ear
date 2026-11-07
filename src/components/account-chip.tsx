@@ -2,6 +2,7 @@
 
 /**
  * アカウント札（上の帯の右端、#194。西田 PM 11-07「委員長として入る → アカウント情報のように」）。
+ * 人のアイコンに権限ごとの飾り（委員長＝王冠、委員＝くわ、一般＝なし、#218）と言葉を並べる。
  * 押すと下からシート: 今の役割・委員長として入る・管理者の入口・アプリの名前と架空の注記。props だけで受け取る
  */
 import Link from "next/link";
@@ -9,6 +10,7 @@ import { useEffect, useState } from "react";
 import type { Role } from "@/types";
 import { accountView } from "@/services/app-nav-view";
 import { IconClose } from "@/components/icons";
+import { AccountAvatar } from "@/components/account-avatar";
 import { PassphraseForm } from "@/components/upload/passphrase-form";
 
 interface Props {
@@ -36,11 +38,12 @@ export function AccountChip({ role, busy, message, onSignIn }: Props) {
     <>
       <button
         type="button"
-        className={view.isAdmin ? "account-chip account-chip-admin" : "account-chip"}
+        className={`account-chip account-chip-${view.tier}${view.isAdmin ? " account-chip-admin" : ""}`}
         aria-label={`アカウント: ${view.line}`}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
+        <AccountAvatar ornament={view.ornament} />
         {view.chip}
       </button>
       {open && (
@@ -48,7 +51,8 @@ export function AccountChip({ role, busy, message, onSignIn }: Props) {
           <button type="button" className="account-scrim" aria-label="閉じる" onClick={() => setOpen(false)} />
           <section className="account-sheet" aria-label="アカウント">
             <header className="account-sheet-head">
-              <span className={view.isAdmin ? "account-chip account-chip-admin" : "account-chip"} aria-hidden="true">
+              <span className={`account-chip account-chip-${view.tier}${view.isAdmin ? " account-chip-admin" : ""}`} aria-hidden="true">
+                <AccountAvatar ornament={view.ornament} />
                 {view.chip}
               </span>
               <p className="account-sheet-line">{view.line}</p>

@@ -1,27 +1,26 @@
 /**
- * 下の帯（地図／詳細／比較／順番、#194。西田 PM 11-07「4 つ。それぞれがメインになるように」）。
- * 4 つは同じ畑を引き継ぐ（行き先は services/app-nav-view）。アイコン＋短い文字で、説明の文は付けない（11-05）。
+ * 下の帯（地図／比較／順番、#194・#216）。詳細は帯に置かず、地図の板・順番のカード・比較から入る（みっきぃ 11-07）。
+ * 3 つは同じ畑を引き継ぐ（行き先は services/app-nav-view）。アイコン＋短い文字で、説明の文は付けない（11-05）。
  * デモで今日を差し替えているときは、帯の上に「7/20 として表示中（デモ）×」を出す（精査 4 回目 #5）
  */
 import Link from "next/link";
 import type { AppNavHrefs } from "@/services/app-nav-view";
-import { IconCalendar, IconClose, IconCompare, IconDetail, IconMap, IconOrder } from "@/components/icons";
+import { IconCalendar, IconClose, IconCompare, IconMap, IconOrder } from "@/components/icons";
 
 export type AppNavKey = keyof AppNavHrefs;
 
 interface Props {
-  /** 今の画面。送る・新着のように 4 つのどれでもない画面は null（11-07 精査 6 回目 #3） */
+  /** 今の画面。送る・新着・詳細のように 3 つのどれでもない画面は null（11-07 精査 6 回目 #3、#216） */
   current: AppNavKey | null;
   hrefs: AppNavHrefs;
   /** デモで今日を差し替えているとき。言葉と外す操作 */
   demoDate?: { label: string; onClear: () => void } | null;
-  /** 同じ画面の中で切り替えるとき（詳細と比較）。true を返したら遷移しない */
+  /** 同じ画面の中で切り替えるとき（詳細から比較）。true を返したら遷移しない */
   onPick?: (key: AppNavKey) => boolean;
 }
 
 const ITEMS: { key: AppNavKey; label: string; Icon: typeof IconMap }[] = [
   { key: "map", label: "地図", Icon: IconMap },
-  { key: "detail", label: "詳細", Icon: IconDetail },
   { key: "compare", label: "比較", Icon: IconCompare },
   { key: "order", label: "順番", Icon: IconOrder },
 ];
