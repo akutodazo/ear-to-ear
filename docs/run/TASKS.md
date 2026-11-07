@@ -27,7 +27,8 @@ START ハッシュはここに書かない（`/goal` と運転記録だけ）。
 ---
 
 ## T33 `handover-post` の 502 に Claude の状態コード（#174 の弱点 4、#192）
-- **状態**: RED済み（人）・凍結
+- **状態**: 検査済み・人の確認待ち
+- **運転の記録**: 11-07、檻の中で 1 本（relay の手順を手で）。START `dc6de93` → GREEN `450bb35` → REPORT `c1d99bc`。Opus、9 手、$0.40。C1〜C5 がすべて合格（C3 48 件、C4 の Vitest 2704 件・build 成功）。変えたのは `worker/handover-post.ts` だけ
 - **Issue**: #192
 - **変えてよいファイル**: `worker/handover-post.ts`（＋ `docs/run/REPORT-T33.md`、止まったときは `docs/run/QUESTIONS.md`）
 - **テスト（凍結）**: `worker/handover-post.test.ts`
