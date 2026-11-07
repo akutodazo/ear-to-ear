@@ -5,7 +5,7 @@
  * 大きな写真のカードの一覧 1 本（順位なしも同じ一覧の下に）と、下の固定の帯の主ボタン 1 つ（保存／確定／LINE で送る）。
  * 並べ替えは持ち手だけ。持ち手を押すだけなら動かし方のシート。まれな操作（記録から並べ直す・確定した順に戻す・送る絵を見る）は … のシート（AGENTS.md §4）
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import fieldsData from "@/data/fields.json";
 import parcelsData from "@/data/parcels.json";
 import benchmarksData from "@/data/benchmarks.json";
@@ -20,7 +20,7 @@ import { useLastDistrict } from "@/hooks/use-last-district";
 import { benchmarkFor } from "@/services/parcel-geometry";
 import { draftOrder, nextToShoot, orderRows } from "@/services/harvest-order";
 import { orderImageTitle, orderMessageText } from "@/services/order-message";
-import { moveOptions, orderBarAction, orderHeadline, shareButtonLabel } from "@/services/order-view";
+import { moveOptions, orderBarAction, orderHeadline, shareButtonLabel, shouldAutoPrepare } from "@/services/order-view";
 import { lineShareHref } from "@/services/order-share-view";
 import { useOrderShare } from "@/hooks/use-order-share";
 import type { OrderShareMeta } from "@/services/order-share-meta";
@@ -118,6 +118,17 @@ export function OrderClient() {
     [confirmedOrder, district, benchmarkId],
   );
   const share = useOrderShare(shareImage, shareMeta, shareText, shareFile);
+  // 確定の直後に 1 回だけ共有の URL を作る（#198。委員長は「LINE で送る」を 1 回押すだけ）
+  const [justConfirmed, setJustConfirmed] = useState(false);
+  const autoAttempted = useRef(false);
+  const imageReady = share.state.kind === "ready" && shareMeta !== null;
+  const linkKind = share.link.kind;
+  const { prepare } = share;
+  useEffect(() => {
+    if (!shouldAutoPrepare({ justConfirmed, imageReady, link: linkKind, attempted: autoAttempted.current })) return;
+    autoAttempted.current = true;
+    void prepare();
+  }, [justConfirmed, imageReady, linkKind, prepare]);
 
   // 詳細から来たとき（#A-01）は、そのカードを画面の真ん中へ
   const listReady = order.order !== null;
@@ -229,7 +240,11 @@ export function OrderClient() {
         busy={order.busy}
         message={order.message ?? (share.message ? { text: share.message, ok: false } : null)}
         onSave={order.saveDraft}
-        onConfirm={order.confirm}
+        onConfirm={() => {
+          autoAttempted.current = false;
+          setJustConfirmed(true);
+          void order.confirm();
+        }}
         share={{
           label: shareLabel,
           enabled: share.state.kind === "ready" && share.link.kind !== "uploading",

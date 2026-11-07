@@ -67,3 +67,17 @@ export function shareButtonLabel(image: "drawing" | "ready" | "error", link: "no
   if (link === "ready") return "LINE で送る";
   return "LINE で送る準備";
 }
+
+export interface AutoPrepareInput {
+  /** この画面で確定したばかりか（開き直したときは false） */
+  justConfirmed: boolean;
+  imageReady: boolean;
+  link: "none" | "uploading" | "ready";
+  /** もう試したか（失敗しても繰り返さない） */
+  attempted: boolean;
+}
+
+/** 確定の直後に 1 回だけ共有の URL を作るか（#198。画面を開くたびには作らない: 端末ごとに 1 日 30 回の上限） */
+export function shouldAutoPrepare({ justConfirmed, imageReady, link, attempted }: AutoPrepareInput): boolean {
+  return justConfirmed && imageReady && link === "none" && !attempted;
+}
