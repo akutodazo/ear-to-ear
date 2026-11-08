@@ -29,7 +29,7 @@ demo でも使うときは `--env demo` で同じく。止めたいときは `LI
 
 ## 3. Webhook の URL（人）
 LINE Developers の Messaging API 設定で:
-- Webhook URL: `https://harvest-share-dev.ryokou1119.workers.dev/api/line/webhook`
+- Webhook URL: `https://<dev の URL>/api/line/webhook`
 - 「検証」を押して **成功**（200）になること。503 なら秘密が入っていない、401 ならシークレットが違う
 - 「Webhook の利用」を ON
 
@@ -64,7 +64,7 @@ L8 の通知（Bot）とは別の道。トークンは使わない。
 3. LINE のサーバーが URL を Cookie 無しで取りに来て、og:image（`/api/share-files/<id>`）をサムネイルにする
 
 確かめ方（dev）:
-- `curl -s https://harvest-share-dev.ryokou1119.workers.dev/api/shares/<id> | grep og:` で og:image が https の絶対 URL か
+- `curl -s https://<dev の URL>/api/shares/<id> | grep og:` で og:image が https の絶対 URL か
 - LINE はプレビューを URL ごとに覚える。直した後は**新しい共有（新しい id）**で確かめる
 - 60 日で 404。R2 の物は人が R2 のライフサイクル規則（接頭辞 `shares/`）を入れるまで残る
 
