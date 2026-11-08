@@ -1,5 +1,5 @@
 /**
- * POST /api/session（合言葉 → Cookie、失敗は 10 分に 5 回まで）と GET /api/session（役割）。
+ * POST /api/session（合言葉 → Cookie、失敗は 10 分に 5 回まで）と GET /api/session（役割）、DELETE /api/session（出る。11-08）。
  * 判定は Service（usage-limit・session-request・session-token）、外の世界は deps。例外は握らない。
  */
 import { LOGIN_MAX_ATTEMPTS_PER_WINDOW, SESSION_DAYS } from "@/config";
@@ -8,7 +8,7 @@ import { issueSessionToken } from "@/services/session-token";
 import { loginCounterKey, loginWindow, retryAfterSec, utcDay } from "@/services/usage-limit";
 import { nowSec, requireSession } from "./auth";
 import { declaredTooLarge, readBodyLimited } from "./body";
-import { buildSessionCookie } from "./cookies";
+import { buildClearSessionCookie, buildSessionCookie } from "./cookies";
 import type { Handler } from "./deps";
 import { errorResponse, json, noContent } from "./http";
 
@@ -72,4 +72,14 @@ export const postSession: Handler = async (request, { deps }) => {
 
 export const getSession: Handler = async (_request, ctx) => {
   return json(200, { role: requireSession(ctx).role });
+};
+
+/**
+ * 出る（11-08 本人の依頼: 合言葉を入れ直す場所）。Cookie を消すだけで、照合も D1 も使わない。
+ * 入っていない・期限切れの端末でも 204（消すものが無いだけ）。トークンは署名だけで持つので、写された値は期限まで使える（今までと同じ）
+ */
+export const deleteSession: Handler = async () => {
+  const response = noContent();
+  response.headers.set("set-cookie", buildClearSessionCookie());
+  return response;
 };
