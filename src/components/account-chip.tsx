@@ -3,7 +3,7 @@
 /**
  * アカウント札（上の帯の右端、#194。西田 PM 11-07「委員長として入る → アカウント情報のように」）。
  * 人のアイコンに権限ごとの飾り（委員長＝王冠、委員＝くわ、一般＝なし、#218）と言葉を並べる。
- * 押すと下からシート: 今の役割・委員長として入る・管理者の入口・アプリの名前と架空の注記。props だけで受け取る
+ * 押すと下からシート: 今の役割・合言葉を入れる／入れ直す・出る（11-08）・管理者の入口・アプリの名前と架空の注記。props だけで受け取る
  */
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -18,9 +18,11 @@ interface Props {
   busy: boolean;
   message: string | null;
   onSignIn: (passphrase: string) => void;
+  /** 出る（11-08） */
+  onSignOut: () => void;
 }
 
-export function AccountChip({ role, busy, message, onSignIn }: Props) {
+export function AccountChip({ role, busy, message, onSignIn, onSignOut }: Props) {
   const [open, setOpen] = useState(false);
   const [asking, setAsking] = useState(false);
   const view = accountView(role);
@@ -60,14 +62,21 @@ export function AccountChip({ role, busy, message, onSignIn }: Props) {
                 <IconClose />
               </button>
             </header>
-            {view.canSignInAsChair &&
+            {view.signIn &&
               (asking ? (
-                <PassphraseForm onSubmit={onSignIn} message={message} busy={busy} lead="委員長の合言葉を入れてください。" submitLabel="委員長として入る" />
+                <PassphraseForm onSubmit={onSignIn} message={message} busy={busy} lead={view.signIn.lead} submitLabel={view.signIn.submit} />
               ) : (
                 <button type="button" className="button button-block" onClick={() => setAsking(true)}>
-                  委員長として入る
+                  {view.signIn.label}
                 </button>
               ))}
+            {/* 出られなかったときの文（入れ直しの欄を開いていないときだけ。開いていれば欄の中に出る） */}
+            {!asking && message && <p className="note order-error">{message}</p>}
+            {view.canSignOut && (
+              <button type="button" className="account-sign-out" onClick={onSignOut} disabled={busy}>
+                {busy ? "出ています…" : "この端末から出る"}
+              </button>
+            )}
             {view.isAdmin && (
               <nav className="account-links" aria-label="委員長の操作">
                 <Link href="/recent#unconfirmed" onClick={() => setOpen(false)}>

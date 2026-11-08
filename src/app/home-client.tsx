@@ -120,7 +120,7 @@ export function HomeClient() {
           </select>
         </label>
 
-        <AccountChip role={account.role} busy={account.busy} message={account.message} onSignIn={account.signIn} />
+        <AccountChip role={account.role} busy={account.busy} message={account.message} onSignIn={account.signIn} onSignOut={account.signOut} />
       </header>
       {map.message && (
         <div className="map-note" role="status">

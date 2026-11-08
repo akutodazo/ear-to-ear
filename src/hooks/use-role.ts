@@ -1,6 +1,7 @@
 /**
  * いまの役割（委員長・委員・入っていない）を読む Presenter（#194）。アカウント札が使う。
- * 委員長として入ったら画面を読み直す（ほかの Presenter も役割を読み直すため。手間は 1 回の再読み込みだけ）
+ * 合言葉を入れ直す・出る（11-08 本人の依頼）。委員・委員長のどちらの合言葉でも入り直せる。
+ * 入り直した・出たら画面を読み直す（ほかの Presenter も役割を読み直すため。手間は 1 回の再読み込みだけ）
  */
 "use client";
 
@@ -37,13 +38,6 @@ export function useRole(repository?: IPhotoRepository) {
           setMessage(loginOutcomeLabel(outcome));
           return;
         }
-        const next = await repo.getRole();
-        const nextRole = next.kind === "ok" ? next.role : null;
-        setRole(nextRole);
-        if (nextRole !== "admin") {
-          setMessage("委員の合言葉でした。委員長の合言葉で入ってください");
-          return;
-        }
         setMessage(null);
         window.location.reload();
       } finally {
@@ -53,5 +47,22 @@ export function useRole(repository?: IPhotoRepository) {
     [busy, repo],
   );
 
-  return { role, signIn, busy, message };
+  /** 出る。消せなかったら文を出す（入ったまま） */
+  const signOut = useCallback(async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const outcome = await repo.logout();
+      if (outcome !== "ok") {
+        setMessage(outcome === "network-error" ? "つながりませんでした。電波のよい所でもう一度押してください" : "出られませんでした。もう一度押してください");
+        return;
+      }
+      setMessage(null);
+      window.location.reload();
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, repo]);
+
+  return { role, signIn, signOut, busy, message };
 }

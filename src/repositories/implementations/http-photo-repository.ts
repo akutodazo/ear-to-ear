@@ -3,14 +3,7 @@
  * HTTP の状態を画面の言葉の手前の「結果の種類」に読み分けるだけで、画面の文言は持たない。
  */
 import type { UploadedPhoto, UploadMeta } from "@/types";
-import type {
-  AssignOutcome,
-  IPhotoRepository,
-  LoginOutcome,
-  RecentOutcome,
-  RoleOutcome,
-  UploadOutcome,
-} from "@/repositories/interfaces/i-photo-repository";
+import type { AssignOutcome, IPhotoRepository, LoginOutcome, LogoutOutcome, RecentOutcome, RoleOutcome, UploadOutcome } from "@/repositories/interfaces/i-photo-repository";
 import { readJson, send, type FetchLike } from "./http-common";
 
 /** 応答の本文の id。読めなければ null */
@@ -40,6 +33,12 @@ export function createHttpPhotoRepository(fetchFn: FetchLike, baseUrl = ""): IPh
       if (response.status === 401) return "wrong";
       if (response.status === 429) return "too-many";
       return "error";
+    },
+
+    async logout(): Promise<LogoutOutcome> {
+      const response = await send(fetchFn, `${baseUrl}/api/session`, { method: "DELETE" });
+      if (response === null) return "network-error";
+      return response.status === 204 ? "ok" : "error";
     },
 
     async upload(image: Blob, meta: UploadMeta): Promise<UploadOutcome> {

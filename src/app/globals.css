@@ -2510,6 +2510,25 @@ a.dock-unconfirmed {
   text-decoration: none;
 }
 
+/* 出る（11-08）: 押し間違えにくいよう、目立たない文字のボタン。押せる高さは 44px */
+.account-sign-out {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.9rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.account-sign-out:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
 .account-sheet-foot {
   display: flex;
   flex-wrap: wrap;
