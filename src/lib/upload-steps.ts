@@ -21,6 +21,22 @@ export interface PhotoInfo {
   takenAtSource: TakenAtSource;
 }
 
+/** 送る画面の 1 枚の写真 */
+/** unusable は画像として開けない写真（送る数に入れない）。duplicate は同じ写真がもう送られていた（送り済みと同じ扱い） */
+export type ItemStatus = "reading" | "ready" | "sending" | "sent" | "duplicate" | "failed" | "unusable";
+
+export interface UploadItem {
+  key: string;
+  fileName: string;
+  previewUrl: string;
+  info: PhotoInfo | null;
+  /** 近い順。距離は画面に出すだけ */
+  candidates: { fieldId: string; meters: number }[];
+  chosenFieldId: string | null;
+  status: ItemStatus;
+  message: string | null;
+}
+
 export interface PreparedPhoto {
   /** 縮小・再エンコード済みの JPEG（メタデータなし） */
   image: Blob;

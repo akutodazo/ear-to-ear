@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import fieldsData from "@/data/fields.json";
 import type { Field, Role, UploadedPhoto } from "@/types";
-import { applyAssignment, assignOutcomeLabel } from "@/services/assignment";
+import { applyAssignment, assignOutcomeLabel, type AssignStatus } from "@/services/assignment";
 import { filterRecent, unconfirmedCountLabel } from "@/services/recent-view";
 import { usePassphraseLogin } from "@/hooks/use-passphrase-login";
 import { unconfirmedHash } from "@/services/field-hash";
@@ -17,13 +17,6 @@ import type { IPhotoRepository, RecentOutcome } from "@/repositories/interfaces/
 
 const RECENT_LIMIT = 50;
 const fields: Field[] = fieldsData;
-
-/** 写真ごとの確定・変更の様子 */
-export interface AssignStatus {
-  busy: boolean;
-  message: string | null;
-  ok: boolean;
-}
 
 function subscribeHash(onChange: () => void) {
   window.addEventListener("hashchange", onChange);

@@ -4,7 +4,7 @@
  */
 import Image from "next/image";
 import type { Field, UploadedPhoto } from "@/types";
-import type { AssignStatus } from "@/hooks/use-recent";
+import type { AssignStatus } from "@/services/assignment";
 import { assignmentLabel, takenAtLabel } from "@/services/photo-labels";
 import { assignmentBadge } from "@/services/recent-view";
 import { AssignmentForm } from "./assignment-form";

@@ -9,7 +9,7 @@ import Link from "next/link";
 import type { Field } from "@/types";
 import type { ParcelAppearance } from "@/services/parcel-geometry";
 import { takenAtLabel } from "@/services/photo-labels";
-import type { LatestPhotoState } from "@/hooks/use-latest-photo";
+import type { LatestPhotoState } from "@/services/map-view";
 import { IconCalendar, IconClose, IconDetail, IconPhoto } from "@/components/icons";
 
 interface Props {

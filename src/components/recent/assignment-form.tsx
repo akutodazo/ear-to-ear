@@ -3,7 +3,7 @@
 /** 管理者の「確定・変更」（写真1枚ぶん）。候補を「推定」として先に出す。props だけで受け取る */
 import { useState } from "react";
 import type { Field, UploadedPhoto } from "@/types";
-import type { AssignStatus } from "@/hooks/use-recent";
+import type { AssignStatus } from "@/services/assignment";
 import { PhrasedText } from "@/components/upload/phrased-text";
 import { assignButtonLabel, assignmentOptionGroups, canAssign, initialAssignment } from "@/services/assignment";
 

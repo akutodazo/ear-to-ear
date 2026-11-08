@@ -21,26 +21,13 @@ import {
   canOpenPhoto,
   preparePhoto,
   readPhotoInfo,
+  type ItemStatus,
   type PhotoInfo,
+  type UploadItem,
 } from "@/lib/upload-steps";
 
 const fields: Field[] = fieldsData;
 const fieldIds = fields.map((f) => f.id);
-
-/** unusable は画像として開けない写真（送る数に入れない）。duplicate は同じ写真がもう送られていた（送り済みと同じ扱い） */
-export type ItemStatus = "reading" | "ready" | "sending" | "sent" | "duplicate" | "failed" | "unusable";
-
-export interface UploadItem {
-  key: string;
-  fileName: string;
-  previewUrl: string;
-  info: PhotoInfo | null;
-  /** 近い順。距離は画面に出すだけ */
-  candidates: { fieldId: string; meters: number }[];
-  chosenFieldId: string | null;
-  status: ItemStatus;
-  message: string | null;
-}
 
 let nextKey = 0;
 

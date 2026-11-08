@@ -8,16 +8,9 @@
 import { useEffect, useState } from "react";
 import type { UploadedPhoto } from "@/types";
 import { groupFieldPhotos } from "@/services/photo-groups";
+import type { LatestPhotoState } from "@/services/map-view";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
 import type { IPhotoRepository } from "@/repositories/interfaces/i-photo-repository";
-
-export type LatestPhotoState =
-  /** 何も選んでいない */
-  | { kind: "idle" }
-  | { kind: "loading" }
-  | { kind: "error" }
-  /** photo が null なら、まだ確定した写真が無い */
-  | { kind: "ok"; photo: UploadedPhoto | null; count: number };
 
 interface Loaded {
   fieldId: string;

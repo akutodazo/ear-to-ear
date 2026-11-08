@@ -12,16 +12,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { drawOrderImage, type OrderImageInput } from "@/lib/order-image";
 import { usePassphraseLogin } from "@/hooks/use-passphrase-login";
 import type { OrderShareMeta } from "@/services/order-share-meta";
-import { createShareOutcomeLabel, shareData, shareImageBytes } from "@/services/order-share-view";
+import {
+  createShareOutcomeLabel,
+  shareData,
+  shareImageBytes,
+  type LinkState,
+  type ShareState,
+} from "@/services/order-share-view";
 import { createOrderShareRepository } from "@/repositories/create-order-share-repository";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
 import type { IOrderShareRepository } from "@/repositories/interfaces/i-order-share-repository";
 import type { IPhotoRepository } from "@/repositories/interfaces/i-photo-repository";
-
-export type ShareState = { kind: "drawing" } | { kind: "ready"; url: string; file: File } | { kind: "error" };
-
-/** 共有の URL の段階 */
-export type LinkState = { kind: "none" } | { kind: "uploading" } | { kind: "ready"; url: string; expiresAt: string };
 
 interface Drawn {
   key: string;

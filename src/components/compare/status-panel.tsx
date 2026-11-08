@@ -6,7 +6,7 @@
  */
 import type { StatusEvent } from "@/types";
 import { STATUS_NOTE_MAX_CHARS, STATUS_REASONS, type StatusReasonCode } from "@/config";
-import type { StatusDraft } from "@/hooks/use-field-status";
+import type { StatusDraft } from "@/services/status-view";
 import { PassphraseForm } from "@/components/upload/passphrase-form";
 
 interface Props {
