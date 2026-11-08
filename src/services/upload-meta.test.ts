@@ -22,8 +22,7 @@ function reasonOf(body: unknown, known: ReadonlySet<string> = KNOWN) {
 }
 
 function without(key: keyof typeof VALID) {
-  const { [key]: _removed, ...rest } = VALID;
-  return rest;
+  return Object.fromEntries(Object.entries(VALID).filter(([k]) => k !== key));
 }
 
 describe("正しい meta", () => {
