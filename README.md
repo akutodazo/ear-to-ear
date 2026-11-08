@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <b>▶ デモ動画（3 分）</b>: <!-- TODO(提出時): 動画の URL --> ／
+  <b>▶ デモ動画（3 分）</b>: <a href="https://youtu.be/M_6z349tzwI">youtu.be/M_6z349tzwI</a> ／
   <b>デモのサイト</b>: <a href="https://harvest-share-dev.ryokou1119.workers.dev/">harvest-share-dev.ryokou1119.workers.dev</a>（ログイン不要。見るだけ）<br>
   <sub>📱 スマホのブラウザ向けに最適化した Web アプリです。スマホで開くか、PC では窓の幅を狭めてご覧ください</sub>
 </p>
