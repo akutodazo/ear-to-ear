@@ -8,6 +8,7 @@ import { getFieldHandover } from "./handover";
 import { postFieldHandover } from "./handover-post";
 import { postLineWebhook } from "./line-webhook";
 import { getFieldStatusEvents } from "./status-history";
+import { deleteSession } from "./session";
 
 describe("経路の表（docs/spec.md §6 の L0）", () => {
   it("メソッド・パス・認証の組が仕様どおり", () => {
@@ -31,7 +32,17 @@ describe("経路の表（docs/spec.md §6 の L0）", () => {
       ["GET", "/api/shares/:id", "none"],
       ["GET", "/api/share-files/:id", "none"],
       ["GET", "/api/judgments/:id", "none"],
+      ["DELETE", "/api/session", "none"],
     ]);
+  });
+
+  it("DELETE /api/session は deleteSession（出る。11-08）。入っていなくても消せるよう auth は none", () => {
+    expect(routes.find((r) => r.method === "DELETE" && r.pattern === "/api/session")).toStrictEqual({
+      method: "DELETE",
+      pattern: "/api/session",
+      auth: "none",
+      handler: deleteSession,
+    });
   });
 
   it("DELETE /api/status-events/:id は deleteStatusEvent（T23）", () => {

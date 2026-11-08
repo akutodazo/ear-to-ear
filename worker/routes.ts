@@ -13,7 +13,7 @@ import { postFieldHandover } from "./handover-post";
 import { postLineWebhook } from "./line-webhook";
 import { getPhotoFile } from "./photo-files";
 import { getPhotosByField, getRecentPhotos } from "./photos";
-import { getSession, postSession } from "./session";
+import { deleteSession, getSession, postSession } from "./session";
 import { getShareFile, getSharePage } from "./share-page";
 import { postShares } from "./shares";
 import { deleteStatusEvent } from "./status-events";
@@ -38,7 +38,7 @@ export const routes: readonly Route[] = [
   { method: "GET", pattern: "/api/photos/recent", auth: "none", handler: getRecentPhotos },
   { method: "GET", pattern: "/api/photo-files/:id", auth: "none", handler: getPhotoFile },
   { method: "PATCH", pattern: "/api/photos/:id/assignment", auth: "admin", handler: patchAssignment },
-  // 画面が役割を知る（11-03 本人決定）。表の添字を変えないよう末尾に足す。Allow は "POST, GET"
+  // 画面が役割を知る（11-03 本人決定）。表の添字を変えないよう末尾に足す。Allow は "POST, GET, DELETE"（DELETE は表の末尾）
   { method: "GET", pattern: "/api/session", auth: "member", handler: getSession },
   // L1 の判断の取り消し（T23）
   { method: "DELETE", pattern: "/api/status-events/:id", auth: "member", handler: deleteStatusEvent },
@@ -61,4 +61,6 @@ export const routes: readonly Route[] = [
   { method: "GET", pattern: "/api/share-files/:id", auth: "none", handler: getShareFile },
   // 判断ごとの OGP ページ。LINE の判断の通知のサムネイル（#220）
   { method: "GET", pattern: "/api/judgments/:id", auth: "none", handler: getJudgmentPage },
+  // 出る（11-08）。Cookie を消すだけなので、入っていない端末でも 204。表の添字を変えないよう末尾に足す
+  { method: "DELETE", pattern: "/api/session", auth: "none", handler: deleteSession },
 ];

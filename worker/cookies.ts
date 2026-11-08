@@ -23,3 +23,8 @@ export function buildSessionCookie(token: string): string {
   const maxAge = SESSION_DAYS * 24 * 60 * 60;
   return `${SESSION_COOKIE_NAME}=${token}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`;
 }
+
+/** 出る（11-08）: 同じ名前・Path・属性で値を空にし、Max-Age=0 で端末に消させる（HttpOnly なので画面からは消せない） */
+export function buildClearSessionCookie(): string {
+  return `${SESSION_COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`;
+}
