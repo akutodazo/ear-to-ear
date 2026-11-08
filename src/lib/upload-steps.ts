@@ -21,10 +21,10 @@ export interface PhotoInfo {
   takenAtSource: TakenAtSource;
 }
 
-/** 送る画面の 1 枚の写真 */
 /** unusable は画像として開けない写真（送る数に入れない）。duplicate は同じ写真がもう送られていた（送り済みと同じ扱い） */
 export type ItemStatus = "reading" | "ready" | "sending" | "sent" | "duplicate" | "failed" | "unusable";
 
+/** 送る画面の 1 枚の写真 */
 export interface UploadItem {
   key: string;
   fileName: string;
