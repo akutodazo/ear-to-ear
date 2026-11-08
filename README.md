@@ -243,6 +243,16 @@ ear-to-ear は、委員の手間を LINE で送るのと同じに保ったまま
 - 見た目の決まりは [docs/design/](docs/design/)
 
 ## 仕組み（アーキテクチャ）
+動いているときの構成です。撮影位置（座標・距離）はスマホの中で使い終えて捨て、位置の情報としてはサーバーに畑の番号の候補だけを送ります。作るときの道具と検査の流れは [テストと品質](#テストと品質) の図にあります。
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="public/demo/readme-architecture-dark.jpg">
+  <img src="public/demo/readme-architecture.jpg" alt="動いているときの構成図。委員・委員長のスマホのブラウザ（端末の中）で、Next.js 16 の画面が選んだ写真を「写真の前処理」に渡し、撮影位置から畑の番号の候補を出し、縮小し、SHA-256 を取る。撮影位置（座標・距離）は端末の外に出さず、画像と候補の番号だけを Cloudflare Workers に送る。Workers は記録を Cloudflare D1 に「未確定」で、画像を Cloudflare R2 に非公開で保存し、画面とは新着・地図・判断をやりとりする。地図は Leaflet が地理院タイルの空中写真を直接読む。委員が LINE のグループに送った写真は webhook で Workers に届き、Workers は LINE にお知らせを送る。引き継ぎメモは Workers が Claude API に記録を渡して作る" width="100%">
+</picture>
+
+<details>
+<summary>図を文字で読む</summary>
+
 ```text
 [スマホのブラウザ]（HTTPS）
   写真を選ぶ
@@ -259,6 +269,7 @@ ear-to-ear は、委員の手間を LINE で送るのと同じに保ったまま
 [Claude API]
    → 引き継ぎメモ（記録 1 件＝1 要素、引用で元の記録に戻す）
 ```
+</details>
 
 - **データ**（D1、`migrations/`）: 写真（`uploaded_photos`）、番号の確定・訂正の履歴（`photo_assignments`）、判断（`field_status_events`、取り消しは消さずに印を付ける）、回数の上限（`usage_counters`）、引き継ぎメモ（`handover_notes`）、設定（`settings`）、刈る順番の共有（`order_shares`、60 日で期限切れ）。どれも座標・距離を持たない
 - **画像**（R2）: 非公開のまま、Worker の `GET /api/photo-files/:id` で配信する
