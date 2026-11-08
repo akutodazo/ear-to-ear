@@ -119,6 +119,7 @@ CREATE TABLE order_shares (id TEXT PRIMARY KEY, season, district, ranked /* JSON
 |---|---|---|---|---|---|
 | `POST /api/session` | なし | `{passphrase}` | 204＋Cookie（HttpOnly, Secure, SameSite=Lax, 30日） | 401／429 | L0 |
 | `GET /api/session` | member 以上 | — | 200 `{role}`（`member`／`admin`）。画面が「確定・変更」を出すかを決めるだけで、守るのは各 API の 401／403 | 401（入っていない） | L0 |
+| `DELETE /api/session` | なし | — | 204＋Cookie を消す Set-Cookie（同じ属性で `Max-Age=0`）。入っていない端末でも 204。合言葉を入れ直すときの「出る」（11-08） | — | 11-08 |
 | `POST /api/uploads` | member 以上 | multipart: `image`（JPEG、3MB 以下）＋`meta`（JSON） | 201 `{id}` | 401／409 `{id}`／413／415／422 | L0 |
 | `GET /api/photos?fieldId=` | なし | — | 200 確定済み（撮影日の新しい順） | 400 | L0 |
 | `GET /api/photos/recent?limit=50` | なし | — | 200 未確定を含む新着 | — | L0 |
