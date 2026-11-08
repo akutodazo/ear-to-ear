@@ -8,24 +8,29 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Role } from "@/types";
-import { accountView } from "@/services/app-nav-view";
+import { accountPendingView, accountView, type AccountPending } from "@/services/app-nav-view";
 import { IconClose } from "@/components/icons";
 import { AccountAvatar } from "@/components/account-avatar";
 import { PassphraseForm } from "@/components/upload/passphrase-form";
 
 interface Props {
   role: Role | null | undefined;
-  busy: boolean;
-  message: string | null;
+  /** 待っている操作（入り直す・出る）。言葉を変えるのは待っている側だけ（レビュー #1） */
+  pending: AccountPending;
+  /** 入り直せなかったときの文（合言葉の欄の中に出す） */
+  signInMessage: string | null;
+  /** 出られなかったときの文（「出る」の上に出す。合言葉が違ったように読ませない） */
+  signOutMessage: string | null;
   onSignIn: (passphrase: string) => void;
   /** 出る（11-08） */
   onSignOut: () => void;
 }
 
-export function AccountChip({ role, busy, message, onSignIn, onSignOut }: Props) {
+export function AccountChip({ role, pending, signInMessage, signOutMessage, onSignIn, onSignOut }: Props) {
   const [open, setOpen] = useState(false);
   const [asking, setAsking] = useState(false);
   const view = accountView(role);
+  const wait = accountPendingView(pending);
 
   useEffect(() => {
     if (!open) return;
@@ -64,17 +69,17 @@ export function AccountChip({ role, busy, message, onSignIn, onSignOut }: Props)
             </header>
             {view.signIn &&
               (asking ? (
-                <PassphraseForm onSubmit={onSignIn} message={message} busy={busy} lead={view.signIn.lead} submitLabel={view.signIn.submit} />
+                <PassphraseForm onSubmit={onSignIn} message={signInMessage} busy={wait.signInBusy} lead={view.signIn.lead} submitLabel={view.signIn.submit} />
               ) : (
                 <button type="button" className="button button-block" onClick={() => setAsking(true)}>
                   {view.signIn.label}
                 </button>
               ))}
-            {/* 出られなかったときの文（入れ直しの欄を開いていないときだけ。開いていれば欄の中に出る） */}
-            {!asking && message && <p className="note order-error">{message}</p>}
+            {/* 出られなかったときの文は、合言葉の欄とは別に「出る」のすぐ上へ */}
+            {signOutMessage && <p className="note note-alert">{signOutMessage}</p>}
             {view.canSignOut && (
-              <button type="button" className="account-sign-out" onClick={onSignOut} disabled={busy}>
-                {busy ? "出ています…" : "この端末から出る"}
+              <button type="button" className="account-sign-out" onClick={onSignOut} disabled={wait.disabled}>
+                {wait.signOutLabel}
               </button>
             )}
             {view.isAdmin && (

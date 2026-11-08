@@ -87,3 +87,18 @@ export function accountView(role: Role | null | undefined): AccountView {
     ornament: "none",
   };
 }
+
+/** アカウントのシートで待っている操作。入り直す・出る・無し */
+export type AccountPending = "sign-in" | "sign-out" | null;
+
+/**
+ * 待ちの表示（レビュー #1、docs/reviews/pr-249-250.md）。言葉を変えるのは待っている操作だけ。
+ * 押せなくするのは両方（入り直しと出るを同時に走らせない）
+ */
+export function accountPendingView(pending: AccountPending): { disabled: boolean; signInBusy: boolean; signOutLabel: string } {
+  return {
+    disabled: pending !== null,
+    signInBusy: pending === "sign-in",
+    signOutLabel: pending === "sign-out" ? "出ています…" : "この端末から出る",
+  };
+}
