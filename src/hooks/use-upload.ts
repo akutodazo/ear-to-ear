@@ -12,10 +12,10 @@ import { candidateFieldIds, distanceMeters } from "@/services/candidates";
 import { fieldIdFromHash } from "@/services/field-hash";
 import { sendSummaryLabel, sendingProgressLabel, uploadOutcomeLabel } from "@/services/photo-labels";
 import { buildUploadMeta } from "@/services/upload-request";
-import { loginOutcomeLabel } from "@/services/login-label";
+import { usePassphraseLogin } from "@/hooks/use-passphrase-login";
 import { uploadActionView } from "@/services/upload-action-view";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
-import type { IPhotoRepository, LoginOutcome } from "@/repositories/interfaces/i-photo-repository";
+import type { IPhotoRepository } from "@/repositories/interfaces/i-photo-repository";
 import {
   PreparePhotoUnavailableError,
   canOpenPhoto,
@@ -67,12 +67,9 @@ export function useUpload(repository?: IPhotoRepository) {
   const [repo] = useState<IPhotoRepository>(() => repository ?? createPhotoRepository());
   const [items, setItems] = useState<UploadItem[]>([]);
   const [sending, setSending] = useState(false);
-  const [needsPassphrase, setNeedsPassphrase] = useState(false);
-  const [loginMessage, setLoginMessage] = useState<string | null>(null);
+  const { needsPassphrase, loginMessage, loggingIn, request: requestPassphrase, clearMessage, login: tryLogin } = usePassphraseLogin(repo);
   /** 合言葉の欄の中身（送るボタン 1 つで確かめる、#214） */
   const [passphrase, setPassphraseValue] = useState("");
-  /** 合言葉を確かめている間（Issue #69） */
-  const [loggingIn, setLoggingIn] = useState(false);
   /** 送っている間の何枚目か（Issue #69） */
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   /** 最後の「送る」が合言葉で止まらずに終わった（まとめを出す） */
@@ -185,7 +182,8 @@ export function useUpload(repository?: IPhotoRepository) {
       for (const [index, item] of targets.entries()) {
         setProgress({ done: index, total: targets.length });
         if ((await sendOne(item)) === "unauthorized") {
-          setNeedsPassphrase(true);
+          // 送れている間は「違います」の文は出ていない（出るのは欄が開いている間だけ）ので、消して開くのと同じ
+          requestPassphrase();
           return;
         }
       }
@@ -194,33 +192,26 @@ export function useUpload(repository?: IPhotoRepository) {
       setSending(false);
       setProgress(null);
     }
-  }, [items, sending, sendOne]);
+  }, [items, sending, sendOne, requestPassphrase]);
 
   const login = useCallback(
-    async (passphrase: string) => {
-      if (loggingIn) return;
-      setLoggingIn(true);
-      let outcome: LoginOutcome;
-      try {
-        outcome = await repo.login(passphrase);
-      } finally {
-        setLoggingIn(false);
-      }
-      setLoginMessage(loginOutcomeLabel(outcome));
-      if (outcome !== "ok") return;
-      setNeedsPassphrase(false);
+    async (value: string) => {
+      if (!(await tryLogin(value))) return;
       setPassphraseValue("");
       // 入れたら、押し直さなくても送り直す（委員の手間を増やさない。K1）
       await sendAll();
     },
-    [repo, sendAll, loggingIn],
+    [tryLogin, sendAll],
   );
 
   /** 合言葉を書き直したら、前の「違います」は消す */
-  const setPassphrase = useCallback((value: string) => {
-    setPassphraseValue(value);
-    setLoginMessage(null);
-  }, []);
+  const setPassphrase = useCallback(
+    (value: string) => {
+      setPassphraseValue(value);
+      clearMessage();
+    },
+    [clearMessage],
+  );
 
   /** 下の「送る（n枚）」。合言葉が要るときは、確かめてから送る（「入って送る」のボタンは無い、#214） */
   const submit = useCallback(async () => {

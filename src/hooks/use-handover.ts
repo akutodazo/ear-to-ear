@@ -11,7 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { HandoverNote } from "@/types";
 import { createHandoverOutcomeLabel, handoverOutcomeLabel } from "@/services/handover-labels";
 import { handoverSentences, type HandoverSentence } from "@/services/handover-view";
-import { loginOutcomeLabel } from "@/services/login-label";
+import { usePassphraseLogin } from "@/hooks/use-passphrase-login";
 import { createHandoverRepository } from "@/repositories/create-handover-repository";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
 import type { HandoverOutcome, IHandoverRepository } from "@/repositories/interfaces/i-handover-repository";
@@ -28,9 +28,8 @@ export function useHandover(
   const [message, setMessage] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [createMessage, setCreateMessage] = useState<{ text: string; ok: boolean } | null>(null);
-  const [needsPassphrase, setNeedsPassphrase] = useState(false);
-  const [loginMessage, setLoginMessage] = useState<string | null>(null);
-  const [loggingIn, setLoggingIn] = useState(false);
+  const passphrase = usePassphraseLogin(photoRepo);
+  const { request: requestPassphrase, login: tryLogin } = passphrase;
   // 読み込みの番号。新しい読み込みを始めたときと、作り直しに成功したときに進める。
   // 番号が古い読み込みの結果は捨てる（遅れて届いた古いメモや 404 で、作ったばかりのメモを上書きしない）
   const readSeq = useRef(0);
@@ -75,33 +74,19 @@ export function useHandover(
         setNote(outcome.note);
         setMessage(null);
       } else if (outcome.kind === "unauthorized" || outcome.kind === "forbidden") {
-        setLoginMessage(null);
-        setNeedsPassphrase(true);
+        requestPassphrase();
       }
     } finally {
       setCreating(false);
     }
-  }, [creating, handoverRepo, fieldId]);
+  }, [creating, handoverRepo, fieldId, requestPassphrase]);
 
   const login = useCallback(
-    async (passphrase: string) => {
-      if (loggingIn) return;
-      setLoggingIn(true);
-      try {
-        const outcome = await photoRepo.login(passphrase);
-        if (outcome === "ok") {
-          setNeedsPassphrase(false);
-          setLoginMessage(null);
-          // 入った後は、もう一度「作る」を押してもらう（勝手に Claude を呼ばない）
-          setCreateMessage(null);
-        } else {
-          setLoginMessage(loginOutcomeLabel(outcome));
-        }
-      } finally {
-        setLoggingIn(false);
-      }
+    async (value: string) => {
+      // 入った後は、もう一度「作る」を押してもらう（勝手に Claude を呼ばない）
+      if (await tryLogin(value)) setCreateMessage(null);
     },
-    [photoRepo, loggingIn],
+    [tryLogin],
   );
 
   const sentences = useMemo<HandoverSentence[]>(() => (note === null ? [] : handoverSentences(note)), [note]);
@@ -115,9 +100,9 @@ export function useHandover(
     create,
     creating,
     createMessage,
-    needsPassphrase,
-    loginMessage,
-    loggingIn,
+    needsPassphrase: passphrase.needsPassphrase,
+    loginMessage: passphrase.loginMessage,
+    loggingIn: passphrase.loggingIn,
     login,
   };
 }
