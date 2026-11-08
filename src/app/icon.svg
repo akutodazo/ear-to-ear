@@ -1,15 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- ear-to-ear のアイコン: 落ち着いた青の地に、麦の穂（麦の黄色は印だけに使う。11-03 配色） -->
-  <rect width="512" height="512" rx="112" fill="#1f6fb5"/>
-  <g fill="#d9b44a">
-    <path d="M250 420 L262 420 L262 150 L250 150 Z"/>
-    <ellipse cx="256" cy="112" rx="22" ry="44"/>
-    <g id="pair">
-      <ellipse cx="222" cy="170" rx="20" ry="42" transform="rotate(-28 222 170)"/>
-      <ellipse cx="290" cy="170" rx="20" ry="42" transform="rotate(28 290 170)"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- ear-to-ear のアイコン（11-06 本人決定、ロゴ I–1「畑を集めると、穂になる」）: 濃い緑の地に、形の違う小さな圃場を集めた麦の穂。畑の間の道が穂の軸になる。のぎ（穂先の細い毛）で「耳」ではなく「穂」と読ませる -->
+  <rect width="100" height="100" rx="21" fill="#2d6441"/>
+  <g transform="translate(6 6) scale(.88)">
+    <g fill="#f5f4ec" transform="translate(33 95) rotate(24) scale(1.06 .94)">
+      <path d="M-4 -6L-17 -17L-19 -34L-5 -26Z"/>
+      <path d="M1 -11L14 -17L19 -36L3 -29Z"/>
+      <path d="M-5 -31L-18 -39L-20 -55L-7 -49Z"/>
+      <path d="M1 -34L16 -42L18 -58L2 -52Z"/>
+      <path d="M-6 -54L-16 -61L-17 -74L-6 -68Z"/>
+      <path d="M-1 -58L11 -64L13 -79L1 -72Z"/>
+      <path d="M-4 -73L-9 -84L-5 -96L0 -84Z"/>
+      <path d="M-19 -54L-23 -67 M-17 -73L-20 -83 M13 -78L16 -91" fill="none" stroke="#f5f4ec" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M-5 0L-4 -16L0 -12L-1 0Z"/>
     </g>
-    <use href="#pair" y="62"/>
-    <use href="#pair" y="124"/>
-    <use href="#pair" y="186"/>
   </g>
 </svg>
