@@ -3,9 +3,9 @@
 > ear ＝ 麦の穂。ear to ear ＝ 満面の笑み／穂から穂へ、委員から委員へ。
 
 <p align="center">
-  <!-- TODO(提出時): href を動画の URL に -->
-  <a href="#"><img src="public/demo/readme-map.jpg" alt="ear-to-ear の地図の画面（デモ動画へ）" width="300"></a><br>
-  <sub>地図の画面（手元で動かしたもの）。空中写真は地理院タイル、区画の番号・名前は架空</sub>
+  <img src="src/app/icon.svg" alt="ear-to-ear のロゴ（青の地に麦の穂）" width="128"><br>
+  <b>ear-to-ear</b><br>
+  <sub>穂から穂へ、写真と判断をつなぐ</sub>
 </p>
 
 <p align="center">
@@ -104,6 +104,11 @@ ear-to-ear は、委員の手間を LINE で送るのと同じに保ったまま
   - 組み込みの道具を外し、自作の MCP の道具だけを渡した「檻」の中で動かした（[Claude の使い方](#claude-の使い方)）
 
 ## できること（画面ごと）
+<p align="center">
+  <img src="public/demo/readme-map.jpg" alt="ear-to-ear の地図の画面" width="300"><br>
+  <sub>地図の画面（手元で動かしたもの）。空中写真は地理院タイル、区画の番号・名前は架空</sub>
+</p>
+
 | 場面 | 画面 | 中身 |
 |---|---|---|
 | 送る | `/upload` | 写真を選ぶと、写真ごとにプレビュー・撮影日（不明なら「日付不明」）・畑の番号の候補（3 つまで）が出る。番号は任意で選べる。**撮影位置は端末の中で使い終えたら捨て**、画像のメタデータは全部消してから送る。同じ写真をもう一度送ると「送り済み（同じ写真）」になる |
