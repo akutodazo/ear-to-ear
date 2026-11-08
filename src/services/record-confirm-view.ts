@@ -3,7 +3,7 @@
  * 文は lineNoticeText に任せて二重に書かない。URL（判断のページ）は記録の後に番号が決まるので、代わりの一言を出す。
  * メモは LINE に出ないので載せない
  */
-import type { StatusDraft } from "@/hooks/use-field-status";
+import type { StatusDraft } from "./status-view";
 import { lineNoticeText } from "./line-notice";
 
 export const RECORD_CONFIRM_URL_NOTE = "この判断のページの URL（記録すると付きます）";

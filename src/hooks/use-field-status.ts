@@ -18,20 +18,14 @@ import {
   withLocalChanges,
   withStatusEvent,
   type LocalStatusChange,
+  type RevokeStatus,
+  type StatusDraft,
 } from "@/services/status-view";
 import { usePassphraseLogin } from "@/hooks/use-passphrase-login";
 import { createFieldStatusRepository } from "@/repositories/create-field-status-repository";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
 import type { HistoryOutcome, IFieldStatusRepository } from "@/repositories/interfaces/i-field-status-repository";
 import type { IPhotoRepository } from "@/repositories/interfaces/i-photo-repository";
-
-/** 入力中の判断 */
-export interface StatusDraft {
-  status: StatusEvent["status"] | null;
-  reasons: StatusReasonCode[];
-  note: string;
-  refPhotoIds: string[];
-}
 
 /** 1 回の読み込み。seq は読み込みの番号、since は始めたときの手元の変更の番号 */
 interface HistoryRead {
@@ -40,12 +34,6 @@ interface HistoryRead {
 }
 
 const EMPTY_DRAFT: StatusDraft = { status: null, reasons: [], note: "", refPhotoIds: [] };
-
-/** 判断ごとの取り消しの様子 */
-export interface RevokeStatus {
-  busy: boolean;
-  message: string | null;
-}
 
 /**
  * confirmedPhotoIds は、その圃場に確定済みの写真の id（圃場ページで読んだもの）。根拠に選べるのはこれだけ。

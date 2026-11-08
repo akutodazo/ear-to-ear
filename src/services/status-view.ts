@@ -3,9 +3,23 @@
  * 判断するのは委員。ここは記録を言葉にするだけで、収穫できるかを推測しない（AGENTS.md §4）。
  */
 import type { FieldSummary, StatusEvent } from "@/types";
-import { STATUS_NOTE_MAX_CHARS, STATUS_REASONS, STATUS_REF_PHOTOS_MAX } from "@/config";
+import { STATUS_NOTE_MAX_CHARS, STATUS_REASONS, STATUS_REF_PHOTOS_MAX, type StatusReasonCode } from "@/config";
 import type { StatusInputReason } from "@/services/status-reason";
 import type { PostStatusOutcome, RevokeOutcome } from "@/repositories/interfaces/i-field-status-repository";
+
+/** 入力中の判断 */
+export interface StatusDraft {
+  status: StatusEvent["status"] | null;
+  reasons: StatusReasonCode[];
+  note: string;
+  refPhotoIds: string[];
+}
+
+/** 判断ごとの取り消しの様子 */
+export interface RevokeStatus {
+  busy: boolean;
+  message: string | null;
+}
 
 /** 地図のピンの状態 */
 export interface PinState {
