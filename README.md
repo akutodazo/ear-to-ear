@@ -3,9 +3,7 @@
 > ear ＝ 麦の穂。ear to ear ＝ 満面の笑み／穂から穂へ、委員から委員へ。
 
 <p align="center">
-  <!-- TODO(提出時): ロゴのファイルは別の PC にあるので、後で共有してもらって差し替える。それまではアプリのアイコン（src/app/icon.svg）を仮に置く -->
-  <img src="src/app/icon.svg" alt="ear-to-ear のロゴ（青の地に麦の穂）" width="128"><br>
-  <b>ear-to-ear</b><br>
+  <img src="docs/design/ear-to-ear-lockup.svg" alt="ear-to-ear のロゴ（麦の穂と ear-to-ear の文字）" width="320"><br>
   <sub>穂から穂へ、写真と判断をつなぐ</sub>
 </p>
 
