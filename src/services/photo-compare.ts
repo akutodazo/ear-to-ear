@@ -93,7 +93,7 @@ export function resolveSameField(days: readonly CompareDay[], selfId: string, wa
   return { date, earlier, earlierOptions };
 }
 
-/** 比較の段の 1 枚（split-viewer の SlotPhoto と同じ形） */
+/** 比較の段の 1 枚（split-viewer が上下に出す） */
 export interface CompareSlot {
   photoId: string;
   fieldId: string;
@@ -134,12 +134,16 @@ export function compareSlots(input: {
   return { date: sameField.date, bottom: slot(selfId, sameField.date), top: slot(selfId, sameField.earlier) };
 }
 
+/** 相手の一覧の 1 行（split-viewer の上の帯を押すと出る） */
+export interface PartnerChoice {
+  fieldId: string;
+  /** 「番号 名前」 */
+  label: string;
+  benchmark: boolean;
+}
+
 /** 同じ日の相手の選択肢。その日に写真がある畑だけを「番号 名前」で */
-export function partnerOptions(
-  sameDay: SameDayChoice,
-  fieldsById: FieldNames,
-  benchmarkId: string | null,
-): { fieldId: string; label: string; benchmark: boolean }[] {
+export function partnerOptions(sameDay: SameDayChoice, fieldsById: FieldNames, benchmarkId: string | null): PartnerChoice[] {
   return sameDay.options
     .filter((o) => o.enabled)
     .map((o) => ({ fieldId: o.fieldId, label: `${o.fieldId} ${fieldsById[o.fieldId]?.name ?? ""}`.trim(), benchmark: o.fieldId === benchmarkId }));
