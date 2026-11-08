@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { heroMeta, judgmentLine, rankLineView, readFieldView, showHandoverTo } from "./detail-view";
+import type { StatusEvent } from "@/types";
+import { heroMeta, judgmentLine, latestLiveEvent, rankLineView, readFieldView, showHandoverTo } from "./detail-view";
 
 describe("judgmentLine（詳細の判断の行、#195）", () => {
   it("最新の判断を「月/日 に 状態 と判断」で", () => {
@@ -73,5 +74,44 @@ describe("showHandoverTo（引き継ぎメモは管理者だけ。西田 PM 11-0
     expect(showHandoverTo("member")).toBe(false);
     expect(showHandoverTo(null)).toBe(false);
     expect(showHandoverTo(undefined)).toBe(false);
+  });
+});
+
+// 詳細の判断の行に出す最新の判断（field-client から移す。#240）
+describe("latestLiveEvent（取り消していない最新の判断）", () => {
+  const event = (id: number, at: string, revokedAt: string | null = null, status: StatusEvent["status"] = "ready"): StatusEvent => ({
+    id,
+    fieldId: "A-03",
+    status,
+    reasons: [],
+    note: null,
+    refPhotoIds: [],
+    actorDevice: "d",
+    at,
+    revokedAt,
+  });
+
+  it("記録が無ければ null", () => {
+    expect(latestLiveEvent([])).toBeNull();
+  });
+
+  it("すべて取り消し済みなら null", () => {
+    expect(latestLiveEvent([event(1, "2026-07-20T00:00:00.000Z", "2026-07-21T00:00:00.000Z")])).toBeNull();
+  });
+
+  it("時刻がいちばん新しいもの（並びの順に頼らない）", () => {
+    const newest = event(1, "2026-07-22T00:00:00.000Z", null, "done");
+    expect(latestLiveEvent([event(2, "2026-07-20T00:00:00.000Z"), newest, event(3, "2026-07-21T00:00:00.000Z")])).toBe(newest);
+  });
+
+  it("取り消した新しい判断は飛ばす", () => {
+    const live = event(1, "2026-07-20T00:00:00.000Z");
+    expect(latestLiveEvent([event(2, "2026-07-22T00:00:00.000Z", "2026-07-22T01:00:00.000Z"), live])).toBe(live);
+  });
+
+  it("同じ時刻なら id の大きいほう（後から記録したもの）", () => {
+    const later = event(5, "2026-07-20T00:00:00.000Z", null, "done");
+    expect(latestLiveEvent([later, event(4, "2026-07-20T00:00:00.000Z")])).toBe(later);
+    expect(latestLiveEvent([event(4, "2026-07-20T00:00:00.000Z"), later])).toBe(later);
   });
 });

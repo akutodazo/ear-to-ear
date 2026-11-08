@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isoToJstDate, lastSeasonFor, lastSeasonLines, monthDay, type SeasonRecord } from "./last-season";
+import { isoToJstDate, lastSeasonFor, lastSeasonLines, monthDay, seasonDatesFromEvents, type SeasonRecord } from "./last-season";
 
 // 架空の昨年の記録（11-05。見比べるの画面の「昨年の同じ頃」）。場所（圃場）と年の作物・判断を分ける（輪作）
 const records: SeasonRecord[] = [
@@ -72,5 +72,34 @@ describe("lastSeasonLines（昨年と今年を同じ形で並べる。差や予�
 
   it("今年の収穫済もあれば並べる", () => {
     expect(lastSeasonLines(records[0], "2026", { readyAt: "2026-07-22", doneAt: "2026-07-26" })[2]).toBe("今年 7/22 に収穫可能と判断、7/26 に収穫済");
+  });
+});
+
+// 今年の判断の日付（「昨年の同じ頃」と並べる。field-client から移す。#240）
+describe("seasonDatesFromEvents（今年の収穫可能・収穫済の日）", () => {
+  const event = (status: "ready" | "done", at: string, revokedAt: string | null = null) => ({ status, at, revokedAt });
+
+  it("記録が無ければ null", () => {
+    expect(seasonDatesFromEvents([])).toBeNull();
+  });
+
+  it("取り消していない記録が無ければ null", () => {
+    expect(seasonDatesFromEvents([event("ready", "2026-07-20T00:00:00.000Z", "2026-07-20T01:00:00.000Z")])).toBeNull();
+  });
+
+  it("それぞれの最新の日（日本時間の日付）。無いほうは null", () => {
+    expect(
+      seasonDatesFromEvents([event("ready", "2026-07-18T00:00:00.000Z"), event("ready", "2026-07-20T16:00:00.000Z")]),
+    ).toEqual({ readyAt: "2026-07-21", doneAt: null });
+  });
+
+  it("取り消した記録は数えない", () => {
+    expect(
+      seasonDatesFromEvents([
+        event("ready", "2026-07-18T00:00:00.000Z"),
+        event("ready", "2026-07-25T00:00:00.000Z", "2026-07-25T01:00:00.000Z"),
+        event("done", "2026-07-28T00:00:00.000Z"),
+      ]),
+    ).toEqual({ readyAt: "2026-07-18", doneAt: "2026-07-28" });
   });
 });
