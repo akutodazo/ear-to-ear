@@ -264,7 +264,7 @@ ear-to-ear は、委員の手間を LINE で送るのと同じに保ったまま
 - **画像**（R2）: 非公開のまま、Worker の `GET /api/photo-files/:id` で配信する
 - **畑の一覧**: 架空の 12 圃場（A-01〜A-12、北・中・南の 3 地区）を静的な JSON で持つ（`src/data/`）
 - **API**: 18 本（合言葉・送る・新着・確定・判断・取り消し・判断の履歴・地図のまとめ・引き継ぎメモ・LINE・共有）と、死活確認の `/api/health`。表は `worker/routes.ts`。一覧と、成功・失敗の状態コードは [docs/spec.md](docs/spec.md) の §6
-- **環境**: 手元（`wrangler dev`）／dev（実機の確認、HTTPS）／demo（審査員用）。dev と demo は D1・R2・秘密を分けている
+- **環境**: 手元（`wrangler dev`）／dev（実機の確認、HTTPS。**審査員に公開しているデモのサイトもこの dev**）／demo（審査員用に D1・R2・秘密を dev と分けた環境。設定と承認の流れまで用意し、11-08 時点ではまだ出していない）
 
 ## 開発技術
 
