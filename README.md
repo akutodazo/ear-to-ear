@@ -315,18 +315,18 @@ ear-to-ear は、委員の手間を LINE で送るのと同じに保ったまま
 - Claude Fable（アイデア出し・荒探し・詰まったときの相談）
 - claude.ai のアーティファクト（指示文の試作台）、Claude in Chrome
 - Codex（別の会社のモデルの目が要るときの点検）
-- stack-diagram（README の 2 枚の構成図。重なり・はみ出し・切れた線は、描いた画像を自作の点検で確かめた）
+- stack-diagram（README の 3 枚の図。重なり・はみ出し・切れた線は、描いた画像を自作の点検で確かめた）
 - Node.js 24
 
 ## テストと品質
-作って確かめる流れです。人がテストを書いて凍結し、実装は「檻」の中の Claude が書き、PR ごとに CI が 5 段の検査を流します。
+作って確かめる流れです。人がテストを書いて凍結し、実装は「檻」の中の Claude が書き、PR ごとに CI が 5 段の検査を流します。攻撃役・檻・レビューの中身は、[作るときの Claude](#作るときの-claude開発の中心) の図に詳しく描いています。
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="public/demo/readme-pipeline-dark.jpg">
   <img src="public/demo/readme-pipeline.jpg" alt="作って確かめる流れの図。人が合格条件と RED のテストを書き、凍結の前に攻撃役（Sonnet）に抜け道を探させて塞ぐ。凍結したテストを、自作 MCP の道具だけを持つ檻の中の Claude Code が無人で GREEN にし、検査 C1〜C5 の報告（REPORT）を出す。人が REPORT と差分を読んでから PR を出す。GitHub では PR ごとに GitHub Actions が npm run check（安全検査 → ESLint → TypeScript → Vitest のテスト 2,823 件 → Next.js の build）を流す。撮影位置・実データ・秘密に関わる PR は、書いた会話を見ていない別のセッションの Opus が PR の番号だけを受け取ってレビューする。CI が通ると main にマージでき（main は PR と CI が必須）、main への push で deploy が動き、D1 の migration のあと Cloudflare Workers の dev に自動で出る。demo へは人が Actions の画面で押して承認したときだけ出す" width="100%">
 </picture>
 
-<sub>2 枚の構成図は [stack-diagram](https://github.com/caru-ini/stack-diagram)（MIT License）で描きました（リポジトリに入れたのは画像だけ）。ロゴは各社の商標です。</sub>
+<sub>README の 3 枚の図は [stack-diagram](https://github.com/caru-ini/stack-diagram)（MIT License）で描きました（リポジトリに入れたのは画像だけ）。ロゴは各社の商標です。</sub>
 
 - `npm run check` で、安全検査 → lint → 型 → テスト → build を順に流す。CI（GitHub Actions）でも毎回同じものを流し、通らないとマージできない
 - テストは 2,823 件・133 ファイル（11-08 時点）。Service は純粋関数なので、ブラウザや fetch なしでテストできる
