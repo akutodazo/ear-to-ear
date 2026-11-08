@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accountView, appNavHrefs, fieldDetailHref, navCurrent } from "./app-nav-view";
+import { accountPendingView, accountView, appNavHrefs, fieldDetailHref, navCurrent } from "./app-nav-view";
 
 // みっきぃ 3（#216）: 詳細は下の帯から外し、地図の板・順番のカードから入る。帯は 地図・比較・順番 の 3 つ
 describe("appNavHrefs（下の帯の 3 つ。選んだ畑を引き継ぐ、#194・#216）", () => {
@@ -83,5 +83,20 @@ describe("accountView（アカウント札とシートの言葉・アイコン�
 
   it("まだ分からないときは「…」で飾りなし", () => {
     expect(accountView(undefined)).toMatchObject({ chip: "…", tier: "loading", ornament: "none", signIn: null, canSignOut: false });
+  });
+});
+
+// レビュー #1（docs/reviews/pr-249-250.md）: 入り直すの待ちに「出ています…」が出た（逆も）。待っている操作だけの言葉を変え、押せなくするのは両方
+describe("accountPendingView（アカウントのシートの待ちの表示）", () => {
+  it("何も待っていなければ、どちらも押せて言葉はそのまま", () => {
+    expect(accountPendingView(null)).toStrictEqual({ disabled: false, signInBusy: false, signOutLabel: "この端末から出る" });
+  });
+
+  it("入り直すを待っている間は、出るの言葉を変えない（押せないだけ）", () => {
+    expect(accountPendingView("sign-in")).toStrictEqual({ disabled: true, signInBusy: true, signOutLabel: "この端末から出る" });
+  });
+
+  it("出るを待っている間は、入り直すの欄を「確かめています」にしない", () => {
+    expect(accountPendingView("sign-out")).toStrictEqual({ disabled: true, signInBusy: false, signOutLabel: "出ています…" });
   });
 });
