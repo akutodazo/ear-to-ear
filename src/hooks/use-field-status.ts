@@ -19,7 +19,7 @@ import {
   withStatusEvent,
   type LocalStatusChange,
 } from "@/services/status-view";
-import { loginOutcomeLabel } from "@/services/login-label";
+import { usePassphraseLogin } from "@/hooks/use-passphrase-login";
 import { createFieldStatusRepository } from "@/repositories/create-field-status-repository";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
 import type { HistoryOutcome, IFieldStatusRepository } from "@/repositories/interfaces/i-field-status-repository";
@@ -66,9 +66,8 @@ export function useFieldStatus(
   const [confirmingAt, setConfirmingAt] = useState<number | null>(null);
   const [formMessage, setFormMessage] = useState<{ text: string; ok: boolean } | null>(null);
   const [revokeStatus, setRevokeStatus] = useState<Record<number, RevokeStatus>>({});
-  const [needsPassphrase, setNeedsPassphrase] = useState(false);
-  const [loginMessage, setLoginMessage] = useState<string | null>(null);
-  const [loggingIn, setLoggingIn] = useState(false);
+  const passphrase = usePassphraseLogin(photoRepo);
+  const { request: requestPassphrase, login: tryLogin } = passphrase;
   // 遅れて届いた読み込みで、送った判断や取り消しを消さないための番号（Codex の点検 #114 と同じ種類の競合）。
   // 最後に始めた読み込みの結果だけを使い、その読み込みを始めた後に手元で変えた判断を重ねる
   const readSeq = useRef(0);
@@ -189,14 +188,13 @@ export function useFieldStatus(
         recordChange(outcome.event);
         setDraft(EMPTY_DRAFT);
       } else if (outcome.kind === "unauthorized") {
-        setLoginMessage(null);
-        setNeedsPassphrase(true);
+        requestPassphrase();
       }
     } finally {
       setSubmitting(false);
       setConfirmingAt(null);
     }
-  }, [submitting, draft, confirmedPhotoIds, statusRepo, fieldId, recordChange]);
+  }, [submitting, draft, confirmedPhotoIds, statusRepo, fieldId, recordChange, requestPassphrase]);
 
   const revoke = useCallback(
     async (eventId: number) => {
@@ -206,36 +204,23 @@ export function useFieldStatus(
       if (outcome.kind === "ok") {
         recordChange(outcome.event);
       } else if (outcome.kind === "unauthorized") {
-        setLoginMessage(null);
-        setNeedsPassphrase(true);
+        requestPassphrase();
       } else if (outcome.kind === "not-found") {
         // ほかの端末で取り消されたかもしれないので、履歴を読み直す
         await loadHistory();
       }
     },
-    [statusRepo, loadHistory, recordChange],
+    [statusRepo, loadHistory, recordChange, requestPassphrase],
   );
 
   const login = useCallback(
-    async (passphrase: string) => {
-      if (loggingIn) return;
-      setLoggingIn(true);
-      try {
-        const outcome = await photoRepo.login(passphrase);
-        if (outcome === "ok") {
-          setNeedsPassphrase(false);
-          setLoginMessage(null);
-          // 入った後は、もう一度「記録する」「取り消す」を押してもらう（入力はそのまま残す）
-          setFormMessage(null);
-          setRevokeStatus({});
-        } else {
-          setLoginMessage(loginOutcomeLabel(outcome));
-        }
-      } finally {
-        setLoggingIn(false);
-      }
+    async (value: string) => {
+      if (!(await tryLogin(value))) return;
+      // 入った後は、もう一度「記録する」「取り消す」を押してもらう（入力はそのまま残す）
+      setFormMessage(null);
+      setRevokeStatus({});
     },
-    [photoRepo, loggingIn],
+    [tryLogin],
   );
 
   return {
@@ -257,9 +242,9 @@ export function useFieldStatus(
     formMessage,
     revoke,
     revokeStatus,
-    needsPassphrase,
-    loginMessage,
-    loggingIn,
+    needsPassphrase: passphrase.needsPassphrase,
+    loginMessage: passphrase.loginMessage,
+    loggingIn: passphrase.loggingIn,
     login,
   };
 }
