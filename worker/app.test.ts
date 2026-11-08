@@ -66,9 +66,10 @@ describe("/api/", () => {
   });
 
   it("メソッド違いは 405 と Allow（表の順）と共通ヘッダ", async () => {
-    const response = await call("DELETE", "/api/session");
+    // DELETE は出る（11-08）に使うので、メソッド違いの例は PATCH
+    const response = await call("PATCH", "/api/session");
     expect(response.status).toBe(405);
-    expect(response.headers.get("allow")).toBe("POST, GET");
+    expect(response.headers.get("allow")).toBe("POST, GET, DELETE");
     expect(await response.json()).toStrictEqual({ error: "method_not_allowed" });
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");

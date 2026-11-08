@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SESSION_DAYS } from "@/config";
-import { buildSessionCookie, readCookie, SESSION_COOKIE_NAME } from "./cookies";
+import { buildClearSessionCookie, buildSessionCookie, readCookie, SESSION_COOKIE_NAME } from "./cookies";
 
 describe("readCookie", () => {
   it.each([
@@ -52,5 +52,15 @@ describe("buildSessionCookie", () => {
   it("作った Cookie を readCookie で読み戻せる", () => {
     const header = buildSessionCookie("abc.def").split(";")[0];
     expect(readCookie(header, SESSION_COOKIE_NAME)).toBe("abc.def");
+  });
+});
+
+describe("buildClearSessionCookie（出る。11-08）", () => {
+  it("同じ名前・Path・属性で、値を空にして Max-Age=0", () => {
+    expect(buildClearSessionCookie()).toBe("session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax");
+  });
+
+  it("消した Cookie は readCookie で null", () => {
+    expect(readCookie(buildClearSessionCookie().split(";")[0], SESSION_COOKIE_NAME)).toBeNull();
   });
 });

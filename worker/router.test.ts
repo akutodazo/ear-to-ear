@@ -69,7 +69,7 @@ describe("一致しない", () => {
   });
 
   it("パスは合うがメソッドが違うと method-not-allowed で、Allow に表のメソッド", () => {
-    expect(find("DELETE", "/api/session")).toEqual({ kind: "method-not-allowed", allow: ["POST", "GET"] });
+    expect(find("PATCH", "/api/session")).toEqual({ kind: "method-not-allowed", allow: ["POST", "GET", "DELETE"] });
   });
 
   it("複数のメソッドがあれば Allow は表の順", () => {
