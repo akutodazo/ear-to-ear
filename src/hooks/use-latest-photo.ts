@@ -6,7 +6,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { UploadedPhoto } from "@/types";
 import { groupFieldPhotos } from "@/services/photo-groups";
 import type { LatestPhotoState } from "@/services/map-view";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
