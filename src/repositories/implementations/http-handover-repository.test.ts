@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { HandoverNote } from "@/types";
 import type { CreateHandoverOutcome } from "@/repositories/interfaces/i-handover-repository";
 import { createHttpHandoverRepository } from "./http-handover-repository";
-import type { FetchLike } from "./http-photo-repository";
+import type { FetchLike } from "./http-common";
 
 /** 呼ばれた要求を記録し、決まった応答を返す偽の fetch */
 function fakeFetch(respond: () => Response | Promise<Response>) {

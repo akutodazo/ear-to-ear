@@ -11,16 +11,7 @@ import type {
   RevokeOutcome,
   SummaryOutcome,
 } from "@/repositories/interfaces/i-field-status-repository";
-import { send, type FetchLike } from "./http-photo-repository";
-
-/** 本文を JSON として読む。読めなければ undefined */
-async function readBody(response: Response): Promise<unknown> {
-  try {
-    return await response.json();
-  } catch {
-    return undefined;
-  }
-}
+import { readJson, send, type FetchLike } from "./http-common";
 
 /** 判断の形か（id が数）。細かい項目はサーバーの型に頼る */
 function asStatusEvent(body: unknown): StatusEvent | null {
@@ -37,7 +28,7 @@ export function createHttpFieldStatusRepository(fetchFn: FetchLike, baseUrl = ""
       const response = await send(fetchFn, `${baseUrl}/api/fields/summary`);
       if (response === null) return { kind: "network-error" };
       if (response.status !== 200) return { kind: "error" };
-      const fields = ((await readBody(response)) as { fields?: unknown } | null | undefined)?.fields;
+      const fields = ((await readJson(response)) as { fields?: unknown } | null | undefined)?.fields;
       return Array.isArray(fields) ? { kind: "ok", fields: fields as FieldSummary[] } : { kind: "error" };
     },
 
@@ -45,7 +36,7 @@ export function createHttpFieldStatusRepository(fetchFn: FetchLike, baseUrl = ""
       const response = await send(fetchFn, fieldUrl(fieldId, "status-events"));
       if (response === null) return { kind: "network-error" };
       if (response.status !== 200) return { kind: "error" };
-      const body = await readBody(response);
+      const body = await readJson(response);
       return Array.isArray(body) ? { kind: "ok", events: body as StatusEvent[] } : { kind: "error" };
     },
 
@@ -59,13 +50,13 @@ export function createHttpFieldStatusRepository(fetchFn: FetchLike, baseUrl = ""
       if (response === null) return { kind: "network-error" };
       switch (response.status) {
         case 201: {
-          const event = asStatusEvent(await readBody(response));
+          const event = asStatusEvent(await readJson(response));
           return event === null ? { kind: "error" } : { kind: "created", event };
         }
         case 401:
           return { kind: "unauthorized" };
         case 422: {
-          const reason = ((await readBody(response)) as { reason?: unknown } | null | undefined)?.reason;
+          const reason = ((await readJson(response)) as { reason?: unknown } | null | undefined)?.reason;
           return { kind: "rejected", reason: typeof reason === "string" ? reason : null };
         }
         case 400:
@@ -82,7 +73,7 @@ export function createHttpFieldStatusRepository(fetchFn: FetchLike, baseUrl = ""
       if (response === null) return { kind: "network-error" };
       switch (response.status) {
         case 200: {
-          const event = asStatusEvent(await readBody(response));
+          const event = asStatusEvent(await readJson(response));
           return event === null ? { kind: "error" } : { kind: "ok", event };
         }
         case 401:

@@ -8,16 +8,11 @@ import type {
   HandoverOutcome,
   IHandoverRepository,
 } from "@/repositories/interfaces/i-handover-repository";
-import { send, type FetchLike } from "./http-photo-repository";
+import { readJson, send, type FetchLike } from "./http-common";
 
 /** 本文がメモの形か（圃場の番号が文字列、records と blocks が配列）。細かい項目はサーバーの型に頼る */
 async function readNote(response: Response): Promise<HandoverNote | null> {
-  let body: unknown;
-  try {
-    body = await response.json();
-  } catch {
-    return null;
-  }
+  const body = await readJson(response);
   if (typeof body !== "object" || body === null) return null;
   const { fieldId, records, blocks } = body as Partial<Record<keyof HandoverNote, unknown>>;
   return typeof fieldId === "string" && Array.isArray(records) && Array.isArray(blocks)

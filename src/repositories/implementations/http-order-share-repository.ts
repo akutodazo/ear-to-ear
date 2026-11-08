@@ -4,15 +4,10 @@
  */
 import type { OrderShareMeta } from "@/services/order-share-meta";
 import type { CreateOrderShareOutcome, IOrderShareRepository, OrderShare } from "@/repositories/interfaces/i-order-share-repository";
-import { send, type FetchLike } from "./http-photo-repository";
+import { readJson, send, type FetchLike } from "./http-common";
 
 async function readShare(response: Response): Promise<OrderShare | null> {
-  let body: unknown;
-  try {
-    body = await response.json();
-  } catch {
-    return null;
-  }
+  const body = await readJson(response);
   if (typeof body !== "object" || body === null) return null;
   const { id, url, expiresAt } = body as Record<string, unknown>;
   if (typeof id !== "string" || typeof url !== "string" || typeof expiresAt !== "string") return null;
@@ -22,12 +17,8 @@ async function readShare(response: Response): Promise<OrderShare | null> {
 }
 
 async function readReason(response: Response): Promise<string | null> {
-  try {
-    const reason = ((await response.json()) as { reason?: unknown } | null)?.reason;
-    return typeof reason === "string" ? reason : null;
-  } catch {
-    return null;
-  }
+  const reason = ((await readJson(response)) as { reason?: unknown } | null | undefined)?.reason;
+  return typeof reason === "string" ? reason : null;
 }
 
 export function createHttpOrderShareRepository(fetchFn: FetchLike, baseUrl = ""): IOrderShareRepository {
