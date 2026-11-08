@@ -16,15 +16,24 @@ import { useHandover } from "@/hooks/use-handover";
 import { useDistrictOrder } from "@/hooks/use-district-order";
 import { useFieldView } from "@/hooks/use-field-view";
 import { benchmarkFor } from "@/services/parcel-geometry";
-import { isoToJstDate, lastSeasonFor, lastSeasonLines, type SeasonDates, type SeasonRecord } from "@/services/last-season";
-import { daysOf, indexByDay, resolveSameDay, resolveSameField } from "@/services/photo-compare";
-import { monthDay } from "@/services/last-season";
+import { lastSeasonFor, lastSeasonLines, monthDay, seasonDatesFromEvents, type SeasonRecord } from "@/services/last-season";
+import { compareSlots, daysOf, partnerOptions } from "@/services/photo-compare";
+import { useCompareSelection } from "@/hooks/use-compare-selection";
 import { canSubmitStatus, refRequiredNote } from "@/services/status-view";
 import { handoverCreatedLabel } from "@/services/handover-labels";
 import { memoOfferLabel } from "@/services/memo-offer";
-import { heroMeta, judgmentLine, rankLineView, showHandoverTo } from "@/services/detail-view";
-import { CompareControls, type CompareMode } from "@/components/compare/compare-controls";
-import { SplitViewer, type PartnerPicker, type SlotPhoto } from "@/components/compare/split-viewer";
+import {
+  decideResult,
+  heroMeta,
+  judgmentLine,
+  latestLiveEvent,
+  rankLineState,
+  rankLineView,
+  rankOf,
+  showHandoverTo,
+} from "@/services/detail-view";
+import { CompareControls } from "@/components/compare/compare-controls";
+import { SplitViewer, type PartnerPicker } from "@/components/compare/split-viewer";
 import { FieldSwitcher } from "@/components/compare/field-switcher";
 import { PhotoStream } from "@/components/compare/photo-stream";
 import { LastSeasonNote } from "@/components/compare/last-season-note";
@@ -44,7 +53,7 @@ import { AppNav } from "@/components/app-nav";
 import { AccountChip } from "@/components/account-chip";
 import { useRole } from "@/hooks/use-role";
 import { appNavHrefs, navCurrent } from "@/services/app-nav-view";
-import { sameDayEmptyNote } from "@/services/compare-note";
+import { compareStageNote } from "@/services/compare-note";
 import { IconDetail, IconPen, IconPhoto } from "@/components/icons";
 import { PhrasedText } from "@/components/upload/phrased-text";
 
@@ -85,59 +94,37 @@ export function FieldClient({ field }: { field: Field }) {
   }, [fromDock, lastMemo, contentReady]);
   const [writing, setWriting] = useState(false);
 
-  // 比べ方の選択。日付・相手・前の日は「希望」として持ち、実際に出せる形には Service が直す
-  const [mode, setMode] = useState<CompareMode>("same-day");
-  const [wanted, setWanted] = useState<{ date?: string; partner?: string; earlier?: string }>({});
-  const days = useMemo(() => indexByDay(district.byField), [district.byField]);
-  const ownDays = useMemo(() => daysOf(days, field.id), [days, field.id]);
-  const sameDay = useMemo(() => resolveSameDay(days, field.id, wanted, benchmarkId, districtIds), [days, field.id, wanted, benchmarkId, districtIds]);
-  const sameField = useMemo(() => resolveSameField(days, field.id, wanted), [days, field.id, wanted]);
-  const date = mode === "same-day" ? sameDay.date : sameField.date;
-  const dayOf = (takenAt: string | null) => (takenAt === null ? undefined : days.find((d) => d.takenAt === takenAt));
-  const slot = (fieldId: string, takenAt: string | null): SlotPhoto | null => {
-    const photo = dayOf(takenAt)?.photos[fieldId];
-    if (!photo) return null;
-    return { photoId: photo.id, fieldId, fieldName: fieldsById[fieldId]?.name ?? fieldId, takenAt: photo.takenAt, benchmark: fieldId === benchmarkId };
-  };
-  const bottom = slot(field.id, date);
-  const top = mode === "same-day" ? (sameDay.partnerId === null ? null : slot(sameDay.partnerId, sameDay.date)) : slot(field.id, sameField.earlier);
-  const ownFailed = district.failed.includes(field.id);
-  const stageNote = district.loading
-    ? "写真を読み込んでいます"
-    : ownFailed
-      ? "写真を読み込めませんでした"
-      : ownDays.length === 0
-        ? "この畑の写真はまだありません"
-        : top === null
-          ? mode === "same-day"
-            ? sameDayEmptyNote({ dateLabel: date ? monthDay(date) : null, selfId: field.id, benchmarkId, benchmarkHasPhotos: benchmarkId !== null && daysOf(days, benchmarkId).length > 0 })
-            : "前の日の写真はありません"
-          : null;
+  // 比べ方の選択（詳細と切り替えても残す）。並べる写真と空の文は Service が決める
+  const { mode, setMode, days, ownDays, sameDay, sameField, setDate, setPartner, setEarlier } = useCompareSelection(
+    district.byField,
+    field.id,
+    benchmarkId,
+    districtIds,
+  );
+  const { date, top, bottom } = compareSlots({ days, selfId: field.id, mode, sameDay, sameField, fieldsById, benchmarkId });
+  const stageNote = compareStageNote({
+    loading: district.loading,
+    ownFailed: district.failed.includes(field.id),
+    ownDayCount: ownDays.length,
+    hasPartner: top !== null,
+    mode,
+    date,
+    selfId: field.id,
+    benchmarkId,
+    benchmarkHasPhotos: benchmarkId !== null && daysOf(days, benchmarkId).length > 0,
+  });
   const picker: PartnerPicker | undefined =
     mode === "same-day" && sameDay.date !== null && sameDay.partnerId !== null
       ? {
           title: `${monthDay(sameDay.date)} に撮った畑`,
-          options: sameDay.options
-            .filter((o) => o.enabled)
-            .map((o) => ({ fieldId: o.fieldId, label: `${o.fieldId} ${fieldsById[o.fieldId]?.name ?? ""}`.trim(), benchmark: o.fieldId === benchmarkId })),
+          options: partnerOptions(sameDay, fieldsById, benchmarkId),
           currentId: sameDay.partnerId,
-          onPick: (id) => setWanted((w) => ({ ...w, partner: id })),
+          onPick: setPartner,
         }
       : undefined;
 
-  const live = useMemo(() => status.history.filter((e) => e.revokedAt === null), [status.history]);
-  const latestJudgment = useMemo(
-    () => (live.length === 0 ? null : live.reduce((a, b) => (a.at > b.at || (a.at === b.at && a.id > b.id) ? a : b))),
-    [live],
-  );
-  const thisSeason = useMemo<SeasonDates | null>(() => {
-    if (live.length === 0) return null;
-    const latestOf = (kind: "ready" | "done") => {
-      const list = live.filter((e) => e.status === kind);
-      return list.length === 0 ? null : isoToJstDate(list.reduce((a, b) => (a.at > b.at ? a : b)).at);
-    };
-    return { readyAt: latestOf("ready"), doneAt: latestOf("done") };
-  }, [live]);
+  const latestJudgment = useMemo(() => latestLiveEvent(status.history), [status.history]);
+  const thisSeason = useMemo(() => seasonDatesFromEvents(status.history), [status.history]);
   const seasonLines = lastSeasonLines(lastSeasonFor(seasons, field.id, SEASON), SEASON, thisSeason);
   const recorded = status.formMessage?.ok === true;
   const open = writing && !recorded;
@@ -172,7 +159,7 @@ export function FieldClient({ field }: { field: Field }) {
     setRevokedId(id);
     status.revoke(id);
   };
-  const result = recorded && status.formMessage ? status.formMessage : revokeMessage ? { text: revokeMessage, ok: false } : null;
+  const result = decideResult({ recorded, formMessage: status.formMessage, revokeMessage });
 
   // 主役の写真: 最新の確定済み
   const latestGroup = photos.groups[0] ?? null;
@@ -180,16 +167,14 @@ export function FieldClient({ field }: { field: Field }) {
   const photoCount = photos.groups.reduce((n, g) => n + g.photos.length, 0);
 
   // 順番の段
-  const ranked = order.order?.ranked ?? [];
-  const rankIndex = ranked.indexOf(field.id);
-  const rank = rankIndex < 0 ? null : rankIndex + 1;
+  const rank = rankOf(order.order?.ranked ?? [], field.id);
   const isDone = latestJudgment?.status === "done";
   const rankView =
     order.order === null
       ? null
       : rankLineView({
           rank,
-          state: order.differsFromConfirmed ? "differs" : order.saved?.state === "confirmed" && !order.dirty ? "confirmed" : "draft",
+          state: rankLineState({ differsFromConfirmed: order.differsFromConfirmed, savedState: order.saved?.state ?? null, dirty: order.dirty }),
           confirmedAt: order.saved?.confirmedAt ?? null,
         });
 
@@ -220,10 +205,10 @@ export function FieldClient({ field }: { field: Field }) {
             onMode={setMode}
             days={ownDays}
             date={date}
-            onDate={(d) => setWanted((w) => ({ ...w, date: d }))}
+            onDate={setDate}
             earlierOptions={sameField.earlierOptions}
             earlier={sameField.earlier}
-            onEarlier={(d) => setWanted((w) => ({ ...w, earlier: d }))}
+            onEarlier={setEarlier}
           />
           <div className="compare-stage">
             {top && bottom ? (

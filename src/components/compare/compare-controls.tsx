@@ -4,9 +4,8 @@
  * 相手の畑は、写真の上の帯を押して選ぶ（split-viewer。精査 3 回目 #2）。札は 44px。props だけで受け取る
  */
 import { monthDay } from "@/services/last-season";
+import type { CompareMode } from "@/services/photo-compare";
 import { IconSameDay, IconSameField } from "@/components/icons";
-
-export type CompareMode = "same-day" | "same-field";
 
 interface Props {
   mode: CompareMode;
