@@ -22,7 +22,16 @@ import { useCompareSelection } from "@/hooks/use-compare-selection";
 import { canSubmitStatus, refRequiredNote } from "@/services/status-view";
 import { handoverCreatedLabel } from "@/services/handover-labels";
 import { memoOfferLabel } from "@/services/memo-offer";
-import { heroMeta, judgmentLine, latestLiveEvent, rankLineView, showHandoverTo } from "@/services/detail-view";
+import {
+  decideResult,
+  heroMeta,
+  judgmentLine,
+  latestLiveEvent,
+  rankLineState,
+  rankLineView,
+  rankOf,
+  showHandoverTo,
+} from "@/services/detail-view";
 import { CompareControls } from "@/components/compare/compare-controls";
 import { SplitViewer, type PartnerPicker } from "@/components/compare/split-viewer";
 import { FieldSwitcher } from "@/components/compare/field-switcher";
@@ -150,7 +159,7 @@ export function FieldClient({ field }: { field: Field }) {
     setRevokedId(id);
     status.revoke(id);
   };
-  const result = recorded && status.formMessage ? status.formMessage : revokeMessage ? { text: revokeMessage, ok: false } : null;
+  const result = decideResult({ recorded, formMessage: status.formMessage, revokeMessage });
 
   // 主役の写真: 最新の確定済み
   const latestGroup = photos.groups[0] ?? null;
@@ -158,16 +167,14 @@ export function FieldClient({ field }: { field: Field }) {
   const photoCount = photos.groups.reduce((n, g) => n + g.photos.length, 0);
 
   // 順番の段
-  const ranked = order.order?.ranked ?? [];
-  const rankIndex = ranked.indexOf(field.id);
-  const rank = rankIndex < 0 ? null : rankIndex + 1;
+  const rank = rankOf(order.order?.ranked ?? [], field.id);
   const isDone = latestJudgment?.status === "done";
   const rankView =
     order.order === null
       ? null
       : rankLineView({
           rank,
-          state: order.differsFromConfirmed ? "differs" : order.saved?.state === "confirmed" && !order.dirty ? "confirmed" : "draft",
+          state: rankLineState({ differsFromConfirmed: order.differsFromConfirmed, savedState: order.saved?.state ?? null, dirty: order.dirty }),
           confirmedAt: order.saved?.confirmedAt ?? null,
         });
 

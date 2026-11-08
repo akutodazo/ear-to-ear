@@ -105,13 +105,6 @@ export interface CompareSlot {
 /** 番号から畑の名前を引く表（知らない番号は番号をそのまま名前にする） */
 type FieldNames = Readonly<Record<string, { name: string } | undefined>>;
 
-function slotOf(days: readonly CompareDay[], fieldId: string, takenAt: string | null, fieldsById: FieldNames, benchmarkId: string | null): CompareSlot | null {
-  if (takenAt === null) return null;
-  const photo = days.find((d) => d.takenAt === takenAt)?.photos[fieldId];
-  if (!photo) return null;
-  return { photoId: photo.id, fieldId, fieldName: fieldsById[fieldId]?.name ?? fieldId, takenAt: photo.takenAt, benchmark: fieldId === benchmarkId };
-}
-
 /**
  * 比較の段の上下の写真。下はこの畑の選んだ日、上は 同じ日の相手（same-day）か この畑の前の日（same-field）。
  * 並べられないほうは null（空の文は compare-note の compareStageNote）
@@ -126,7 +119,11 @@ export function compareSlots(input: {
   benchmarkId: string | null;
 }): { date: string | null; top: CompareSlot | null; bottom: CompareSlot | null } {
   const { days, selfId, sameDay, sameField, fieldsById, benchmarkId } = input;
-  const slot = (fieldId: string, takenAt: string | null) => slotOf(days, fieldId, takenAt, fieldsById, benchmarkId);
+  const slot = (fieldId: string, takenAt: string | null): CompareSlot | null => {
+    const photo = takenAt === null ? undefined : days.find((d) => d.takenAt === takenAt)?.photos[fieldId];
+    if (!photo) return null;
+    return { photoId: photo.id, fieldId, fieldName: fieldsById[fieldId]?.name ?? fieldId, takenAt: photo.takenAt, benchmark: fieldId === benchmarkId };
+  };
   if (input.mode === "same-day") {
     return {
       date: sameDay.date,
