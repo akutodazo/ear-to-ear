@@ -127,17 +127,28 @@ export function IconPen(props: Props) {
   );
 }
 
-/** 同じ日の別の畑と（並んだ 2 つの区画） */
-export function IconFields(props: Props) {
+/** 同じ日の別の畑と（上下 2 つの窓に、同じ日の 2 枚を並べる。#230） */
+export function IconSameDay(props: Props) {
   return (
     <Svg {...props}>
-      <path d="M3 8l5-3 4 2v11l-4-2-5 3z" />
-      <path d="M12 7l4-2 5 3v11l-5-3-4 2" />
+      <rect x="3" y="3" width="18" height="8" rx="1.5" />
+      <rect x="3" y="13" width="18" height="8" rx="1.5" />
     </Svg>
   );
 }
 
-/** この畑の前の日と（暦） */
+/** この畑の前の日と（1 つの窓に重ね、横の境目を上下に動かす。#230） */
+export function IconSameField(props: Props) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M3 12h18" />
+      <path d="M10 8.5l2-2 2 2M10 15.5l2 2 2-2" />
+    </Svg>
+  );
+}
+
+/** 暦（地図の板・下の帯・昨年の同じ頃） */
 export function IconCalendar(props: Props) {
   return (
     <Svg {...props}>
