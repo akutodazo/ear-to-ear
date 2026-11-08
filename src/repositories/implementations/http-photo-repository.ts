@@ -11,40 +11,20 @@ import type {
   RoleOutcome,
   UploadOutcome,
 } from "@/repositories/interfaces/i-photo-repository";
-
-export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
-
-/** つながらない（fetch そのものが失敗した）ときは null。判断の保存先（http-field-status-repository）も使う */
-export async function send(fetchFn: FetchLike, url: string, init?: RequestInit): Promise<Response | null> {
-  try {
-    return await fetchFn(url, init);
-  } catch {
-    return null;
-  }
-}
+import { readJson, send, type FetchLike } from "./http-common";
 
 /** 応答の本文の id。読めなければ null */
 async function readId(response: Response): Promise<string | null> {
-  try {
-    const body: unknown = await response.json();
-    const id = (body as { id?: unknown } | null)?.id;
-    return typeof id === "string" ? id : null;
-  } catch {
-    return null;
-  }
+  const id = ((await readJson(response)) as { id?: unknown } | null | undefined)?.id;
+  return typeof id === "string" ? id : null;
 }
 
 /** 写真の一覧の応答（200 で配列）を読む。それ以外は error、つながらなければ network-error */
 async function readPhotos(response: Response | null): Promise<RecentOutcome> {
   if (response === null) return { kind: "network-error" };
   if (response.status !== 200) return { kind: "error" };
-  try {
-    const body: unknown = await response.json();
-    if (!Array.isArray(body)) return { kind: "error" };
-    return { kind: "ok", photos: body as UploadedPhoto[] };
-  } catch {
-    return { kind: "error" };
-  }
+  const body = await readJson(response);
+  return Array.isArray(body) ? { kind: "ok", photos: body as UploadedPhoto[] } : { kind: "error" };
 }
 
 export function createHttpPhotoRepository(fetchFn: FetchLike, baseUrl = ""): IPhotoRepository {
@@ -100,14 +80,9 @@ export function createHttpPhotoRepository(fetchFn: FetchLike, baseUrl = ""): IPh
       if (response === null) return { kind: "network-error" };
       if (response.status === 401) return { kind: "ok", role: null };
       if (response.status !== 200) return { kind: "error" };
-      try {
-        const body: unknown = await response.json();
-        const role = (body as { role?: unknown } | null)?.role;
-        // 知らない形を管理者と見なさない（守るのはサーバーだが、画面も読み違えない）
-        return role === "member" || role === "admin" ? { kind: "ok", role } : { kind: "error" };
-      } catch {
-        return { kind: "error" };
-      }
+      const role = ((await readJson(response)) as { role?: unknown } | null | undefined)?.role;
+      // 知らない形を管理者と見なさない（守るのはサーバーだが、画面も読み違えない）
+      return role === "member" || role === "admin" ? { kind: "ok", role } : { kind: "error" };
     },
 
     async assign(photoId: string, fieldId: string): Promise<AssignOutcome> {
