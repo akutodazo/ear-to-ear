@@ -3,6 +3,7 @@
  * 場所（圃場）と年の作物・判断を分ける（輪作で作物が変わる）。昨年の写真を今年の様子として見せない。
  * ここは記録の日付を言葉にするだけで、収穫の時期を予想しない。日数の差も出さない（「あと n 日」と読めるため。精査 #2）。
  */
+import type { StatusEvent } from "@/types";
 
 /** ある年・ある圃場の記録。日付は 'YYYY-MM-DD'（日本時間の日付）。無ければ null */
 export interface SeasonRecord {
@@ -80,4 +81,15 @@ export function lastSeasonLines(record: SeasonRecord | null, season: string, thi
   const last = eventsText(record) ?? "判断の記録なし";
   const now = thisSeason === null ? null : eventsText(thisSeason);
   return [head, `昨年 ${last}`, `今年 ${now ?? "まだ判断はありません"}`];
+}
+
+/** 今年の判断の記録から、収穫可能・収穫済それぞれの最新の日（日本時間の日付）。取り消した記録は数えない。記録が無ければ null */
+export function seasonDatesFromEvents(events: readonly Pick<StatusEvent, "status" | "at" | "revokedAt">[]): SeasonDates | null {
+  const live = events.filter((e) => e.revokedAt === null);
+  if (live.length === 0) return null;
+  const latestOf = (kind: StatusEvent["status"]) => {
+    const list = live.filter((e) => e.status === kind);
+    return list.length === 0 ? null : isoToJstDate(list.reduce((a, b) => (a.at > b.at ? a : b)).at);
+  };
+  return { readyAt: latestOf("ready"), doneAt: latestOf("done") };
 }

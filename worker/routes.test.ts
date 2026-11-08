@@ -30,6 +30,7 @@ describe("経路の表（docs/spec.md §6 の L0）", () => {
       ["POST", "/api/shares", "member"],
       ["GET", "/api/shares/:id", "none"],
       ["GET", "/api/share-files/:id", "none"],
+      ["GET", "/api/judgments/:id", "none"],
     ]);
   });
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { OrderShareMeta } from "@/services/order-share-meta";
 import { createHttpOrderShareRepository } from "./http-order-share-repository";
-import type { FetchLike } from "./http-photo-repository";
+import type { FetchLike } from "./http-common";
 
 function fakeFetch(respond: () => Response | Promise<Response>) {
   const calls: { url: string; init?: RequestInit }[] = [];

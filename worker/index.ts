@@ -7,7 +7,7 @@ import { handleRequest } from "./app";
 import { createDeps, type Env, type WaitContext } from "./env";
 import { applyCommonHeaders, errorResponse } from "./http";
 
-export default {
+const worker = {
   // ctx（ExecutionContext）は LINE の送信を応答の後に走らせるために渡す（L8、#139）
   async fetch(request: Request, env: Env, ctx: WaitContext): Promise<Response> {
     try {
@@ -18,3 +18,5 @@ export default {
     }
   },
 };
+
+export default worker;

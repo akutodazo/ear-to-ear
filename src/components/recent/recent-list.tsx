@@ -4,7 +4,7 @@
  */
 import Image from "next/image";
 import type { Field, UploadedPhoto } from "@/types";
-import type { AssignStatus } from "@/hooks/use-recent";
+import type { AssignStatus } from "@/services/assignment";
 import { assignmentLabel, takenAtLabel } from "@/services/photo-labels";
 import { assignmentBadge } from "@/services/recent-view";
 import { AssignmentForm } from "./assignment-form";
@@ -16,11 +16,15 @@ export interface RecentAdmin {
   onAssign: (photoId: string, fieldId: string) => void;
 }
 
-export function RecentList({ photos, admin = null }: { photos: UploadedPhoto[]; admin?: RecentAdmin | null }) {
+/** names: 番号→名前（「A-03 北の3」と名前を添える。11-07 精査 6 回目 #3） */
+export function RecentList({ photos, admin = null, names = {} }: { photos: UploadedPhoto[]; admin?: RecentAdmin | null; names?: Record<string, string> }) {
   return (
     <ul className="cards">
       {photos.map((photo) => {
         const badge = assignmentBadge(photo);
+        // 確定は確定した番号、未確定は推定の番号の名前を添える
+        const named = photo.fieldId ?? (photo.state === "unconfirmed" ? photo.candidateFieldIds[0] : undefined);
+        const name = named === undefined ? undefined : names[named];
         return (
           <li key={photo.id}>
             <article className={`card card-row card-${badge.tone}`}>
@@ -36,7 +40,10 @@ export function RecentList({ photos, admin = null }: { photos: UploadedPhoto[]; 
                 <p>
                   <span className={`badge badge-${badge.tone}`}>{badge.badge}</span>
                 </p>
-                <p className="label">{badge.text}</p>
+                <p className="label recent-field">
+                  {badge.text}
+                  {name && <span className="recent-name"> {name}</span>}
+                </p>
                 <p className="note">{takenAtLabel(photo.takenAt)}</p>
               </div>
               {admin && (

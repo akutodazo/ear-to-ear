@@ -10,18 +10,19 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { drawOrderImage, type OrderImageInput } from "@/lib/order-image";
-import { loginOutcomeLabel } from "@/services/login-label";
+import { usePassphraseLogin } from "@/hooks/use-passphrase-login";
 import type { OrderShareMeta } from "@/services/order-share-meta";
-import { createShareOutcomeLabel, shareData, shareImageBytes } from "@/services/order-share-view";
+import {
+  createShareOutcomeLabel,
+  shareData,
+  shareImageBytes,
+  type LinkState,
+  type ShareState,
+} from "@/services/order-share-view";
 import { createOrderShareRepository } from "@/repositories/create-order-share-repository";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
 import type { IOrderShareRepository } from "@/repositories/interfaces/i-order-share-repository";
 import type { IPhotoRepository } from "@/repositories/interfaces/i-photo-repository";
-
-export type ShareState = { kind: "drawing" } | { kind: "ready"; url: string; file: File } | { kind: "error" };
-
-/** 共有の URL の段階 */
-export type LinkState = { kind: "none" } | { kind: "uploading" } | { kind: "ready"; url: string; expiresAt: string };
 
 interface Drawn {
   key: string;
@@ -47,9 +48,8 @@ export function useOrderShare(
   const [drawn, setDrawn] = useState<Drawn | null>(null);
   const [linked, setLinked] = useState<Linked | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [needsPassphrase, setNeedsPassphrase] = useState(false);
-  const [loginMessage, setLoginMessage] = useState<string | null>(null);
-  const [loggingIn, setLoggingIn] = useState(false);
+  const passphrase = usePassphraseLogin(photoRepo);
+  const { request: requestPassphrase, login: tryLogin } = passphrase;
 
   useEffect(() => {
     if (image === null) return;
@@ -96,30 +96,14 @@ export function useOrderShare(
     }
     setLinked({ key, state: { kind: "none" } });
     setMessage(createShareOutcomeLabel(outcome));
-    if (outcome.kind === "unauthorized") {
-      setLoginMessage(null);
-      setNeedsPassphrase(true);
-    }
-  }, [file, meta, link.kind, key, shareRepo]);
+    if (outcome.kind === "unauthorized") requestPassphrase();
+  }, [file, meta, link.kind, key, shareRepo, requestPassphrase]);
 
   const login = useCallback(
-    async (passphrase: string) => {
-      if (loggingIn) return;
-      setLoggingIn(true);
-      try {
-        const outcome = await photoRepo.login(passphrase);
-        if (outcome === "ok") {
-          setNeedsPassphrase(false);
-          setLoginMessage(null);
-          setMessage(null);
-        } else {
-          setLoginMessage(loginOutcomeLabel(outcome));
-        }
-      } finally {
-        setLoggingIn(false);
-      }
+    async (value: string) => {
+      if (await tryLogin(value)) setMessage(null);
     },
-    [photoRepo, loggingIn],
+    [tryLogin],
   );
 
   // 押した直後に同期で共有を呼ぶ（await を挟まない）
@@ -145,5 +129,6 @@ export function useOrderShare(
     }
   }, [link, text]);
 
+  const { needsPassphrase, loginMessage, loggingIn } = passphrase;
   return { state, link, canShare, prepare, send, copyUrl, message, needsPassphrase, login, loginMessage, loggingIn };
 }

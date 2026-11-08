@@ -1,12 +1,11 @@
 "use client";
 
 /**
- * /order の配線（11-05、3 段目「刈る順番」）。上に地区の地図（順位の丸が付く）、下に写真付きの一覧。
- * 記録からの下書き（harvest-order）→ 人が並べ替え → 保存・確定（useHarvestOrder）。地図の丸は並べ替えた瞬間に付け替わる。
- * 一覧の行を押すと地図で示し、地図の畑を押すと一覧の行を示す（useFieldSelection の #A-03 を共有。AGENTS.md §4）
+ * /order の配線（11-05、3 段目「刈る順番」。11-07 に作り直し、#196）。上の小さな地図はやめ（順位の丸は地図の画面で見る）、
+ * 大きな写真のカードの一覧 1 本（順位なしも同じ一覧の下に）と、下の固定の帯の主ボタン 1 つ（保存／確定／LINE で送る）。
+ * 並べ替えは持ち手だけ。持ち手を押すだけなら動かし方のシート。まれな操作（記録から並べ直す・確定した順に戻す・送る絵を見る）は … のシート（AGENTS.md §4）
  */
-import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import fieldsData from "@/data/fields.json";
 import parcelsData from "@/data/parcels.json";
 import benchmarksData from "@/data/benchmarks.json";
@@ -18,51 +17,47 @@ import { useFieldSelection } from "@/hooks/use-field-selection";
 import { useDistrictPhotos } from "@/hooks/use-district-photos";
 import { useHarvestOrder } from "@/hooks/use-harvest-order";
 import { useLastDistrict } from "@/hooks/use-last-district";
-import { benchmarkFor, mapLabelLines, parcelAppearance } from "@/services/parcel-geometry";
+import { benchmarkFor } from "@/services/parcel-geometry";
 import { draftOrder, nextToShoot, orderRows } from "@/services/harvest-order";
 import { orderImageTitle, orderMessageText } from "@/services/order-message";
+import { moveOptions, orderBarAction, orderHeadline, shareButtonLabel, shouldAutoPrepare } from "@/services/order-view";
+import { lineShareHref } from "@/services/order-share-view";
 import { useOrderShare } from "@/hooks/use-order-share";
 import type { OrderShareMeta } from "@/services/order-share-meta";
 import type { OrderImageInput } from "@/lib/order-image";
 import { indexByDay } from "@/services/photo-compare";
-import { FieldMap, type MapParcel } from "@/components/map/field-map";
-import { OrderList } from "@/components/order/order-list";
-import { OrderActions } from "@/components/order/order-actions";
+import { OrderCards } from "@/components/order/order-cards";
+import { OrderBar } from "@/components/order/order-bar";
 import { NextToShoot } from "@/components/order/next-to-shoot";
 import { LineShare } from "@/components/order/line-share";
+import { Sheet } from "@/components/sheet";
 import { AppNav } from "@/components/app-nav";
+import { AccountChip } from "@/components/account-chip";
+import { useRole } from "@/hooks/use-role";
+import { appNavHrefs } from "@/services/app-nav-view";
 import { PassphraseForm } from "@/components/upload/passphrase-form";
 import { useDemoToday } from "@/hooks/use-last-season-memo";
-import { IconMap } from "@/components/icons";
 
 const fields: Field[] = fieldsData;
 const parcels: Parcel[] = parcelsData.map((p) => ({ fieldId: p.fieldId, polygon: p.polygon.map(([lat, lng]) => [lat, lng] as [number, number]) }));
 const benchmarks: Benchmark[] = benchmarksData;
 const seasons: SeasonRecord[] = seasonsData;
-/** 今年（地図・見比べると同じ） */
+/** 今年（地図・詳細と同じ） */
 const SEASON = "2026";
 const districts = [...new Set(fields.map((f) => f.district))];
-/** 刈る順番の地図には板が無いので、選んだ畑を隠さない余白は小さく */
-const MAP_PADDING = { top: 40, bottom: 16 };
+
+type OpenSheet = { kind: "move"; fieldId: string } | { kind: "more" } | null;
 
 export function OrderClient() {
   // デモで今日を差し替えているときの表示（精査 4 回目 #5）
   const demoDate = useDemoToday();
+  const account = useRole();
   const map = useFieldMap();
   const { selectedId, selected, select: selectField } = useFieldSelection();
   const [districtChoice, setDistrictChoice] = useState<string | null>(null);
   // 畑を選ばずに開いたときは、最後に見た地区から（11-06 地図の精査 #2）
   const lastDistrict = useLastDistrict(districts);
   const district = districtChoice ?? selected?.district ?? lastDistrict.last ?? districts[0];
-  // 選択を外しても、見ている地区のままにする（外すと最初の地区に戻っていた）
-  const select = (id: string | null) => {
-    const field = id === null ? selected : fields.find((f) => f.id === id);
-    if (field) {
-      setDistrictChoice(field.district);
-      lastDistrict.remember(field.district);
-    }
-    selectField(id);
-  };
   const districtFields = useMemo(() => fields.filter((f) => f.district === district), [district]);
   const districtIds = useMemo(() => districtFields.map((f) => f.id), [districtFields]);
   const fieldsById = useMemo(() => Object.fromEntries(districtFields.map((f) => [f.id, f])) as Record<string, Field>, [districtFields]);
@@ -78,8 +73,10 @@ export function OrderClient() {
   const base = useMemo(() => (summariesReady && !photos.loading ? draftOrder(rows, districtFields) : null), [summariesReady, photos.loading, rows, districtFields]);
   const order = useHarvestOrder(district, SEASON, base);
   const shoot = useMemo(() => nextToShoot(rows), [rows]);
+  const [sheet, setSheet] = useState<OpenSheet>(null);
+  const [resetArmed, setResetArmed] = useState(false);
 
-  // 畑ごとの最新の写真（一覧の小さな写真）
+  // 畑ごとの最新の写真（カードの写真）
   const photoIdByField = useMemo(() => {
     const out: Record<string, string> = {};
     for (const day of indexByDay(photos.byField)) {
@@ -89,26 +86,6 @@ export function OrderClient() {
   }, [photos.byField]);
 
   const confirmedView = order.saved?.state === "confirmed" && !order.differsFromConfirmed;
-  const rankOf = useMemo(() => new Map((order.order?.ranked ?? []).map((id, i) => [id, i + 1])), [order.order]);
-  const items = useMemo<MapParcel[]>(() => {
-    const byField = new Map(parcels.map((p) => [p.fieldId, p]));
-    return districtFields.flatMap((field) => {
-      const parcel = byField.get(field.id);
-      if (!parcel) return [];
-      const pin = map.pins.find((p) => p.field.id === field.id)?.pin ?? null;
-      const summary = map.summaries.find((s) => s.fieldId === field.id) ?? null;
-      const n = rankOf.get(field.id);
-      return [
-        {
-          field,
-          parcel,
-          appearance: parcelAppearance(pin, { selected: field.id === selectedId, benchmark: field.id === benchmarkId }),
-          labelLines: mapLabelLines(field, summary),
-          rank: n === undefined ? null : { n, confirmed: confirmedView },
-        },
-      ];
-    });
-  }, [districtFields, map.pins, map.summaries, rankOf, selectedId, benchmarkId, confirmedView]);
 
   // LINE に 1 枚（4 段目）: 確定した順だけを絵と文にする（下書きは送らない）
   const confirmedOrder = order.saved?.state === "confirmed" && !order.differsFromConfirmed ? order.saved : null;
@@ -118,7 +95,7 @@ export function OrderClient() {
     const byField = new Map(parcels.map((p) => [p.fieldId, p]));
     return {
       title: orderImageTitle(district, confirmedOrder.confirmedAt),
-      note: "区画・番号・順番は架空",
+      note: "番号・順番は架空",
       parcels: districtFields.flatMap((f) => {
         const parcel = byField.get(f.id);
         if (!parcel) return [];
@@ -141,21 +118,51 @@ export function OrderClient() {
     [confirmedOrder, district, benchmarkId],
   );
   const share = useOrderShare(shareImage, shareMeta, shareText, shareFile);
-
-  // 地図で畑を押したら、一覧のその行を見える所へ
+  // 確定の直後に 1 回だけ共有の URL を作る（#198。委員長は「LINE で送る」を 1 回押すだけ）
+  const [justConfirmed, setJustConfirmed] = useState(false);
+  const autoAttempted = useRef(false);
+  const imageReady = share.state.kind === "ready" && shareMeta !== null;
+  const linkKind = share.link.kind;
+  const { prepare } = share;
   useEffect(() => {
-    if (selectedId === null) return;
-    document.querySelector(`.order-row[data-field="${selectedId}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [selectedId]);
+    if (!shouldAutoPrepare({ justConfirmed, imageReady, link: linkKind, attempted: autoAttempted.current })) return;
+    autoAttempted.current = true;
+    void prepare();
+  }, [justConfirmed, imageReady, linkKind, prepare]);
+
+  // 詳細から来たとき（#A-01）は、そのカードを画面の真ん中へ
+  const listReady = order.order !== null;
+  useEffect(() => {
+    if (selectedId === null || !listReady) return;
+    document.querySelector(`.order-card[data-field="${selectedId}"]`)?.scrollIntoView({ block: "center" });
+  }, [selectedId, listReady]);
+
+  const isAdmin = account.role === "admin";
+  const action = orderBarAction({
+    loading: order.order === null,
+    hasRanked: (order.order?.ranked.length ?? 0) > 0,
+    dirty: order.dirty,
+    savedState: order.saved?.state ?? null,
+    differsFromConfirmed: order.differsFromConfirmed,
+    isAdmin,
+  });
+  const headline = orderHeadline({ savedState: order.saved?.state ?? null, savedAt: order.saved?.savedAt ?? null, differsFromConfirmed: order.differsFromConfirmed, dirty: order.dirty });
+  const shareLink = share.link.kind === "ready" ? share.link : null;
+  const shareLabel = shareButtonLabel(share.state.kind, share.link.kind);
+  const shareHref = shareLink && !share.canShare ? lineShareHref(shareText, shareLink.url) : null;
+
+  const ranked = order.order?.ranked ?? [];
+  const moving = sheet?.kind === "move" ? sheet.fieldId : null;
+  const movingIndex = moving === null ? -1 : ranked.indexOf(moving);
+  const closeSheet = () => {
+    setSheet(null);
+    setResetArmed(false);
+  };
 
   return (
     <div className="order">
-      <header className="topbar">
-        <Link href={selectedId ? `/#${selectedId}` : "/"} className="topbar-back">
-          <IconMap />
-          地図
-        </Link>
-        <label className="topbar-district">
+      <header className="topbar order-topbar">
+        <label className="topbar-district order-district">
           <span className="sr-only">地区</span>
           <select
             className="input"
@@ -173,79 +180,173 @@ export function OrderClient() {
             ))}
           </select>
         </label>
+        <AccountChip role={account.role} busy={account.busy} message={account.message} onSignIn={account.signIn} />
       </header>
-      <div className="order-map">
-        <FieldMap parcels={items} fitItems={items} fitKey={`order:${district}`} onSelect={select} keepVisiblePadding={MAP_PADDING} hideNames />
-        <span className="map-fictional-note">区画の形・番号・判断・順番は架空のもの</span>
-      </div>
       <main className="order-body">
-        {map.message && <p className="note">判断を読み込めませんでした。地図の「もう一度読み込む」から読み直してください</p>}
-        {order.order === null ? (
-          <p className="order-empty">{map.message ? "判断が読めないので、下書きを作っていません" : "記録を読み込んでいます"}</p>
+        {map.message ? (
+          <div className="order-failed">
+            <p>判断を読み込めませんでした</p>
+            <button type="button" className="button button-small" onClick={map.refresh} disabled={map.loading}>
+              もう一度読み込む
+            </button>
+          </div>
+        ) : order.order === null ? (
+          <>
+            <span className="skeleton skeleton-line" aria-label="記録を読み込んでいます" />
+            <span className="skeleton order-card-skeleton" />
+            <span className="skeleton order-card-skeleton" />
+          </>
         ) : (
           <>
-            <OrderActions
-              saved={order.saved}
-              dirty={order.dirty}
-              differsFromConfirmed={order.differsFromConfirmed}
-              canConfirm={order.canConfirm}
-              needsChair={order.needsChair}
-              onOpenLogin={order.openLogin}
-              busy={order.busy}
-              message={order.message}
-              hasRanked={order.order.ranked.length > 0}
-              onSave={order.saveDraft}
-              onConfirm={order.confirm}
-              onRevert={order.revert}
-              onReset={order.resetToRecords}
-              share={
-                // 確定した順のすぐ下に LINE に送る 2 段を出す（11-06 本人の指示: 共有が分かりにくい）
-                shareImage && (
-                  <LineShare
-                    state={share.state}
-                    link={share.link}
-                    text={shareText}
-                    fileName={shareFile}
-                    canShare={share.canShare}
-                    message={share.message}
-                    needsPassphrase={share.needsPassphrase}
-                    loginMessage={share.loginMessage}
-                    loggingIn={share.loggingIn}
-                    onPrepare={share.prepare}
-                    onSend={share.send}
-                    onCopy={share.copyUrl}
-                    onLogin={share.login}
-                  />
-                )
-              }
-            />
-            {order.loginOpen && order.needsChair && (
+            <div className="order-head">
+              <span className={confirmedView ? "rank rank-small rank-confirmed" : "rank rank-small"} aria-hidden="true" />
+              <div className="order-head-text">
+                <p className="order-head-title">{headline}</p>
+                <p className="order-head-sub">保存先はこの端末だけです</p>
+              </div>
+              <button type="button" className="order-more" aria-label="ほかの操作" onClick={() => setSheet({ kind: "more" })}>
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true">
+                  <circle cx="5" cy="12" r="2" />
+                  <circle cx="12" cy="12" r="2" />
+                  <circle cx="19" cy="12" r="2" />
+                </svg>
+              </button>
+            </div>
+            {share.needsPassphrase && (
               <PassphraseForm
-                lead="確定するには、委員長（管理者）の合言葉が要ります。入った後に「この順で確定」を押してください。"
-                submitLabel="委員長として入る"
-                message={order.loginMessage}
-                busy={order.loggingIn}
-                onSubmit={order.login}
+                lead="共有の URL を作るには合言葉が要ります。入った後に、もう一度「LINE で送る準備」を押してください。"
+                submitLabel="入る"
+                message={share.loginMessage}
+                busy={share.loggingIn}
+                onSubmit={share.login}
               />
             )}
-            <OrderList
+            <OrderCards
               order={order.order}
               rows={rows}
               fieldsById={fieldsById}
               photoIdByField={photoIdByField}
               confirmed={confirmedView}
               selectedId={selectedId}
-              onSelect={select}
-              onMove={order.move}
               onMoveTo={order.moveTo}
-              onToggle={order.toggle}
+              onOpenMove={(fieldId) => setSheet({ kind: "move", fieldId })}
             />
-            <NextToShoot ids={shoot} rows={rows} fieldsById={fieldsById} onSelect={select} selectedId={selectedId} />
-            <p className="order-local-note">いまの保存先はこの端末だけです（委員で共有する保存先は準備中）</p>
+            <NextToShoot ids={shoot} rows={rows} fieldsById={fieldsById} onSelect={(id) => selectField(id)} selectedId={selectedId} />
           </>
         )}
       </main>
-      <AppNav current="order" mapHref={selectedId ? `/#${selectedId}` : "/"} compareHref={`/fields/${selectedId ?? benchmarkId ?? districtIds[0]}`} orderHref="/order" demoDate={demoDate} />
+      <OrderBar
+        action={action}
+        busy={order.busy}
+        message={order.message ?? (share.message ? { text: share.message, ok: false } : null)}
+        onSave={order.saveDraft}
+        onConfirm={() => {
+          autoAttempted.current = false;
+          setJustConfirmed(true);
+          void order.confirm();
+        }}
+        share={{
+          label: shareLabel,
+          enabled: share.state.kind === "ready" && share.link.kind !== "uploading",
+          href: shareHref,
+          onPress: () => (share.link.kind === "ready" ? share.send() : void share.prepare()),
+          note: null,
+        }}
+      />
+      {moving !== null && (
+        <Sheet title={`${moving} ${fieldsById[moving]?.name ?? ""}${movingIndex >= 0 ? `（${movingIndex + 1} 番目）` : "（順位なし）"}`} onClose={closeSheet}>
+          <div className="sheet-rows">
+            {movingIndex >= 0 &&
+              moveOptions(movingIndex, ranked.length).map((o) => (
+                <button
+                  key={o.label}
+                  type="button"
+                  className="sheet-row"
+                  disabled={o.disabled}
+                  onClick={() => {
+                    order.moveTo(movingIndex, o.to);
+                    closeSheet();
+                  }}
+                >
+                  {o.label}
+                </button>
+              ))}
+            <button
+              type="button"
+              className="sheet-row"
+              onClick={() => {
+                order.toggle(moving);
+                closeSheet();
+              }}
+            >
+              {movingIndex >= 0 ? "順位を外す" : "順位を付ける（最後へ）"}
+            </button>
+          </div>
+        </Sheet>
+      )}
+      {sheet?.kind === "more" && (
+        <Sheet title="刈る順番のほかの操作" onClose={closeSheet}>
+          <div className="sheet-rows">
+            <button
+              type="button"
+              className={resetArmed ? "sheet-row sheet-row-armed" : "sheet-row"}
+              onClick={() => {
+                if (!resetArmed) {
+                  setResetArmed(true);
+                  return;
+                }
+                order.resetToRecords();
+                closeSheet();
+              }}
+            >
+              {resetArmed ? "もう一度押すと並べ直します（並べた順は消えます）" : "記録から並べ直す"}
+            </button>
+            {order.differsFromConfirmed && (
+              <button
+                type="button"
+                className="sheet-row"
+                onClick={() => {
+                  order.revert();
+                  closeSheet();
+                }}
+              >
+                確定した順に戻す
+              </button>
+            )}
+            {isAdmin && order.dirty && (
+              <button
+                type="button"
+                className="sheet-row"
+                onClick={() => {
+                  order.saveDraft();
+                  closeSheet();
+                }}
+              >
+                下書きとして保存
+              </button>
+            )}
+          </div>
+          {shareImage && (
+            <LineShare
+              state={share.state}
+              link={share.link}
+              text={shareText}
+              fileName={shareFile}
+              canShare={share.canShare}
+              message={share.message}
+              needsPassphrase={share.needsPassphrase}
+              loginMessage={share.loginMessage}
+              loggingIn={share.loggingIn}
+              onPrepare={share.prepare}
+              onSend={share.send}
+              onCopy={share.copyUrl}
+              onLogin={share.login}
+            />
+          )}
+          <p className="sheet-foot">いまの保存先はこの端末だけです（委員で共有する保存先は準備中）</p>
+        </Sheet>
+      )}
+      <AppNav current="order" hrefs={appNavHrefs(selectedId ?? benchmarkId ?? districtIds[0] ?? "A-01", selectedId)} demoDate={demoDate} />
     </div>
   );
 }

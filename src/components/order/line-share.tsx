@@ -4,7 +4,7 @@
  * 共有が無い端末では「文と URL を LINE で送る」「文と URL を写す」。props だけで受け取る
  */
 import Image from "next/image";
-import type { LinkState, ShareState } from "@/hooks/use-order-share";
+import type { LinkState, ShareState } from "@/services/order-share-view";
 import { IconShare } from "@/components/icons";
 import { PassphraseForm } from "@/components/upload/passphrase-form";
 import { lineShareHref } from "@/services/order-share-view";

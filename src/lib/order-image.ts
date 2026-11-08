@@ -22,7 +22,7 @@ export interface ImageParcel {
 export interface OrderImageInput {
   title: string;
   parcels: readonly ImageParcel[];
-  /** 左下に小さく入れる注記（デモでは「区画・番号は架空」） */
+  /** 左下に小さく入れる注記（デモでは「番号・順番は架空」） */
   note?: string;
 }
 

@@ -18,20 +18,14 @@ import {
   withLocalChanges,
   withStatusEvent,
   type LocalStatusChange,
+  type RevokeStatus,
+  type StatusDraft,
 } from "@/services/status-view";
-import { loginOutcomeLabel } from "@/services/login-label";
+import { usePassphraseLogin } from "@/hooks/use-passphrase-login";
 import { createFieldStatusRepository } from "@/repositories/create-field-status-repository";
 import { createPhotoRepository } from "@/repositories/create-photo-repository";
 import type { HistoryOutcome, IFieldStatusRepository } from "@/repositories/interfaces/i-field-status-repository";
 import type { IPhotoRepository } from "@/repositories/interfaces/i-photo-repository";
-
-/** 入力中の判断 */
-export interface StatusDraft {
-  status: StatusEvent["status"] | null;
-  reasons: StatusReasonCode[];
-  note: string;
-  refPhotoIds: string[];
-}
 
 /** 1 回の読み込み。seq は読み込みの番号、since は始めたときの手元の変更の番号 */
 interface HistoryRead {
@@ -40,12 +34,6 @@ interface HistoryRead {
 }
 
 const EMPTY_DRAFT: StatusDraft = { status: null, reasons: [], note: "", refPhotoIds: [] };
-
-/** 判断ごとの取り消しの様子 */
-export interface RevokeStatus {
-  busy: boolean;
-  message: string | null;
-}
 
 /**
  * confirmedPhotoIds は、その圃場に確定済みの写真の id（圃場ページで読んだもの）。根拠に選べるのはこれだけ。
@@ -62,11 +50,12 @@ export function useFieldStatus(
   const [historyMessage, setHistoryMessage] = useState<string | null>(null);
   const [draft, setDraft] = useState<StatusDraft>(EMPTY_DRAFT);
   const [submitting, setSubmitting] = useState(false);
+  /** 「記録する」を押して確かめるシートを出している間の、押した時刻（#219）。出していなければ null */
+  const [confirmingAt, setConfirmingAt] = useState<number | null>(null);
   const [formMessage, setFormMessage] = useState<{ text: string; ok: boolean } | null>(null);
   const [revokeStatus, setRevokeStatus] = useState<Record<number, RevokeStatus>>({});
-  const [needsPassphrase, setNeedsPassphrase] = useState(false);
-  const [loginMessage, setLoginMessage] = useState<string | null>(null);
-  const [loggingIn, setLoggingIn] = useState(false);
+  const passphrase = usePassphraseLogin(photoRepo);
+  const { request: requestPassphrase, login: tryLogin } = passphrase;
   // 遅れて届いた読み込みで、送った判断や取り消しを消さないための番号（Codex の点検 #114 と同じ種類の競合）。
   // 最後に始めた読み込みの結果だけを使い、その読み込みを始めた後に手元で変えた判断を重ねる
   const readSeq = useRef(0);
@@ -150,6 +139,24 @@ export function useFieldStatus(
     setFormMessage(null);
   }, []);
 
+  /** 送る前に確かめる。通れば確かめるシートを出す（すぐには送らない、#219） */
+  const requestSubmit = useCallback(() => {
+    if (submitting) return;
+    const parsed = parseStatusInput(
+      { status: draft.status ?? undefined, reasons: draft.reasons, note: draft.note, refPhotoIds: draft.refPhotoIds },
+      confirmedPhotoIds,
+    );
+    if (!parsed.ok) {
+      setFormMessage({ text: inputErrorLabel(parsed.reason), ok: false });
+      return;
+    }
+    setFormMessage(null);
+    setConfirmingAt(Date.now());
+  }, [submitting, draft, confirmedPhotoIds]);
+
+  const cancelConfirm = useCallback(() => setConfirmingAt(null), []);
+
+  /** 確かめるシートの「はい」。送り終わったらシートを閉じる */
   const submit = useCallback(async () => {
     if (submitting) return;
     const parsed = parseStatusInput(
@@ -157,6 +164,7 @@ export function useFieldStatus(
       confirmedPhotoIds,
     );
     if (!parsed.ok) {
+      setConfirmingAt(null);
       setFormMessage({ text: inputErrorLabel(parsed.reason), ok: false });
       return;
     }
@@ -168,13 +176,13 @@ export function useFieldStatus(
         recordChange(outcome.event);
         setDraft(EMPTY_DRAFT);
       } else if (outcome.kind === "unauthorized") {
-        setLoginMessage(null);
-        setNeedsPassphrase(true);
+        requestPassphrase();
       }
     } finally {
       setSubmitting(false);
+      setConfirmingAt(null);
     }
-  }, [submitting, draft, confirmedPhotoIds, statusRepo, fieldId, recordChange]);
+  }, [submitting, draft, confirmedPhotoIds, statusRepo, fieldId, recordChange, requestPassphrase]);
 
   const revoke = useCallback(
     async (eventId: number) => {
@@ -184,36 +192,23 @@ export function useFieldStatus(
       if (outcome.kind === "ok") {
         recordChange(outcome.event);
       } else if (outcome.kind === "unauthorized") {
-        setLoginMessage(null);
-        setNeedsPassphrase(true);
+        requestPassphrase();
       } else if (outcome.kind === "not-found") {
         // ほかの端末で取り消されたかもしれないので、履歴を読み直す
         await loadHistory();
       }
     },
-    [statusRepo, loadHistory, recordChange],
+    [statusRepo, loadHistory, recordChange, requestPassphrase],
   );
 
   const login = useCallback(
-    async (passphrase: string) => {
-      if (loggingIn) return;
-      setLoggingIn(true);
-      try {
-        const outcome = await photoRepo.login(passphrase);
-        if (outcome === "ok") {
-          setNeedsPassphrase(false);
-          setLoginMessage(null);
-          // 入った後は、もう一度「記録する」「取り消す」を押してもらう（入力はそのまま残す）
-          setFormMessage(null);
-          setRevokeStatus({});
-        } else {
-          setLoginMessage(loginOutcomeLabel(outcome));
-        }
-      } finally {
-        setLoggingIn(false);
-      }
+    async (value: string) => {
+      if (!(await tryLogin(value))) return;
+      // 入った後は、もう一度「記録する」「取り消す」を押してもらう（入力はそのまま残す）
+      setFormMessage(null);
+      setRevokeStatus({});
     },
-    [photoRepo, loggingIn],
+    [tryLogin],
   );
 
   return {
@@ -227,14 +222,17 @@ export function useFieldStatus(
     setNote,
     toggleRefPhoto,
     resetDraft,
+    requestSubmit,
+    confirmingAt,
+    cancelConfirm,
     submit,
     submitting,
     formMessage,
     revoke,
     revokeStatus,
-    needsPassphrase,
-    loginMessage,
-    loggingIn,
+    needsPassphrase: passphrase.needsPassphrase,
+    loginMessage: passphrase.loginMessage,
+    loggingIn: passphrase.loggingIn,
     login,
   };
 }

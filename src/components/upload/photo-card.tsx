@@ -1,6 +1,6 @@
 /** 送る前の写真1枚（プレビュー・撮影日・候補・番号の選択・結果）。props だけで受け取る */
 import Image from "next/image";
-import type { UploadItem } from "@/hooks/use-upload";
+import type { UploadItem } from "@/lib/upload-steps";
 import { candidateSummary, takenAtLabel } from "@/services/photo-labels";
 import type { Field } from "@/types";
 

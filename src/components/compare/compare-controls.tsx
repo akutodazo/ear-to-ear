@@ -4,9 +4,8 @@
  * 相手の畑は、写真の上の帯を押して選ぶ（split-viewer。精査 3 回目 #2）。札は 44px。props だけで受け取る
  */
 import { monthDay } from "@/services/last-season";
-import { IconCalendar, IconFields } from "@/components/icons";
-
-export type CompareMode = "same-day" | "same-field";
+import type { CompareMode } from "@/services/photo-compare";
+import { IconSameDay, IconSameField } from "@/components/icons";
 
 interface Props {
   mode: CompareMode;
@@ -39,11 +38,11 @@ export function CompareControls({ mode, onMode, days, date, onDate, earlierOptio
     <div className="controls">
       <div className="mode" role="group" aria-label="比べ方">
         <button type="button" className={mode === "same-day" ? "mode-item mode-current" : "mode-item"} aria-pressed={mode === "same-day"} onClick={() => onMode("same-day")}>
-          <IconFields />
+          <IconSameDay />
           同じ日の別の畑と
         </button>
         <button type="button" className={mode === "same-field" ? "mode-item mode-current" : "mode-item"} aria-pressed={mode === "same-field"} onClick={() => onMode("same-field")}>
-          <IconCalendar />
+          <IconSameField />
           この畑の前の日と
         </button>
       </div>

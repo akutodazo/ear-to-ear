@@ -5,6 +5,13 @@
 import type { Field, UploadedPhoto } from "@/types";
 import type { AssignOutcome } from "@/repositories/interfaces/i-photo-repository";
 
+/** 写真ごとの確定・変更の様子 */
+export interface AssignStatus {
+  busy: boolean;
+  message: string | null;
+  ok: boolean;
+}
+
 export interface AssignmentOptionGroup {
   /** 「推定」か地区名 */
   label: string;

@@ -19,12 +19,12 @@
 | 1 | **L0（必須）** | 合言葉（委員／管理者）、送る（ブラウザで前処理 → Worker が検査・保存）、新着一覧（未確定・確定、手動更新）、確定・訂正（履歴）、二重登録・日付不明、公開リポジトリの安全の仕組み、架空データ、開発用 Worker（HTTPS）での実機確認 | **11/4 夜まで** |
 | 2 | **L1** | 地図（空中写真の上の区画の輪郭。判断の塗り・目安・未確定の写真がある圃場に印）、見比べる（2 つの比べ方・撮影日ごと・日付不明は別枠）、判断ボタン（収穫可能／収穫済）に理由と根拠を付ける: 理由の選択肢（複数）＋短いメモ＋根拠の写真。取り消し。理由の選択肢に「農協の判定で中止（水分超過）」「同（砕けなどの傷）」を必ず入れる | 11/5 |
 | 3 | **L6（Claude の活用の中心）** | 圃場ごとの写真・判断から、次の年の委員が読める短い引き継ぎメモを作る。Claude API の引用（Citations）で各文に根拠の記録を付け、画面から元の記録に戻れる。記録に無い理由は「記録なし」 | 11/6 |
-| 4 | **L8** | LINE でお知らせ（片方向、Messaging API）。ハッカソンでは架空のグループにだけ送る。判断を残した・取り消したときに 1 通（番号・状態・理由の言葉・日時・URL。メモ・写真・撮影位置は送らない）。**11-05 に先輩が前倒しで作ると決めた**（11-02 本人決定の「L6 の後で時間があれば」を受けて）。手順は `docs/dev/line.md` | 11/5〜6 |
+| 4 | **L8** | LINE でお知らせ（片方向、Messaging API）。ハッカソンでは架空のグループにだけ送る。判断を残した・取り消したときに 1 通（番号・状態・理由の言葉・日時・URL。メモ・撮影位置は送らない。根拠の写真の 1 枚目は、判断のページ `/api/judgments/<id>` の OGP で LINE のサムネイルになる。11-07、#220）。**11-05 に先輩が前倒しで作ると決めた**（11-02 本人決定の「L6 の後で時間があれば」を受けて）。手順は `docs/dev/line.md` | 11/5〜6 |
 | — | **刈る順番・LINE に 1 枚**（画面の再設計、11-04 夜 本人決定） | 刈る順番: 記録からの下書き（順位を付けるのは今年「収穫可能」と判断した畑だけ）→ 長押しで並べ替え → 委員長が 2 段で確定。地図に順位の丸、次に撮る畑。保存は端末の中（共有の保存先は先輩への依頼 `docs/requests/2026-11-05-harvest-order-api.md`）。LINE に 1 枚: 確定した順の地図 1 枚の絵を Web に置き（`POST /api/shares`）、文と共有の URL を端末の共有（Web Share）で送る。トークに地図のサムネイル（OGP）が出る（トークン不要。11-06 先輩決定、#159〜#163） | 11/5・11/6 |
 | — | 来年の引き継ぎ（画面の再設計の 5 段目） | L6 のメモを翌年の同じ頃に地図の脇に出す | 時間があれば（11/7 夕方以降は手を付けない） |
 | 5 | L5（実験） | 位置の無い写真について、人が選んだ候補2〜3圃場の写真と見比べて理由付きで並べ替える。確定は人。精度は主張しない | 時間があれば |
 | 6 | L4 | Android の共有メニューから送る（Web Share Target） | 時間があれば |
-| 7 | L9 | LINE から写真を受け取る | 後回し |
+| 7 | **L9** | LINE から写真を受け取る。**11-06 に本人が前倒しを決めた（#172）**。登録したグループに送られた画像だけを、サーバーが LINE から取りに行き、残すセグメントの種類を決めて（画像の表とスキャン）APP・COM などを読まずに捨ててから「未確定」（候補なし・撮影日なし）で新着に入れる。長辺 1600px・3MB を超えるもの、JPEG でないものは入れず、Web の「写真を送る」を案内する返事をする。受け取ったら 1 回だけ返事（reply、月の上限に数えない）。1 日 30 枚まで、1 回の webhook で 10 枚・20 秒まで。手順と台本は `docs/dev/line.md` の 7 | 11/6 |
 
 やめた段: L2（水分の手入力）・L3（水分の紙の読み取り）— K16。「もう一つの新しいこと」は入れない（11-03 本人決定）。
 
@@ -128,12 +128,13 @@ CREATE TABLE order_shares (id TEXT PRIMARY KEY, season, district, ranked /* JSON
 | `DELETE /api/status-events/:id` | member 以上 | — | 200 | 401／404 | L1 |
 | `GET /api/fields/:id/status-events` | なし | — | 200 `StatusEvent[]`（その圃場の判断を取り消したものも含めて全件、`at` の新しい順・同じなら id の大きい順。件数の上限なし） | 404（一覧に無い圃場）（11-04 先輩決定、T26、#99） | L1 |
 | `GET /api/fields/summary` | なし | — | 200 `{ fields: FieldSummary[] }`（全圃場を一覧の順）。各圃場の有効な最新の判断（取り消していないもので `at` が新しいもの、同じなら id の大きい方）と、未確定の写真の候補（最大3）か委員が選んだ番号に含まれるか（11-04 本人承認、#90） | — | L1 |
-| `POST /api/fields/:id/handover` | admin | — | 200 `HandoverNote`（作り直して保存。同じ圃場・シーズンは上書き） | 401／403／404（一覧に無い圃場）／422 `no_records`（記録 0 件、Claude を呼ばない）／429（その日の上限、Retry-After は日本時間 0 時まで）／502 `{error, reason}`（http・refusal・truncated・shape、保存しない）／503 `claude_disabled`（`CLAUDE_ENABLED=false` かキーなし）（11-04 先輩決定、T31、#111） | L6 |
+| `POST /api/fields/:id/handover` | admin | — | 200 `HandoverNote`（作り直して保存。同じ圃場・シーズンは上書き） | 401／403／404（一覧に無い圃場）／422 `no_records`（記録 0 件、Claude を呼ばない）／429（その日の上限、Retry-After は日本時間 0 時まで）／502 `{error, reason, upstreamStatus}`（reason は http・refusal・truncated・shape、保存しない。upstreamStatus は Claude が返した状態コードで、通信の失敗は 0。Worker のログにも理由と状態コードだけを 1 行残す。#192）／503 `claude_disabled`（`CLAUDE_ENABLED=false` かキーなし）（11-04 先輩決定、T31、#111） | L6 |
 | `GET /api/fields/:id/handover` | なし | — | 200 `HandoverNote`（今のシーズン＝日本時間の年のメモ） | 404（メモが無い・一覧に無い圃場）（11-04 先輩決定、T29、#106） | L6 |
-| `POST /api/line/webhook` | LINE の署名 | LINE のイベント | 200（`join` だけ処理してグループ ID を保存） | 401（署名）・413（64KB 超）・503 `line_disabled`（LINE の秘密が無い・`LINE_ENABLED` が false） | L8 |
+| `POST /api/line/webhook` | LINE の署名 | LINE のイベント | 200（`join` のグループ ID を保存。登録したグループの画像のメッセージは、応答の後に 1 つの `waitUntil` で 1 枚ずつ順に（10 枚・20 秒まで）LINE から取って `uploaded_photos` に「未確定」で入れ、reply で 1 回返す。L9、#172） | 401（署名）・413（64KB 超）・503 `line_disabled`（LINE の秘密が無い・`LINE_ENABLED` が false） | L8 |
 | `POST /api/shares` | member | multipart `image`（JPEG 1.5MB 以下・長辺 2000px 以下・APP1〜15 無し）＋ `meta` `{season, district, confirmedAt, ranked[], benchmarkId}` | 201 `{id, url, imageUrl, expiresAt}`（期限は 60 日後。R2 `shares/<id>.jpg`・D1 `order_shares`） | 401／413／415／422 `reason`／429（端末ごとに 1 日 30 回） | LINE に 1 枚（#159） |
 | `GET /api/shares/:id` | なし（LINE のサーバーが Cookie 無しで読む） | — | 200 `text/html`。OGP（og:title・og:description・og:image は要求の origin の絶対 URL）・`noindex`・`public, max-age=300` | 404（無い・期限切れ） | LINE に 1 枚（#160） |
 | `GET /api/share-files/:id` | なし | — | 200 `image/jpeg`（`public, max-age=86400`） | 404（無い・期限切れ。R2 は読まない） | LINE に 1 枚（#160） |
+| `GET /api/judgments/:id` | なし（LINE のサーバーが Cookie 無しで読む） | — | 200 `text/html`。判断の OGP（og:image は根拠の写真の 1 枚目の絶対 URL。無ければ出さない）・`noindex`・`public, max-age=300`。取り消し済みも 200 で取り消しとして出す | 404（無い id） | 判断の LINE 通知のサムネイル（#220） |
 | `POST /api/photos/:id/suggest` | admin | `{candidateFieldIds}`（人が選んだ2〜3圃場） | 200 `{suggestions:[{fieldId, reason}]}` | 401／422／429／502 | L5 |
 
 - meta: `{contentHash(64桁16進), takenAt|null, takenAtSource, candidateFieldIds(最大3, 存在する圃場, 重複なし), chosenFieldId?}`。**距離・座標の項目があれば 422**（K6）。chosenFieldId があっても state は unconfirmed
@@ -150,8 +151,8 @@ CREATE TABLE order_shares (id TEXT PRIMARY KEY, season, district, ranked /* JSON
 | `/upload` | 写真を選ぶ → 写真ごとにプレビュー・撮影日（不明なら「日付不明」）・候補（「A-03（約120m）」）・任意の番号選択 → 送る → 写真ごとの結果。合言葉は送って 401 が返ったときだけ聞き、入れたら送り直す（11-03） | L0 |
 | `/recent` | 新着。「未確定（推定 A-03）」「確定 A-03」。「更新」ボタンと最終取得時刻（自動反映はしない）。管理者の端末にだけ「確定・変更」（候補を「推定」として先に、残りを地区ごと。委員が選んだ番号は画面には出さない。値は `GET /api/photos/recent` の本文の `chosenFieldId` にはある。T21）。合言葉は「管理者として入る」を押したときと、401／403 のときだけ聞く | L0 |
 | `/` | 地図。地理院タイルの空中写真の上に区画の輪郭（道と同じ向きの細長い帯）、札（番号と名前。箱なしの影つき文字）。判断の塗り（**黄緑は「収穫可能」だけ**、収穫済は濃い色、未確認は塗らない）、目安は金の輪郭、選んだ畑は白の太線と濃い影。押すと下の板に最新の写真と判断。凡例、写真を送るへの入口 | L1 |
-| `/fields/[id]` | **見比べる**。上の段で 2 つの比べ方: 「同じ日に撮った別の畑と」（日をまたいで比べない。相手の既定は目安。上下 2 つの窓）と「この畑の前の日と」（2 枚を重ねて境目を指で動かす）。相手は上の写真の帯から選ぶ。下に判断を残す（理由・メモ・根拠の写真）、この畑の写真の流れ（撮影日ごと、日付不明は別枠）、昨年の同じ頃（昨年と今年を同じ形で並べる。**日数の差は言わない**）、判断の履歴（取り消し）、引き継ぎメモ（各文に根拠の印。根拠の無い文は灰色で「根拠なし」） | L1・L6 |
-| `/order` | **刈る順番**。地区ごとに、記録からの下書き（破線の丸）→ 長押しでつかんで並べ替え（▲▼ も残す）→ 委員長が 2 段で確定（実線の丸）。判断の無い畑は順位を付けず人が動かす。次に撮る畑（今年の写真・判断が無い畑）。確定した順は **LINE に 1 枚**（「1. 送る準備」で地図 1 枚の絵を置いて共有の URL を作り、「2. LINE で送る」で「この順にするよ」の文と URL を Web Share で。トークに地図のサムネイルが出る。共有が無い端末は `line.me/R/share` に文と URL を渡す。URL を知る人は誰でも見られ、60 日で消える） | 再設計 |
+| `/fields/[id]` | **詳細**と**比較**（`#compare`）を下の帯で切り替える（11-07 西田 PM のフィードバック、#195）。下の帯は 地図／比較／順番 の 3 つで同じ畑を引き継ぐ（#194。11-07 みっきぃさんのレビューで詳細を帯から外した、#216）。詳細へは地図の板の「詳細を見る」・順番のカード・比較の上の「詳細」から入り、詳細にいる間は帯のどれも選ばない。詳細: 主役の写真（最新、全幅 4:3、暗い帯に番号・名前・撮影日と枚数）→ 今の判断の 1 行（右に「取り消す」、2 段）→「収穫可能と判断」「収穫済と判断」の 2 ボタン（押すと理由・メモ・根拠の写真の入力が開き、下の帯が「やめる｜記録する」に替わる）→ 順番の段（「刈る順番 2 番目」と「外す／順位を付ける」、押すと順番へ。収穫済は出さない）→ 写真の流れ（2 列）→ 昨年の同じ頃（**日数の差は言わない**）→ 判断の履歴（畳む）→ 引き継ぎメモ（**委員長だけ**。委員には見出しも出さない。昨年の引き継ぎも同じ）。比較: 「同じ日に撮った別の畑と」（上下 2 つの窓、相手の既定は目安）と「この畑の前の日と」（重ねて境目を動かす）を、帯の間いっぱいに。判断の操作は置かない | L1・L6 |
+| `/order` | **刈る順番**（11-07 に作り直し、#196）。地区ごとに、全幅の写真のカード（3:2）の一覧 1 本。写真の上には 順位の丸（左上。下書きは破線・確定は実線）・下の暗い帯に番号と名前と今の判断・右下の持ち手 ≡ の 3 つだけ。**並べ替えは持ち手だけ**（押した瞬間につかみ、端で一覧を送る。押すだけなら「先頭へ／1 つ上へ／1 つ下へ／最後へ／順位を外す」のシート）。カードを押すと詳細へ。順位なしの畑は同じ一覧の下に「順位なし」の線で続ける。下の固定の帯に主ボタン 1 つ（委員「この順で保存」、委員長「この順で確定」（2 段、5 秒で戻る）、確定した順のまま「LINE で送る準備 → LINE で送る」）。記録から並べ直す・確定した順に戻す・送る絵の下見は … のシート。次に撮る畑は一覧の下。上の小さな地図はやめた（順位の丸は地図の画面） | 再設計 |
 
 - 下の帯で 地図／見比べる／刈る順番 を切り替える。選んだ畑は 3 つの画面で同じ（`/#A-03`・`/fields/A-03`・`/order#A-03`）
 - 文字だけで機能や状態を説明している所は、線のアイコンと状態の印を添える（文字は消さない。11-05 本人とのインタビューの合意「最初の視線を畑に向ける」）。見た目の決まりは `docs/design/`
@@ -182,9 +183,9 @@ Next.js（App Router、`output: 'export'`）＋ Leaflet。地図の下地は**�
 | 11 | 動画に、期間中に作ったもの・架空データだけが映る。冒頭1分で「A が送る → B の画面で見える」 | — | — | — | 録画を人が見る | 予定 |
 | 12 | 判断ボタンで理由と根拠（写真）を残せ、取り消しも残る。根拠に他の圃場の記録は選べない | L1 | `services/status-reason`・`status-request`・`status-events`、`worker/field-status`・`status-events`・`status-history` | PR #93・#96・#100・#101・#102・#115・#120 | 自動＋実機 | **一部**: 自動は済（他の圃場の写真は 422）。dev の実機は予定 |
 | 13 | 引き継ぎメモの各文に引用で根拠が付き、タップで元の記録に戻れる。根拠の無い文は「根拠なし」と区別する | L6 | `services/handover-document`・`handover-citations`・`handover-request`・`handover-view`、`worker/handover`・`handover-post` | PR #108〜#110・#112・#113・#116・#119・#120 | 自動＋実機（`docs/dev/l6-live.md`） | **一部**: 自動は済（引用は渡した記録の範囲だけ。範囲の外の引用は捨て、返事の形が違えば 502）。指示文は試作台の疑似で確かめた（#119）。本物の API と実機は予定（dev のデプロイと `CLAUDE_API_KEY` の後） |
-| 14 | LINE の通知が失敗しても、写真の保存・判断の記録は成功する。月の送信数が上限の手前で止まる | L8 | `services/usage-limit`（回数の部分）・`line-signature`・`line-webhook`・`line-notice`、`worker/line-webhook`・`line-notify` | PR #143〜#147 ほか | 自動＋実機（`docs/dev/line.md` の台本） | **一部**: 自動は作成中。LINE 側の設定と実機は予定 |
+| 14 | LINE の通知が失敗しても、写真の保存・判断の記録は成功する。月の送信数が上限の手前で止まる | L8 | `services/usage-limit`（回数の部分）・`line-signature`・`line-webhook`・`line-notice`、`worker/line-webhook`・`line-notify` | PR #143〜#147 ほか | 自動＋実機（`docs/dev/line.md` の台本） | **一部**: 自動は済（送信が失敗・例外・429 でも判断の応答は変わらない、月の上限の手前で止まる。`worker/line-notify.test.ts`）。dev で判断を残すと 2 人のグループに届いた（11-05、`docs/dev/line.md` の 4）。刈る順番の共有の URL のサムネイルは iPhone で済（`verification/2026-11-06-dev-line-ogp.md`）。Android と、LINE から写真を受け取る道（L9）の実機は予定 |
 | 15 | 送信内容に撮影位置の座標も候補までの距離も無い | L0 | `services/upload-meta`（受け側で拒否）・`upload-request`、`lib/upload-steps`（送る meta に座標なし） | PR #41・#51・#57 | 自動＋画面（送る中身を内蔵ブラウザで確認） | **済** |
-| 16 | 来年の引き継ぎ: 昨年（2025）の引き継ぎメモを、昨年の判断の日の前後（`LAST_SEASON_HANDOVER_DAYS` 日、端を含む）だけ、地図の板（「昨年の引き継ぎ（2025年）あり ›」の 1 行の入口）と見比べる（「昨年の同じ頃」の段に畳んだ全文と、年つきの出所）に出す。範囲の外・記録の無い畑・小麦でない年は出さない。日数の差・「あと n 日」は言わない。昨年のメモは**手で書いた架空の例**（`src/data/handover-2025.json`）で、Claude が作ったメモと言わない。出所は今年の記録へのリンクにも押せる札にもしない | 再設計（5 段目） | `services/last-season-handover`、`data/handover-2025` | （この PR） | 自動＋画面（`?today=2026-07-20` で今日を差し替えて見る） | 予定 |
+| 16 | 来年の引き継ぎ: 昨年（2025）の引き継ぎメモを、昨年の判断の日の前後（`LAST_SEASON_HANDOVER_DAYS` 日、端を含む）だけ、地図の板（「昨年の引き継ぎ（2025年）あり ›」の 1 行の入口）と見比べる（「昨年の同じ頃」の段に畳んだ全文と、年つきの出所）に出す。範囲の外・記録の無い畑・小麦でない年は出さない。日数の差・「あと n 日」は言わない。昨年のメモは**手で書いた架空の例**（`src/data/handover-2025.json`）で、Claude が作ったメモと言わない。出所は今年の記録へのリンクにも押せる札にもしない | 再設計（5 段目） | `services/last-season-handover`、`data/handover-2025` | PR #156 | 自動＋画面（`?today=2026-07-20` で今日を差し替えて見る） | **一部**: 自動は済（`services/last-season-handover`・`last-season`）。手元の `wrangler dev` で `/fields/A-03?today=2026-07-20` に「昨年の同じ頃」が出るのを確かめた（11-08）。dev・demo の画面は予定 |
 
 ### テスト（RED と GREEN は別コミット）
 | 対象 | テスト |
@@ -205,9 +206,9 @@ Next.js（App Router、`output: 'export'`）＋ Leaflet。地図の下地は**�
 ## 10. 公開リポジトリの安全
 - 入れてはいけないもの: 実写真、実在の圃場の座標、委員会シート、番号対応表、合言葉、API キー、`.dev.vars`、`.env*`、個人名・住所、既存プロジェクトのコード
 - `.gitignore`: `.dev.vars`、`.env*`、`/private/`、`*.local.*`
-- GitHub の設定（外から見える設定は本人が承認してから）: Secret scanning と Push protection をオン／コミットのメールは noreply／main は Ruleset で守る（削除禁止・force push 禁止・PR 必須・CI の status check 必須）／マージ後のブランチを自動削除／Dependabot alerts だけオン（自動の更新 PR はオフ）／GitHub Pages・Wiki・Projects は使わない／デプロイは GitHub Actions（11-04 本人決定。main へのマージで dev、demo は人が画面で押して承認。Cloudflare のトークンは GitHub の Environment の秘密にだけ置き、`pull_request` では動かさない。`docs/dev/deploy-actions.md`）／ライセンスは MIT の予定（先輩に確認中。決まるまで LICENSE は置かない）
+- GitHub の設定（外から見える設定は本人が承認してから）: Secret scanning と Push protection をオン／コミットのメールは noreply／main は Ruleset で守る（削除禁止・force push 禁止・PR 必須・CI の status check 必須）／マージ後のブランチを自動削除／Dependabot alerts だけオン（自動の更新 PR はオフ）／GitHub Pages・Wiki・Projects は使わない／デプロイは GitHub Actions（11-04 本人決定。main へのマージで dev、demo は人が画面で押して承認。Cloudflare のトークンは GitHub の Environment の秘密にだけ置き、`pull_request` では動かさない。`docs/dev/deploy-actions.md`）／ライセンスは MIT License（11-08 本人決定。11-06 の Apache License 2.0 から変えた。全文は `LICENSE`）
 - `npm run check:safety`（手元と CI）: コミットされた全ファイル（`git ls-files`）を対象に、画像の APP1〜15、CSV、`.dev.vars` に似た名前、合言葉らしい文字列、架空データの座標の範囲を検査する。T17（11-03）で中身まで: 判定は `scripts/safety-rules.ts`。**JPEG は `public/demo/` の下だけ許し、APP1〜15 が無いことを T03 の `inspectJpeg` で確かめる**。**座標は圃場の一覧 `src/data/fields.json` だけ**を `FICTIONAL_AREA`（`src/config.ts`）と比べる（端を含む）。秘密らしい文字列は値を表示せず、ファイル・行・種類だけ出す
-- 架空の圃場は 12 圃場（A-01〜A-12、北・中・南の 3 地区）。範囲 `FICTIONAL_AREA` は**空知の公開の農地**（北緯 43.235〜43.250、東経 141.740〜141.760。11-04 夜の P15 の書き換え。11-02 の「沖合の四角」から移した）。区画（`src/data/parcels.json`）はその辺りの道と同じ向き（北から東へ 39°）の細長い帯として機械的に置き、実在の境界はなぞらない。実家の畑の座標は入れない（K10 は変えない）。安全検査が範囲と比べるのは `fields.json` の座標で、`parcels.json` の頂点が範囲の中にあることはテスト（`src/data/parcels.test.ts`）で確かめる。合成写真は `node scripts/make-fixtures.mjs` で `/private/fixtures/` に出す（コミットしない。T10、11-03）。8種類（XMP 位置あり・EXIF 位置あり・0/0・位置なし・日時なし・APP2 付き・壊れた画像・重複）と、期待の一覧 `README.md`。JPEG は依存なしの書き出し（`scripts/fixtures/jpeg-encoder.ts`）で作る
+- 架空の圃場は 12 圃場（A-01〜A-12、北・中・南の 3 地区）。範囲 `FICTIONAL_AREA` は**空知の公開の農地**（北緯 43.235〜43.250、東経 141.740〜141.760。11-04 夜の P15 の書き換え。11-02 の「沖合の四角」から移した）。区画（`src/data/parcels.json`）は、空中写真に写る畑の境目に沿ってなぞった形（11-07 本人決定。範囲の中の、実家と無関係の畑だけ。持ち主の情報と実際の判断は入れず、番号・名前・判断は架空。11-06 までは道と同じ向きの細長い帯を機械的に置いていた）。実家の畑の座標は入れない（K10 は変えない）。安全検査が範囲と比べるのは `fields.json` の座標で、`parcels.json` の頂点が範囲の中にあることはテスト（`src/data/parcels.test.ts`）で確かめる。合成写真は `node scripts/make-fixtures.mjs` で `/private/fixtures/` に出す（コミットしない。T10、11-03）。8種類（XMP 位置あり・EXIF 位置あり・0/0・位置なし・日時なし・APP2 付き・壊れた画像・重複）と、期待の一覧 `README.md`。JPEG は依存なしの書き出し（`scripts/fixtures/jpeg-encoder.ts`）で作る
 
 ## 11. 環境
 - ローカル（PC だけ、`wrangler dev` → `http://localhost:8787`）／**dev**（実機確認、HTTPS）／**demo**（審査員用）。dev と demo は D1・R2・Secret を別にする（`wrangler.jsonc` の `env`）

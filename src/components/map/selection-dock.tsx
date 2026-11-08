@@ -9,8 +9,8 @@ import Link from "next/link";
 import type { Field } from "@/types";
 import type { ParcelAppearance } from "@/services/parcel-geometry";
 import { takenAtLabel } from "@/services/photo-labels";
-import type { LatestPhotoState } from "@/hooks/use-latest-photo";
-import { IconCalendar, IconClose, IconCompare, IconPhoto } from "@/components/icons";
+import type { LatestPhotoState } from "@/services/map-view";
+import { IconCalendar, IconClose, IconDetail, IconPhoto } from "@/components/icons";
 
 interface Props {
   field: Field;
@@ -104,7 +104,7 @@ export function SelectionDock({ field, appearance, statusLine, latest, compareLa
         </Link>
       )}
       <Link className="button button-primary button-block" href={`/fields/${field.id}`}>
-        <IconCompare />
+        <IconDetail />
         {compareLabel}
       </Link>
     </section>
