@@ -54,3 +54,10 @@ export function readFieldView(hash: string): FieldView {
 export function showHandoverTo(role: Role | null | undefined): boolean {
   return role === "admin";
 }
+
+/** 取り消していない最新の判断。同じ時刻なら id の大きいほう（後から記録したもの）。無ければ null */
+export function latestLiveEvent(history: readonly StatusEvent[]): StatusEvent | null {
+  const live = history.filter((e) => e.revokedAt === null);
+  if (live.length === 0) return null;
+  return live.reduce((a, b) => (a.at > b.at || (a.at === b.at && a.id > b.id) ? a : b));
+}

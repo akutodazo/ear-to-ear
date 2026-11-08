@@ -6,6 +6,9 @@
  */
 import type { UploadedPhoto } from "@/types";
 
+/** 比べ方。同じ日に撮った別の畑と／この畑の前の日と */
+export type CompareMode = "same-day" | "same-field";
+
 /** ある撮影日に、写真がある畑とその日の 1 枚（送った時刻の新しいもの） */
 export interface CompareDay {
   takenAt: string;
@@ -88,4 +91,59 @@ export function resolveSameField(days: readonly CompareDay[], selfId: string, wa
   const earlierOptions = own.filter((d) => d < date);
   const earlier = wanted.earlier !== undefined && earlierOptions.includes(wanted.earlier) ? wanted.earlier : (earlierOptions[0] ?? null);
   return { date, earlier, earlierOptions };
+}
+
+/** 比較の段の 1 枚（split-viewer の SlotPhoto と同じ形） */
+export interface CompareSlot {
+  photoId: string;
+  fieldId: string;
+  fieldName: string;
+  takenAt: string | null;
+  benchmark: boolean;
+}
+
+/** 番号から畑の名前を引く表（知らない番号は番号をそのまま名前にする） */
+type FieldNames = Readonly<Record<string, { name: string } | undefined>>;
+
+function slotOf(days: readonly CompareDay[], fieldId: string, takenAt: string | null, fieldsById: FieldNames, benchmarkId: string | null): CompareSlot | null {
+  if (takenAt === null) return null;
+  const photo = days.find((d) => d.takenAt === takenAt)?.photos[fieldId];
+  if (!photo) return null;
+  return { photoId: photo.id, fieldId, fieldName: fieldsById[fieldId]?.name ?? fieldId, takenAt: photo.takenAt, benchmark: fieldId === benchmarkId };
+}
+
+/**
+ * 比較の段の上下の写真。下はこの畑の選んだ日、上は 同じ日の相手（same-day）か この畑の前の日（same-field）。
+ * 並べられないほうは null（空の文は compare-note の compareStageNote）
+ */
+export function compareSlots(input: {
+  days: readonly CompareDay[];
+  selfId: string;
+  mode: CompareMode;
+  sameDay: SameDayChoice;
+  sameField: SameFieldChoice;
+  fieldsById: FieldNames;
+  benchmarkId: string | null;
+}): { date: string | null; top: CompareSlot | null; bottom: CompareSlot | null } {
+  const { days, selfId, sameDay, sameField, fieldsById, benchmarkId } = input;
+  const slot = (fieldId: string, takenAt: string | null) => slotOf(days, fieldId, takenAt, fieldsById, benchmarkId);
+  if (input.mode === "same-day") {
+    return {
+      date: sameDay.date,
+      bottom: slot(selfId, sameDay.date),
+      top: sameDay.partnerId === null ? null : slot(sameDay.partnerId, sameDay.date),
+    };
+  }
+  return { date: sameField.date, bottom: slot(selfId, sameField.date), top: slot(selfId, sameField.earlier) };
+}
+
+/** 同じ日の相手の選択肢。その日に写真がある畑だけを「番号 名前」で */
+export function partnerOptions(
+  sameDay: SameDayChoice,
+  fieldsById: FieldNames,
+  benchmarkId: string | null,
+): { fieldId: string; label: string; benchmark: boolean }[] {
+  return sameDay.options
+    .filter((o) => o.enabled)
+    .map((o) => ({ fieldId: o.fieldId, label: `${o.fieldId} ${fieldsById[o.fieldId]?.name ?? ""}`.trim(), benchmark: o.fieldId === benchmarkId }));
 }
