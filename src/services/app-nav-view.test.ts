@@ -43,13 +43,15 @@ describe("navCurrent（詳細・比較の画面で帯のどれを選んで見せ
 
 // 札は 1 文字の記号にせず、言葉にする（11-07 精査 6 回目 #4。REVIEW-BRIEF §5「文字を消すだけで改善したつもりにならない」）
 // みっきぃ 5（#218）: 言葉に人のアイコンを添え、権限の強いほど飾る（委員長＝王冠、委員＝くわ、一般＝飾りなし）
+// 11-08 本人の依頼: 合言葉を入れ直す場所。委員・委員長のどちらでも入れ直せ、入っていれば「出る」がある
 describe("accountView（アカウント札とシートの言葉・アイコン、#194・#218）", () => {
   it("委員長は王冠", () => {
     expect(accountView("admin")).toStrictEqual({
       chip: "委員長",
       line: "委員長として入っています",
       isAdmin: true,
-      canSignInAsChair: false,
+      signIn: { label: "合言葉を入れ直す", lead: "入れ直す合言葉を入れてください。委員の合言葉なら、委員として入り直します。", submit: "入り直す" },
+      canSignOut: true,
       tier: "chair",
       ornament: "crown",
     });
@@ -60,7 +62,8 @@ describe("accountView（アカウント札とシートの言葉・アイコン�
       chip: "委員",
       line: "委員として入っています",
       isAdmin: false,
-      canSignInAsChair: true,
+      signIn: { label: "合言葉を入れ直す", lead: "入れ直す合言葉を入れてください。委員長の合言葉なら、委員長として入り直します。", submit: "入り直す" },
+      canSignOut: true,
       tier: "member",
       ornament: "hoe",
     });
@@ -71,13 +74,14 @@ describe("accountView（アカウント札とシートの言葉・アイコン�
       chip: "入る",
       line: "入っていません",
       isAdmin: false,
-      canSignInAsChair: true,
+      signIn: { label: "合言葉を入れる", lead: "委員か委員長の合言葉を入れてください。", submit: "入る" },
+      canSignOut: false,
       tier: "guest",
       ornament: "none",
     });
   });
 
   it("まだ分からないときは「…」で飾りなし", () => {
-    expect(accountView(undefined)).toMatchObject({ chip: "…", tier: "loading", ornament: "none" });
+    expect(accountView(undefined)).toMatchObject({ chip: "…", tier: "loading", ornament: "none", signIn: null, canSignOut: false });
   });
 });
