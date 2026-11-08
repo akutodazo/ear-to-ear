@@ -7,6 +7,9 @@ import type { Role, UploadedPhoto, UploadMeta } from "@/types";
 /** POST /api/session の結果 */
 export type LoginOutcome = "ok" | "wrong" | "too-many" | "network-error" | "error";
 
+/** DELETE /api/session の結果（出る。11-08） */
+export type LogoutOutcome = "ok" | "network-error" | "error";
+
 /** POST /api/uploads の結果 */
 export type UploadOutcome =
   | { kind: "created"; id: string }
@@ -36,6 +39,8 @@ export type AssignOutcome =
 export interface IPhotoRepository {
   /** 合言葉で入る（成功すると Cookie が付く） */
   login(passphrase: string): Promise<LoginOutcome>;
+  /** 出る（Cookie は HttpOnly なので、サーバーに消してもらう） */
+  logout(): Promise<LogoutOutcome>;
   /** 縮小済みの画像と meta を送る。撮影位置・距離は meta に入れない（K6） */
   upload(image: Blob, meta: UploadMeta): Promise<UploadOutcome>;
   /** 未確定を含む新着 */

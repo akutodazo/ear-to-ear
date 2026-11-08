@@ -196,7 +196,14 @@ export function FieldClient({ field }: { field: Field }) {
             詳細
           </button>
         )}
-        <AccountChip role={account.role} busy={account.busy} message={account.message} onSignIn={account.signIn} />
+        <AccountChip
+          role={account.role}
+          pending={account.pending}
+          signInMessage={account.signInMessage}
+          signOutMessage={account.signOutMessage}
+          onSignIn={account.signIn}
+          onSignOut={account.signOut}
+        />
       </header>
       {view === "compare" ? (
         <div className="compare-body compare-stage-body">

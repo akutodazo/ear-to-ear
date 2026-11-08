@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accountView, appNavHrefs, fieldDetailHref, navCurrent } from "./app-nav-view";
+import { accountPendingView, accountView, appNavHrefs, fieldDetailHref, navCurrent } from "./app-nav-view";
 
 // みっきぃ 3（#216）: 詳細は下の帯から外し、地図の板・順番のカードから入る。帯は 地図・比較・順番 の 3 つ
 describe("appNavHrefs（下の帯の 3 つ。選んだ畑を引き継ぐ、#194・#216）", () => {
@@ -43,13 +43,15 @@ describe("navCurrent（詳細・比較の画面で帯のどれを選んで見せ
 
 // 札は 1 文字の記号にせず、言葉にする（11-07 精査 6 回目 #4。REVIEW-BRIEF §5「文字を消すだけで改善したつもりにならない」）
 // みっきぃ 5（#218）: 言葉に人のアイコンを添え、権限の強いほど飾る（委員長＝王冠、委員＝くわ、一般＝飾りなし）
+// 11-08 本人の依頼: 合言葉を入れ直す場所。委員・委員長のどちらでも入れ直せ、入っていれば「出る」がある
 describe("accountView（アカウント札とシートの言葉・アイコン、#194・#218）", () => {
   it("委員長は王冠", () => {
     expect(accountView("admin")).toStrictEqual({
       chip: "委員長",
       line: "委員長として入っています",
       isAdmin: true,
-      canSignInAsChair: false,
+      signIn: { label: "合言葉を入れ直す", lead: "入れ直す合言葉を入れてください。委員の合言葉なら、委員として入り直します。", submit: "入り直す" },
+      canSignOut: true,
       tier: "chair",
       ornament: "crown",
     });
@@ -60,7 +62,8 @@ describe("accountView（アカウント札とシートの言葉・アイコン�
       chip: "委員",
       line: "委員として入っています",
       isAdmin: false,
-      canSignInAsChair: true,
+      signIn: { label: "合言葉を入れ直す", lead: "入れ直す合言葉を入れてください。委員長の合言葉なら、委員長として入り直します。", submit: "入り直す" },
+      canSignOut: true,
       tier: "member",
       ornament: "hoe",
     });
@@ -71,13 +74,29 @@ describe("accountView（アカウント札とシートの言葉・アイコン�
       chip: "入る",
       line: "入っていません",
       isAdmin: false,
-      canSignInAsChair: true,
+      signIn: { label: "合言葉を入れる", lead: "委員か委員長の合言葉を入れてください。", submit: "入る" },
+      canSignOut: false,
       tier: "guest",
       ornament: "none",
     });
   });
 
   it("まだ分からないときは「…」で飾りなし", () => {
-    expect(accountView(undefined)).toMatchObject({ chip: "…", tier: "loading", ornament: "none" });
+    expect(accountView(undefined)).toMatchObject({ chip: "…", tier: "loading", ornament: "none", signIn: null, canSignOut: false });
+  });
+});
+
+// レビュー #1（docs/reviews/pr-249-250.md）: 入り直すの待ちに「出ています…」が出た（逆も）。待っている操作だけの言葉を変え、押せなくするのは両方
+describe("accountPendingView（アカウントのシートの待ちの表示）", () => {
+  it("何も待っていなければ、どちらも押せて言葉はそのまま", () => {
+    expect(accountPendingView(null)).toStrictEqual({ disabled: false, signInBusy: false, signOutLabel: "この端末から出る" });
+  });
+
+  it("入り直すを待っている間は、出るの言葉を変えない（押せないだけ）", () => {
+    expect(accountPendingView("sign-in")).toStrictEqual({ disabled: true, signInBusy: true, signOutLabel: "この端末から出る" });
+  });
+
+  it("出るを待っている間は、入り直すの欄を「確かめています」にしない", () => {
+    expect(accountPendingView("sign-out")).toStrictEqual({ disabled: true, signInBusy: false, signOutLabel: "出ています…" });
   });
 });

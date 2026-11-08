@@ -49,6 +49,30 @@ describe("login（POST /api/session）", () => {
   });
 });
 
+// 11-08: 出る。Cookie は HttpOnly なので、サーバーに消してもらう
+describe("logout（DELETE /api/session）", () => {
+  it("DELETE で /api/session を呼ぶ（本文なし）", async () => {
+    const { fn, calls } = fakeFetch(() => new Response(null, { status: 204 }));
+    await createHttpPhotoRepository(fn, "https://example.test").logout();
+    expect(calls[0].url).toBe("https://example.test/api/session");
+    expect(calls[0].init?.method).toBe("DELETE");
+    expect(calls[0].init?.body).toBeUndefined();
+  });
+
+  it.each([
+    [204, "ok"],
+    [405, "error"],
+    [500, "error"],
+  ])("状態 %i は %s", async (status, outcome) => {
+    const { fn } = fakeFetch(() => new Response(null, { status }));
+    expect(await createHttpPhotoRepository(fn).logout()).toBe(outcome);
+  });
+
+  it("つながらなければ network-error", async () => {
+    expect(await createHttpPhotoRepository(offline).logout()).toBe("network-error");
+  });
+});
+
 describe("upload（POST /api/uploads）", () => {
   const image = new Blob([new Uint8Array([0xff, 0xd8, 0xff])], { type: "image/jpeg" });
 

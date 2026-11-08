@@ -39,8 +39,10 @@ export interface AccountView {
   chip: string;
   line: string;
   isAdmin: boolean;
-  /** 委員長として入る欄を出すか */
-  canSignInAsChair: boolean;
+  /** 合言葉を入れる・入れ直す欄（11-08 本人の依頼）。ボタンの言葉・欄の説明・送るボタンの言葉。まだ読んでいる間は null */
+  signIn: { label: string; lead: string; submit: string } | null;
+  /** 「出る」を出すか（入っているときだけ） */
+  canSignOut: boolean;
   /** 札の見た目の段（権限が強いほど濃い、#218） */
   tier: "loading" | "guest" | "member" | "chair";
   /** 人のアイコンに添える飾り（委員長＝王冠、委員＝くわ、一般＝なし。みっきぃ 11-07） */
@@ -50,14 +52,53 @@ export interface AccountView {
 /** role: 読めた役割。null は入っていない、undefined はまだ読んでいる */
 export function accountView(role: Role | null | undefined): AccountView {
   if (role === undefined) {
-    return { chip: "…", line: "確かめています", isAdmin: false, canSignInAsChair: false, tier: "loading", ornament: "none" };
+    return { chip: "…", line: "確かめています", isAdmin: false, signIn: null, canSignOut: false, tier: "loading", ornament: "none" };
   }
   if (role === "admin") {
-    return { chip: "委員長", line: "委員長として入っています", isAdmin: true, canSignInAsChair: false, tier: "chair", ornament: "crown" };
+    return {
+      chip: "委員長",
+      line: "委員長として入っています",
+      isAdmin: true,
+      signIn: { label: "合言葉を入れ直す", lead: "入れ直す合言葉を入れてください。委員の合言葉なら、委員として入り直します。", submit: "入り直す" },
+      canSignOut: true,
+      tier: "chair",
+      ornament: "crown",
+    };
   }
   if (role === "member") {
-    return { chip: "委員", line: "委員として入っています", isAdmin: false, canSignInAsChair: true, tier: "member", ornament: "hoe" };
+    return {
+      chip: "委員",
+      line: "委員として入っています",
+      isAdmin: false,
+      signIn: { label: "合言葉を入れ直す", lead: "入れ直す合言葉を入れてください。委員長の合言葉なら、委員長として入り直します。", submit: "入り直す" },
+      canSignOut: true,
+      tier: "member",
+      ornament: "hoe",
+    };
   }
   // 入っていないときは、押すと入れることを言う
-  return { chip: "入る", line: "入っていません", isAdmin: false, canSignInAsChair: true, tier: "guest", ornament: "none" };
+  return {
+    chip: "入る",
+    line: "入っていません",
+    isAdmin: false,
+    signIn: { label: "合言葉を入れる", lead: "委員か委員長の合言葉を入れてください。", submit: "入る" },
+    canSignOut: false,
+    tier: "guest",
+    ornament: "none",
+  };
+}
+
+/** アカウントのシートで待っている操作。入り直す・出る・無し */
+export type AccountPending = "sign-in" | "sign-out" | null;
+
+/**
+ * 待ちの表示（レビュー #1、docs/reviews/pr-249-250.md）。言葉を変えるのは待っている操作だけ。
+ * 押せなくするのは両方（入り直しと出るを同時に走らせない）
+ */
+export function accountPendingView(pending: AccountPending): { disabled: boolean; signInBusy: boolean; signOutLabel: string } {
+  return {
+    disabled: pending !== null,
+    signInBusy: pending === "sign-in",
+    signOutLabel: pending === "sign-out" ? "出ています…" : "この端末から出る",
+  };
 }
