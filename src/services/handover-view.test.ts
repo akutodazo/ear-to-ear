@@ -125,14 +125,59 @@ describe("sourceLabel（T27 の書き方を読む）", () => {
 });
 
 describe("handoverSentences", () => {
-  it("ブロック 1 つが 1 文。順はそのまま、文は変えない", () => {
+  it("句点（。！？）で文を区切る。順はそのまま、前後の空白は落とし、言葉は変えない", () => {
     const result = handoverSentences(
       note([status7], [
         { text: "7/21 に収穫可能と判断した。", cites: [cite(0, 1)] },
         { text: " 理由は穂の色。\n", cites: [cite(0, 1)] },
       ]),
     );
-    expect(result.map((s) => s.text)).toStrictEqual(["7/21 に収穫可能と判断した。", " 理由は穂の色。\n"]);
+    expect(result.map((s) => s.text)).toStrictEqual(["7/21 に収穫可能と判断した。", "理由は穂の色。"]);
+  });
+
+  it("Claude が根拠の所で区切った塊は、句点までつないで 1 文にする（本物の返事の形、11-06 dev の A-01）", () => {
+    const result = handoverSentences(
+      note([status7], [
+        { text: "A-06 圃場の 2026 年の記録では、", cites: [] },
+        { text: "2026-07-21 に「収穫可能」と判断され、その理由は穂の色と記録されています", cites: [cite(0, 1, "収穫可能")] },
+        { text: "。", cites: [] },
+      ]),
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0].text).toBe("A-06 圃場の 2026 年の記録では、2026-07-21 に「収穫可能」と判断され、その理由は穂の色と記録されています。");
+    expect(result[0].sources.map((s) => s.id)).toStrictEqual(["7"]);
+    expect(result[0].uncited).toBe(false);
+  });
+
+  it("1 つの塊に文が 2 つあれば分け、どちらの文もその塊の根拠を持つ", () => {
+    const [a, b] = handoverSentences(note([status7], [{ text: "一。二。", cites: [cite(0, 1)] }]));
+    expect([a.text, b.text]).toStrictEqual(["一。", "二。"]);
+    expect(a.sources.map((s) => s.id)).toStrictEqual(["7"]);
+    expect(b.sources.map((s) => s.id)).toStrictEqual(["7"]);
+  });
+
+  it("文の途中で切れた塊の続きは、次の文に根拠を持ち越さない", () => {
+    const [a, b] = handoverSentences(
+      note([status7, status12], [
+        { text: "前の文の終わり。次の文の", cites: [cite(0, 1)] },
+        { text: "続き。", cites: [cite(1, 2)] },
+      ]),
+    );
+    expect(a).toMatchObject({ text: "前の文の終わり。", uncited: false });
+    expect(a.sources.map((s) => s.id)).toStrictEqual(["7"]);
+    // 「次の文の」は 7 の塊、「続き。」は 12 の塊。1 文につないだら両方の根拠
+    expect(b.text).toBe("次の文の続き。");
+    expect(b.sources.map((s) => s.id)).toStrictEqual(["7", "12"]);
+  });
+
+  it("つないだ塊のどれにも根拠が無ければ uncited。最後が句点で終わらなくても残りを 1 文にする", () => {
+    const result = handoverSentences(
+      note([status7], [
+        { text: "来年も", cites: [] },
+        { text: "穂を見る", cites: [] },
+      ]),
+    );
+    expect(result).toStrictEqual([{ text: "来年も穂を見る", sources: [], uncited: true }]);
   });
 
   it("引用の範囲の記録を根拠の印にする（end は含まない）", () => {
@@ -149,8 +194,8 @@ describe("handoverSentences", () => {
     const odd: HandoverRecord = { kind: "photo", id: "a/b?c", text: "[写真] 2026-07-20 撮影。" };
     const [a, b] = handoverSentences(
       note([photoA, odd], [
-        { text: "写真", cites: [cite(0, 1)] },
-        { text: "写真", cites: [cite(1, 2)] },
+        { text: "写真。", cites: [cite(0, 1)] },
+        { text: "写真。", cites: [cite(1, 2)] },
       ]),
     );
     expect(a.sources[0].href).toBe("/api/photo-files/aaaaaaaa-0000-4000-8000-000000000001");
@@ -180,13 +225,13 @@ describe("handoverSentences", () => {
     const records = [status7, status12];
     const [partly, none] = handoverSentences(
       note(records, [
-        { text: "一部", cites: [cite(1, 4)] },
-        { text: "外", cites: [cite(2, 3), cite(-1, 0), cite(5, 9)] },
+        { text: "一部。", cites: [cite(1, 4)] },
+        { text: "外。", cites: [cite(2, 3), cite(-1, 0), cite(5, 9)] },
       ]),
     );
     expect(partly.sources.map((s) => s.id)).toStrictEqual(["12"]);
     expect(partly.uncited).toBe(false);
-    expect(none).toStrictEqual({ text: "外", sources: [], uncited: true });
+    expect(none).toStrictEqual({ text: "外。", sources: [], uncited: true });
   });
 
   it("負の start は 0 からの範囲として扱わない（-1〜1 は 0 だけ）", () => {
@@ -231,7 +276,7 @@ describe("handoverSentences", () => {
     expect(sentence.sources[0].citedText).toBe("");
   });
 
-  it("中身が空白だけのブロックは出さない（引用があっても）", () => {
+  it("中身が空白だけのブロックは出さず、その引用も次の文に持ち込まない", () => {
     const result = handoverSentences(
       note([status7], [
         { text: "", cites: [] },
@@ -239,7 +284,7 @@ describe("handoverSentences", () => {
         { text: "残る", cites: [] },
       ]),
     );
-    expect(result.map((s) => s.text)).toStrictEqual(["残る"]);
+    expect(result).toStrictEqual([{ text: "残る", sources: [], uncited: true }]);
   });
 
   it("ブロックが無ければ空", () => {
@@ -249,8 +294,8 @@ describe("handoverSentences", () => {
   it("文ごとに独立（前の文の印が次の文に混ざらない）", () => {
     const [a, b] = handoverSentences(
       note([status7, status12], [
-        { text: "一", cites: [cite(0, 1)] },
-        { text: "二", cites: [cite(1, 2)] },
+        { text: "一。", cites: [cite(0, 1)] },
+        { text: "二。", cites: [cite(1, 2)] },
       ]),
     );
     expect(a.sources.map((s) => s.id)).toStrictEqual(["7"]);
@@ -260,8 +305,8 @@ describe("handoverSentences", () => {
   it("同じ記録を別の文が引用したら、どちらの文にも印が付く（文をまたいで重複を除かない）", () => {
     const [a, b] = handoverSentences(
       note([status7, status12], [
-        { text: "一", cites: [cite(0, 2, "一の引用")] },
-        { text: "二", cites: [cite(0, 1, "二の引用")] },
+        { text: "一。", cites: [cite(0, 2, "一の引用")] },
+        { text: "二。", cites: [cite(0, 1, "二の引用")] },
       ]),
     );
     expect(a.sources.map((s) => s.id)).toStrictEqual(["7", "12"]);

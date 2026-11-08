@@ -1,6 +1,7 @@
 /**
  * L6 の引き継ぎメモを画面に出す形にする（docs/spec.md §7 の /fields/[id]、合格条件 13）。純粋関数。
- * 返事の text ブロック 1 つ＝画面の 1 文。各文に根拠の印（元の判断・写真へのリンク）を付け、根拠の無い文は「根拠なし」。
+ * 画面の 1 文は句点（。！？）までの言葉。Claude は根拠の付いた部分だけを別の text ブロックに分けて返すので（11-06 dev で確かめた）、
+ * ブロックをつないで句点で区切り直す。各文に、その文を作ったブロックの根拠の印（元の判断・写真へのリンク）をまとめて付け、根拠の無い文は「根拠なし」。
  * 記録の文の書き方は T27（handover-document）に合わせて読む。読めない文は種類の名前だけの印にする（隠さない）。
  * メモはネットワーク越しに届くので、範囲の外や数でない番号は黙って飛ばす（画面を壊さない）。
  */
@@ -70,36 +71,71 @@ function sourceHref(record: HandoverRecord): string {
     : `/api/photo-files/${encodeURIComponent(record.id)}`;
 }
 
-/** メモを画面の文の並びにする。中身が空白だけのブロックは出さない */
-export function handoverSentences(note: HandoverNote): HandoverSentence[] {
-  const records = note.records;
-  const sentences: HandoverSentence[] = [];
-  for (const block of note.blocks) {
-    if (block.text.trim() === "") continue;
-    const seen = new Set<number>();
-    const sources: HandoverSource[] = [];
-    for (const c of block.cites) {
-      const start: unknown = c.start;
-      const end: unknown = c.end;
-      if (typeof start !== "number" || typeof end !== "number") continue;
-      if (!Number.isInteger(start) || !Number.isInteger(end) || start >= end) continue;
-      const lo = Math.max(0, start);
-      const hi = Math.min(end, records.length);
-      const citedText: unknown = c.citedText;
-      for (let i = lo; i < hi; i++) {
-        if (seen.has(i)) continue;
-        seen.add(i);
-        const record = records[i];
-        sources.push({
+/** ブロック 1 つの根拠（記録の番号と印）。範囲の外や数でない番号は飛ばす */
+function blockSources(records: readonly HandoverRecord[], cites: HandoverNote["blocks"][number]["cites"]): { index: number; source: HandoverSource }[] {
+  const out: { index: number; source: HandoverSource }[] = [];
+  for (const c of cites) {
+    const start: unknown = c.start;
+    const end: unknown = c.end;
+    if (typeof start !== "number" || typeof end !== "number") continue;
+    if (!Number.isInteger(start) || !Number.isInteger(end) || start >= end) continue;
+    const lo = Math.max(0, start);
+    const hi = Math.min(end, records.length);
+    const citedText: unknown = c.citedText;
+    for (let i = lo; i < hi; i++) {
+      const record = records[i];
+      out.push({
+        index: i,
+        source: {
           kind: record.kind,
           id: record.id,
           label: sourceLabel(record),
           href: sourceHref(record),
           citedText: typeof citedText === "string" ? citedText : "",
-        });
-      }
+        },
+      });
     }
-    sentences.push({ text: block.text, sources, uncited: sources.length === 0 });
   }
+  return out;
+}
+
+/** 句点（。！？、続けて並ぶものはまとめて）で終わる切れ端と、句点の無い残り */
+const PIECE = /[^。！？]*[。！？]+|[^。！？]+/g;
+const ENDS_SENTENCE = /[。！？]$/;
+
+/**
+ * メモを画面の文の並びにする。ブロックをつないで句点で区切る。文の前後の空白は落とす。
+ * 中身が空白だけのブロックは出さず、その根拠も使わない。同じ記録の印は 1 つの文の中で 1 回だけ（最初に引用された順と部分）
+ */
+export function handoverSentences(note: HandoverNote): HandoverSentence[] {
+  const records = note.records;
+  const sentences: HandoverSentence[] = [];
+  let text = "";
+  let sources: HandoverSource[] = [];
+  let seen = new Set<number>();
+  const flush = () => {
+    const trimmed = text.trim();
+    if (trimmed !== "") sentences.push({ text: trimmed, sources, uncited: sources.length === 0 });
+    text = "";
+    sources = [];
+    seen = new Set<number>();
+  };
+  for (const block of note.blocks) {
+    if (block.text.trim() === "") continue;
+    const found = blockSources(records, block.cites);
+    for (const piece of block.text.match(PIECE) ?? []) {
+      text += piece;
+      // 空白だけの切れ端（句点の後の改行など）は、根拠を次の文に持ち込まない
+      if (piece.trim() !== "") {
+        for (const { index, source } of found) {
+          if (seen.has(index)) continue;
+          seen.add(index);
+          sources.push(source);
+        }
+      }
+      if (ENDS_SENTENCE.test(piece)) flush();
+    }
+  }
+  flush();
   return sentences;
 }
