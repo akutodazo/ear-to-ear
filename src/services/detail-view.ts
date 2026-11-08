@@ -54,3 +54,37 @@ export function readFieldView(hash: string): FieldView {
 export function showHandoverTo(role: Role | null | undefined): boolean {
   return role === "admin";
 }
+
+/** 取り消していない最新の判断。同じ時刻なら id の大きいほう（後から記録したもの）。無ければ null */
+export function latestLiveEvent(history: readonly StatusEvent[]): StatusEvent | null {
+  const live = history.filter((e) => e.revokedAt === null);
+  if (live.length === 0) return null;
+  return live.reduce((a, b) => (a.at > b.at || (a.at === b.at && a.id > b.id) ? a : b));
+}
+
+/** 順番の段の状態。確定した順と違う → differs、確定してそのまま → confirmed、ほかは下書き */
+export function rankLineState(input: {
+  differsFromConfirmed: boolean;
+  savedState: "draft" | "confirmed" | null;
+  /** 保存した順から並べ直している途中 */
+  dirty: boolean;
+}): RankLineInput["state"] {
+  if (input.differsFromConfirmed) return "differs";
+  return input.savedState === "confirmed" && !input.dirty ? "confirmed" : "draft";
+}
+
+/** 刈る順番の何番目か（1 から）。並びに入っていなければ null */
+export function rankOf(ranked: readonly string[], fieldId: string): number | null {
+  const index = ranked.indexOf(fieldId);
+  return index < 0 ? null : index + 1;
+}
+
+/** 判断の行の下の 1 行。記録した直後はその結果、そうでなければ取り消しの文（赤字の扱い）。無ければ null */
+export function decideResult(input: {
+  recorded: boolean;
+  formMessage: { text: string; ok: boolean } | null;
+  revokeMessage: string | null;
+}): { text: string; ok: boolean } | null {
+  if (input.recorded && input.formMessage) return input.formMessage;
+  return input.revokeMessage ? { text: input.revokeMessage, ok: false } : null;
+}

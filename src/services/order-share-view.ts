@@ -5,6 +5,12 @@
 import type { CreateOrderShareOutcome } from "@/repositories/interfaces/i-order-share-repository";
 import { stripAppSegments } from "./prepared-photo";
 
+/** 共有する地図の絵の段階 */
+export type ShareState = { kind: "drawing" } | { kind: "ready"; url: string; file: File } | { kind: "error" };
+
+/** 共有の URL の段階 */
+export type LinkState = { kind: "none" } | { kind: "uploading" } | { kind: "ready"; url: string; expiresAt: string };
+
 /** navigator.share に渡すもの。text に URL を入れない（Android の LINE は text と url をつなぐので二重になる） */
 export function shareData(text: string, url: string): { text: string; url: string } {
   return { text, url };

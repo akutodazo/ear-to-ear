@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Claude Code の worktree。中の build 生成物まで読むと手元の検査が落ちる
     ".claude/**",
+    // wrangler dev の生成物（.wrangler/tmp の bundle）。自分のコードではない
+    ".wrangler/**",
   ]),
 ]);
 

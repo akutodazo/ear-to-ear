@@ -9,28 +9,21 @@
 import Image from "next/image";
 import { useRef, useState } from "react";
 import { takenAtLabel } from "@/services/photo-labels";
+import type { CompareSlot, PartnerChoice } from "@/services/photo-compare";
 import { IconChevron, IconClose } from "@/components/icons";
-
-export interface SlotPhoto {
-  photoId: string;
-  fieldId: string;
-  fieldName: string;
-  takenAt: string | null;
-  benchmark: boolean;
-}
 
 export interface PartnerPicker {
   /** 例「7/19 に撮った畑」（その日に撮った畑だけを並べる。精査 3 回目 #5） */
   title: string;
-  options: { fieldId: string; label: string; benchmark: boolean }[];
+  options: PartnerChoice[];
   currentId: string;
   onPick: (fieldId: string) => void;
 }
 
 interface Props {
   kind: "overlay" | "stack";
-  top: SlotPhoto;
-  bottom: SlotPhoto;
+  top: CompareSlot;
+  bottom: CompareSlot;
   /** 上の帯の頭に添える印（例「前の日」） */
   topTag?: string;
   picker?: PartnerPicker;
@@ -43,7 +36,7 @@ const CAPTION_MIN = 24;
 const clamp = (v: number) => Math.min(MAX, Math.max(MIN, v));
 const src = (id: string) => `/api/photo-files/${encodeURIComponent(id)}`;
 
-function CaptionBody({ slot, tag }: { slot: SlotPhoto; tag?: string }) {
+function CaptionBody({ slot, tag }: { slot: CompareSlot; tag?: string }) {
   return (
     <>
       {tag && <span className="split-tag">{tag}</span>}

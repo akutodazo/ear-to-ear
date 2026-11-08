@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { UploadedPhoto } from "@/types";
-import { daysOf, indexByDay, resolveSameDay, resolveSameField } from "./photo-compare";
+import { compareSlots, daysOf, indexByDay, partnerOptions, resolveSameDay, resolveSameField } from "./photo-compare";
 
 // 見比べるの 2 つの比べ方（11-05、field-share の考え方を参考に、自分で書く）:
 // 「同じ日に撮った別の畑と」（日をまたいで比べない。日が過ぎれば育つのは当たり前）と「この畑の前の日と」
@@ -107,5 +107,88 @@ describe("resolveSameField（この畑の前の日と。上は必ず選んだ日
   it("写真が 1 日分だけなら上は null。写真が無ければ全部 null", () => {
     expect(resolveSameField(days, "A-01", {})).toEqual({ date: "2026-07-10", earlier: null, earlierOptions: [] });
     expect(resolveSameField(days, "A-02", {})).toEqual({ date: null, earlier: null, earlierOptions: [] });
+  });
+});
+
+// 詳細の画面の「比較」の段の上下（field-client から移す。#240）
+describe("compareSlots（比較の段の上下の写真）", () => {
+  const days = indexByDay(byField);
+  const fieldsById = { "A-03": { name: "北の3" }, "A-04": { name: "北の4" }, "A-01": { name: "北の1" } };
+  const all = ["A-01", "A-02", "A-03", "A-04"];
+  const idOf = (fieldId: string, takenAt: string) => days.find((d) => d.takenAt === takenAt)!.photos[fieldId].id;
+  const input = (selfId: string, mode: "same-day" | "same-field", wanted = {}, benchmarkId: string | null = "A-04") => ({
+    days,
+    selfId,
+    mode,
+    sameDay: resolveSameDay(days, selfId, wanted, benchmarkId, all),
+    sameField: resolveSameField(days, selfId, wanted),
+    fieldsById,
+    benchmarkId,
+  });
+
+  it("同じ日: 下はこの畑、上はその日の相手。目安の畑には印", () => {
+    expect(compareSlots(input("A-03", "same-day"))).toEqual({
+      date: "2026-07-19",
+      bottom: { photoId: idOf("A-03", "2026-07-19"), fieldId: "A-03", fieldName: "北の3", takenAt: "2026-07-19", benchmark: false },
+      top: { photoId: idOf("A-04", "2026-07-19"), fieldId: "A-04", fieldName: "北の4", takenAt: "2026-07-19", benchmark: true },
+    });
+  });
+
+  it("前の日と: 下は選んだ日、上は同じ畑の前の日", () => {
+    expect(compareSlots(input("A-03", "same-field"))).toEqual({
+      date: "2026-07-19",
+      bottom: { photoId: idOf("A-03", "2026-07-19"), fieldId: "A-03", fieldName: "北の3", takenAt: "2026-07-19", benchmark: false },
+      top: { photoId: idOf("A-03", "2026-07-10"), fieldId: "A-03", fieldName: "北の3", takenAt: "2026-07-10", benchmark: false },
+    });
+  });
+
+  it("同じ日に撮った別の畑が無ければ上は null（下は出す）", () => {
+    const r = compareSlots(input("A-04", "same-day", { date: "2026-07-02" }));
+    expect(r.date).toBe("2026-07-02");
+    expect(r.top).toBeNull();
+    expect(r.bottom?.photoId).toBe(idOf("A-04", "2026-07-02"));
+  });
+
+  it("いちばん古い日を選ぶと、前の日の上は null", () => {
+    const r = compareSlots(input("A-03", "same-field", { date: "2026-07-10" }));
+    expect(r.top).toBeNull();
+    expect(r.bottom?.takenAt).toBe("2026-07-10");
+  });
+
+  it("この畑に写真が無ければ、日付も上下も null", () => {
+    expect(compareSlots(input("A-02", "same-day"))).toEqual({ date: null, top: null, bottom: null });
+    expect(compareSlots(input("A-02", "same-field"))).toEqual({ date: null, top: null, bottom: null });
+  });
+
+  it("名前を知らない畑は番号を名前の代わりに", () => {
+    const r = compareSlots({ ...input("A-03", "same-day"), fieldsById: {} });
+    expect(r.bottom?.fieldName).toBe("A-03");
+    expect(r.top?.fieldName).toBe("A-04");
+  });
+
+  it("目安の畑が無い地区では、どちらにも印を付けない", () => {
+    const r = compareSlots(input("A-03", "same-day", {}, null));
+    expect(r.top?.benchmark).toBe(false);
+    expect(r.bottom?.benchmark).toBe(false);
+  });
+});
+
+describe("partnerOptions（同じ日の相手の選択肢）", () => {
+  const days = indexByDay(byField);
+  const fieldsById = { "A-03": { name: "北の3" }, "A-04": { name: "北の4" } };
+
+  it("その日に写真がある畑だけ、「番号 名前」で。目安の畑には印", () => {
+    const sameDay = resolveSameDay(days, "A-01", { date: "2026-07-10" }, null, ["A-01", "A-02", "A-03", "A-04"]);
+    expect(partnerOptions(sameDay, fieldsById, "A-03")).toEqual([{ fieldId: "A-03", label: "A-03 北の3", benchmark: true }]);
+  });
+
+  it("名前を知らない畑は番号だけ（後ろに空白を残さない）", () => {
+    const sameDay = resolveSameDay(days, "A-03", {}, null, ["A-01", "A-04"]);
+    expect(partnerOptions(sameDay, {}, null)).toEqual([{ fieldId: "A-04", label: "A-04", benchmark: false }]);
+  });
+
+  it("相手が 1 つも無ければ空", () => {
+    const sameDay = resolveSameDay(days, "A-02", {}, null, ["A-01", "A-03"]);
+    expect(partnerOptions(sameDay, fieldsById, null)).toEqual([]);
   });
 });

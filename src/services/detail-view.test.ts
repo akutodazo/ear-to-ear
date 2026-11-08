@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { heroMeta, judgmentLine, rankLineView, readFieldView, showHandoverTo } from "./detail-view";
+import type { StatusEvent } from "@/types";
+import {
+  decideResult,
+  heroMeta,
+  judgmentLine,
+  latestLiveEvent,
+  rankLineState,
+  rankLineView,
+  rankOf,
+  readFieldView,
+  showHandoverTo,
+} from "./detail-view";
 
 describe("judgmentLine（詳細の判断の行、#195）", () => {
   it("最新の判断を「月/日 に 状態 と判断」で", () => {
@@ -73,5 +84,94 @@ describe("showHandoverTo（引き継ぎメモは管理者だけ。西田 PM 11-0
     expect(showHandoverTo("member")).toBe(false);
     expect(showHandoverTo(null)).toBe(false);
     expect(showHandoverTo(undefined)).toBe(false);
+  });
+});
+
+// 詳細の判断の行に出す最新の判断（field-client から移す。#240）
+describe("latestLiveEvent（取り消していない最新の判断）", () => {
+  const event = (id: number, at: string, revokedAt: string | null = null, status: StatusEvent["status"] = "ready"): StatusEvent => ({
+    id,
+    fieldId: "A-03",
+    status,
+    reasons: [],
+    note: null,
+    refPhotoIds: [],
+    actorDevice: "d",
+    at,
+    revokedAt,
+  });
+
+  it("記録が無ければ null", () => {
+    expect(latestLiveEvent([])).toBeNull();
+  });
+
+  it("すべて取り消し済みなら null", () => {
+    expect(latestLiveEvent([event(1, "2026-07-20T00:00:00.000Z", "2026-07-21T00:00:00.000Z")])).toBeNull();
+  });
+
+  it("時刻がいちばん新しいもの（並びの順に頼らない）", () => {
+    const newest = event(1, "2026-07-22T00:00:00.000Z", null, "done");
+    expect(latestLiveEvent([event(2, "2026-07-20T00:00:00.000Z"), newest, event(3, "2026-07-21T00:00:00.000Z")])).toBe(newest);
+  });
+
+  it("取り消した新しい判断は飛ばす", () => {
+    const live = event(1, "2026-07-20T00:00:00.000Z");
+    expect(latestLiveEvent([event(2, "2026-07-22T00:00:00.000Z", "2026-07-22T01:00:00.000Z"), live])).toBe(live);
+  });
+
+  it("同じ時刻なら id の大きいほう（後から記録したもの）", () => {
+    const later = event(5, "2026-07-20T00:00:00.000Z", null, "done");
+    expect(latestLiveEvent([later, event(4, "2026-07-20T00:00:00.000Z")])).toBe(later);
+    expect(latestLiveEvent([event(4, "2026-07-20T00:00:00.000Z"), later])).toBe(later);
+  });
+});
+
+// 順番の段の状態（field-client から移す。#240）
+describe("rankLineState（順番の段: 下書き・確定した順のまま・確定した順と違う）", () => {
+  it("確定した順と違えば differs（確定していても、並べ途中でも）", () => {
+    expect(rankLineState({ differsFromConfirmed: true, savedState: "confirmed", dirty: true })).toBe("differs");
+    expect(rankLineState({ differsFromConfirmed: true, savedState: null, dirty: false })).toBe("differs");
+  });
+
+  it("確定して、そのまま（並べ直していない）なら confirmed", () => {
+    expect(rankLineState({ differsFromConfirmed: false, savedState: "confirmed", dirty: false })).toBe("confirmed");
+  });
+
+  it("確定していても並べ直し中なら draft", () => {
+    expect(rankLineState({ differsFromConfirmed: false, savedState: "confirmed", dirty: true })).toBe("draft");
+  });
+
+  it("保存していない・下書きで保存しただけなら draft", () => {
+    expect(rankLineState({ differsFromConfirmed: false, savedState: null, dirty: false })).toBe("draft");
+    expect(rankLineState({ differsFromConfirmed: false, savedState: "draft", dirty: false })).toBe("draft");
+  });
+});
+
+describe("rankOf（順番の何番目か。1 から）", () => {
+  it("並びの位置 + 1。入っていなければ null", () => {
+    expect(rankOf(["A-02", "A-03"], "A-03")).toBe(2);
+    expect(rankOf(["A-02"], "A-03")).toBeNull();
+    expect(rankOf([], "A-03")).toBeNull();
+  });
+});
+
+// 判断の行の下に出す結果の 1 行（field-client から移す。#240）
+describe("decideResult（記録した結果か、取り消しの結果か）", () => {
+  const recordedMessage = { text: "記録しました", ok: true };
+
+  it("記録した直後は、記録の結果（取り消しの文より先）", () => {
+    expect(decideResult({ recorded: true, formMessage: recordedMessage, revokeMessage: "取り消しました" })).toBe(recordedMessage);
+  });
+
+  it("記録していなければ、取り消しの文（赤字の扱い）", () => {
+    expect(decideResult({ recorded: false, formMessage: { text: "理由を選んでください", ok: false }, revokeMessage: "取り消しました" })).toEqual({
+      text: "取り消しました",
+      ok: false,
+    });
+  });
+
+  it("どちらも無ければ null", () => {
+    expect(decideResult({ recorded: false, formMessage: null, revokeMessage: null })).toBeNull();
+    expect(decideResult({ recorded: true, formMessage: null, revokeMessage: "" })).toBeNull();
   });
 });
